@@ -7,7 +7,30 @@ The Arduino OBD-II UART Adapter is a  product works as an OBD-II to serial UART 
 
 Product page: http://www.arduinodev.com/hardware/obd-kit/
 
-<strong>Directory Descriptions</strong>
+About the library
+-----------------
+In current version of the library, following OBD-II PIDs are defined:
+
+    Vehicle speed (PID_SPEED)
+    Engine RPM (PID_RPM)
+    Throttle position (PID_THROTTLE)
+    Calculated Engine load (PID_ENGINE_LOAD)
+    Absolute Engine load (PID_ABS_ENGINE_LOAD)
+    Engine coolant temperature (PID_COOLANT_TEMP)
+    Intake temperature (PID_INTAKE_TEMP)
+    Intake MAP (PID_INTAKE_PRESSURE)
+    MAF flow pressure (PID_MAF_FLOW)
+    Fuel pressure (PID_FUEL_PRESSURE)
+    Fuel level (PID_FUEL_LEVEL)
+    Barometric pressure (PID_BAROMETRIC)
+    Ignition timing advance (PID_TIMING_ADVANCE)
+    Engine running time (PID_RUNTIME)
+    Vehicle running distance (PID_DISTANCE)
+
+Additional defines can be added to access all OBD-II PIDs which the car's ECU provides. 
+
+Directory Descriptions
+----------------------
 
 libraries/OBD - Arduino library for OBD-II adapter
 
