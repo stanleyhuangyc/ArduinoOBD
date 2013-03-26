@@ -7,8 +7,8 @@
 *************************************************************************/
 
 #include <Arduino.h>
-#include <OBD.h>
-#include <LCD4884.h>
+#include "OBD.h"
+#include "LCD4884.h"
 
 // the following line toggles between hardware serial and software serial
 // #define USE_SOFTSERIAL
