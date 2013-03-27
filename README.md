@@ -7,6 +7,8 @@ The Arduino OBD-II UART Adapter is a  product works as an OBD-II to serial UART 
 
 Product page: http://www.arduinodev.com/hardware/obd-kit/
 
+![Image](http://www.arduinodev.com/wp-content/uploads/2012/03/obdkit1-150x150.jpg)
+
 About the library
 -----------------
 In current version of the library, following OBD-II PIDs are defined:
