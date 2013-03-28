@@ -12,7 +12,7 @@ extern "C" {
   #include <stdlib.h>
   #include <string.h>
   #include <inttypes.h>
-  #include "../../Wire/utility/twi.h"
+  #include "../Wire/utility/twi.h"
 }
 
 #include "ZtLib.h"

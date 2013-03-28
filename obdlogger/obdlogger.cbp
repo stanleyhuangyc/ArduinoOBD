@@ -265,6 +265,30 @@
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
+			<Target title="Microduino Core+ (644P)">
+				<Option output="bin/Release/obdlogger_${BOARD_ID}_$(UPLOAD_PORT).elf" prefix_auto="1" extension_auto="0" />
+				<Option type="1" />
+				<Option compiler="avrgcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-mmcu=$(MCU)" />
+					<Add option="-D__AVR_ATmega644P__" />
+					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
+					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/plus" />
+				</Compiler>
+				<Linker>
+					<Add option="-mmcu=$(MCU)" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="avr-objcopy -O ihex -R .eeprom -R .eesafe $(TARGET_OUTPUT_FILE) $(TARGET_OUTPUT_FILE).hex" />
+					<Add after="avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex $(TARGET_OUTPUT_FILE) $(TARGET_OUTPUT_FILE).eep.hex" />
+					<Add after="avr-size --mcu=$(MCU) --format=avr $(TARGET_OUTPUT_FILE)" />
+				</ExtraCommands>
+				<Environment>
+					<Variable name="BOARD_ID" value="uduino644p" />
+					<Variable name="MCU" value="atmega644p" />
+				</Environment>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-fno-exceptions" />
@@ -320,7 +344,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="libraries/SD.cpp" />
-		<Unit filename="libraries/SoftwareSerial.cpp" />
+		<Unit filename="libraries/SoftwareSerial.cpp">
+			<Option compile="0" />
+			<Option link="0" />
+		</Unit>
 		<Unit filename="libraries/Wire.cpp" />
 		<Unit filename="libraries/twi.c">
 			<Option compilerVar="CC" />

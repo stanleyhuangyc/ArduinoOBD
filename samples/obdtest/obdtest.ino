@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <MultiLCD.h>
-#include <OBD.h>
-#include <MPU6050.h>
+#include "MultiLCD.h"
+#include "OBD.h"
+#include "MPU6050.h"
 
 #define INIT_CMD_COUNT 8
 #define MAX_CMD_LEN 6
@@ -88,6 +88,57 @@ char get_key(unsigned int input)
 	return -1;
 }
 
+void readMPU6050()
+{
+  int error;
+  float dT;
+  accel_t_gyro_union accel_t_gyro;
+
+  // Read the raw values.
+  // Read 14 bytes at once,
+  // containing acceleration, temperature and gyro.
+  // With the default settings of the MPU-6050,
+  // there is no filter enabled, and the values
+  // are not very stable.
+  
+  lcd.setCursor(0, 1);
+  error = MPU6050_read (MPU6050_ACCEL_XOUT_H, (uint8_t *) &accel_t_gyro, sizeof(accel_t_gyro));
+  if (error != 0) {
+    lcd.print("ACC Error!");
+    return;
+  }
+
+
+  // Swap all high and low bytes.
+  // After this, the registers values are swapped,
+  // so the structure name like x_accel_l does no
+  // longer contain the lower byte.
+  uint8_t swap;
+  #define SWAP(x,y) swap = x; x = y; y = swap
+
+  SWAP (accel_t_gyro.reg.x_accel_h, accel_t_gyro.reg.x_accel_l);
+  SWAP (accel_t_gyro.reg.y_accel_h, accel_t_gyro.reg.y_accel_l);
+  SWAP (accel_t_gyro.reg.z_accel_h, accel_t_gyro.reg.z_accel_l);
+  SWAP (accel_t_gyro.reg.t_h, accel_t_gyro.reg.t_l);
+  SWAP (accel_t_gyro.reg.x_gyro_h, accel_t_gyro.reg.x_gyro_l);
+  SWAP (accel_t_gyro.reg.y_gyro_h, accel_t_gyro.reg.y_gyro_l);
+  SWAP (accel_t_gyro.reg.z_gyro_h, accel_t_gyro.reg.z_gyro_l);
+
+
+  // Print the raw acceleration values
+
+  char buf[20];
+  dT = ( (float) accel_t_gyro.value.temperature + 12412.0) / 340.0;
+  sprintf(buf, "%d %d %d %d    ",
+    (int)dT,
+    accel_t_gyro.value.x_accel / 128,
+    accel_t_gyro.value.y_accel / 128,
+    accel_t_gyro.value.z_accel / 128);
+  //Serial.println(buf);
+  lcd.setCursor(0, 1);
+  lcd.print(buf);
+}
+
 void query()
 {
     char buf[17];
@@ -117,46 +168,47 @@ void query()
     obd.Query((byte)pid);
 
     if (stateMPU6050 == 0) {
-        accel_t_gyro_union data;
-        char buf[20];
-        int ret = MPU6050_readout(&data);
-        if (ret == 0) {
-            sprintf(buf, "%d/%d/%d", data.value.x_accel, data.value.y_accel, data.value.z_accel);
-        } else {
-            sprintf(buf, "6050 error: %d", ret);
-        }
+      readMPU6050();
     }
 }
 
 void setup()
 {
+    Wire.begin();
     lcd.begin();
-    pinMode(13, OUTPUT);  //we'll use the debug LED to output a heartbeat
-    digitalWrite(13, LOW);
     OBDUART.begin(38400);
-    digitalWrite(13, HIGH);
 
 
     lcd.clear();
     lcd.print("Init MPU6050...");
     lcd.setCursor(0, 1);
+    
     stateMPU6050 = MPU6050_init();
-    if (stateMPU6050 == 0) {
-        lcd.print("Success!");
-    } else {
-        char buf[16];
+
+    char buf[16];
+    if (stateMPU6050 != 0) {
         sprintf(buf, "Error: %d", stateMPU6050);
         lcd.print(buf);
+    } else {
+       unsigned long t = millis();
+      do {
+       readMPU6050();
+       delay(100);
+      } while (millis() - t <= 10000); 
     }
     delay(1000);
 
     do {
         lcd.clear();
         lcd.print("Init OBD...");
+        
+      if (stateMPU6050 == 0) {
+         readMPU6050();
+      }
+
         delay(500);
     } while(!obd.Init());
 
-    char buf[16];
     lcd.setCursor(0, 1);
     lcd.print("CONNECTED!   ");
     delay(1000);

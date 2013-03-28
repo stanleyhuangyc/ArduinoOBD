@@ -6,22 +6,24 @@
 *************************************************************************/
 
 #include <Arduino.h>
-#include <OBD.h>
-#include <SD.h>
 #include <Wire.h>
-#include <Multilcd.h>
-#include <TinyGPS.h>
+#include "OBD.h"
+#include "SD.h"
+#include "Multilcd.h"
+#include "TinyGPS.h"
 #include "MPU6050.h"
 
-#define DATASET_INTERVAL 1000 /* ms */
-#define SD_CS_PIN 10
-//#define SD_CS_PIN 4 // ethernet shield
+//#define SD_CS_PIN 4 // ethernet shield with SD
+#define SD_CS_PIN 7 // microduino
+//#define SD_CS_PIN 10 // SD breakout
 
 // addition PIDs (non-OBD)
 #define PID_GPS_DATETIME 0xF01
 #define PID_GPS_COORDINATE 0xF02
 #define PID_GPS_ALTITUDE 0xF03
 #define PID_GPS_SPEED 0xF04
+
+#define DATASET_INTERVAL 1000 /* ms */
 
 // GPS logging can only be enabled when there is additional serial UART
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644p)
@@ -42,9 +44,9 @@ SdVolume volume;
 File sdfile;
 
 // LCD
-//LCD_OLED lcd; /* for I2C OLED module */
+LCD_OLED lcd; /* for I2C OLED module */
 //LCD_PCD8544 lcd; /* for LCD4884 shield or Nokia 5100 screen module */
-LCD_1602 lcd; /* for LCD1602 shield */
+//LCD_1602 lcd; /* for LCD1602 shield */
 
 static uint32_t filesize = 0;
 static uint32_t datacount = 0;
@@ -161,7 +163,7 @@ void setup()
     lcd.print("Initializing");
 
     // init SD card
-    pinMode(SD_CS_PIN, OUTPUT);
+    pinMode(SS, OUTPUT);
     CheckSD();
 
     // initiate OBD-II connection until success
