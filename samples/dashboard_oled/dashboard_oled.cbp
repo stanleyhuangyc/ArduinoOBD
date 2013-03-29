@@ -2,34 +2,12 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="obdlogger" />
+		<Option title="dashboard_oled" />
 		<Option pch_mode="2" />
 		<Option compiler="avrgcc" />
 		<Build>
-			<Target title="Simulator">
-				<Option output="bin/Release/obdlogger_sim.exe" prefix_auto="1" extension_auto="0" />
-				<Option object_output="obj/Release/" />
-				<Option type="1" />
-				<Option compiler="GCC" />
-				<Compiler>
-					<Add option="-Os" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-DARDUSIM" />
-					<Add option="-D__AVR_ATmega2560__" />
-					<Add option="-x c++" />
-					<Add directory="$(ARDUINO_DIR)/arduino/cores" />
-					<Add directory="$(ARDUINO_DIR)/arduino/variants/standard" />
-					<Add directory="$(ARDUINO_DIR)/include" />
-				</Compiler>
-				<Linker>
-					<Add option="-lardusim" />
-				</Linker>
-				<Environment>
-					<Variable name="ARDUINO_DIR" value="$(APP_PATH)\ardusim" />
-				</Environment>
-			</Target>
 			<Target title="Arduino Uno">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -63,7 +41,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Leonardo">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -99,7 +77,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Esplora">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -135,7 +113,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Micro">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -171,7 +149,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Duemilanove (328)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -205,7 +183,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Duemilanove (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -239,7 +217,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Nano (328)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -273,7 +251,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Nano (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -307,7 +285,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Mini (328)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -341,7 +319,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Mini (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -375,7 +353,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Pro Mini (328)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -409,7 +387,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Pro Mini (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -443,7 +421,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Mega 2560/ADK">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -477,7 +455,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Mega 1280">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -511,7 +489,7 @@
 				</Environment>
 			</Target>
 			<Target title="Arduino Mega 8">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
@@ -545,15 +523,15 @@
 				</Environment>
 			</Target>
 			<Target title="Microduino Core+ (644P)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
+				<Option output="bin/Release/dashboard_oled_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
-					<Add option="-O3" />
 					<Add option="-x c++" />
 					<Add option="-mmcu=$(MCU)" />
 					<Add option="-DF_CPU=16000000L" />
 					<Add option="-D__AVR_ATmega644P__" />
+					<Add option="-Os" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
 					<Add directory="$(ARDUINO_DIR)/libraries" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/plus" />
@@ -582,21 +560,9 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
-		<Unit filename="LCD4Bit_mod.cpp" />
-		<Unit filename="LCD4Bit_mod.h" />
-		<Unit filename="MPU6050.cpp" />
-		<Unit filename="MPU6050.h" />
-		<Unit filename="MultiLCD.cpp" />
-		<Unit filename="MultiLCD.h" />
-		<Unit filename="OBD.cpp" />
-		<Unit filename="OBD.h" />
-		<Unit filename="PCD8544.cpp" />
-		<Unit filename="PCD8544.h" />
-		<Unit filename="TinyGPS.cpp" />
-		<Unit filename="TinyGPS.h" />
 		<Unit filename="ZtLib.cpp" />
 		<Unit filename="ZtLib.h" />
-		<Unit filename="obdlogger.ino">
+		<Unit filename="dashboard_oled.ino">
 			<Option compile="1" />
 			<Option link="1" />
 		</Unit>
