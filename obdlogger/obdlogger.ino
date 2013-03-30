@@ -14,8 +14,8 @@
 #include "MPU6050.h"
 
 //#define SD_CS_PIN 4 // ethernet shield with SD
-#define SD_CS_PIN 7 // microduino
-//#define SD_CS_PIN 10 // SD breakout
+//#define SD_CS_PIN 7 // microduino
+#define SD_CS_PIN 10 // SD breakout
 
 // addition PIDs (non-OBD)
 #define PID_GPS_DATETIME 0xF01
