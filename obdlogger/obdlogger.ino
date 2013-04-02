@@ -14,8 +14,10 @@
 #include "MPU6050.h"
 
 //#define SD_CS_PIN 4 // ethernet shield with SD
-//#define SD_CS_PIN 7 // microduino
-#define SD_CS_PIN 10 // SD breakout
+#define SD_CS_PIN 7 // microduino
+//#define SD_CS_PIN 10 // SD breakout
+
+#define GPS_BAUDRATE 4800 /* bps */
 
 // addition PIDs (non-OBD)
 #define PID_GPS_DATETIME 0xF01
@@ -26,12 +28,9 @@
 #define DATASET_INTERVAL 1000 /* ms */
 
 // GPS logging can only be enabled when there is additional serial UART
-#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644p)
+#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644P__)
 #define ENABLE_GPS
 #endif
-
-// OBD-II
-COBD obd;
 
 // GPS
 #ifdef ENABLE_GPS
@@ -52,6 +51,24 @@ static uint32_t filesize = 0;
 static uint32_t datacount = 0;
 
 void ProcessGPSData(char c);
+
+class COBD2 : public COBD
+{
+public:
+    void DataTimeout()
+    {
+        while (Serial1.available()) {
+            if (gps.encode(Serial1.read())) {
+                if (datacount == 0) {
+                    lcd.setCursor(9, 3);
+                    lcd.print("GPS:Yes");
+                }
+            }
+        }
+    }
+};
+
+COBD2 obd;
 
 bool ShowCardInfo()
 {
@@ -143,24 +160,21 @@ void InitScreen()
 {
     lcd.clear();
     lcd.backlight(true);
-    lcd.setCursor(92, 0);
+    lcd.setCursor(9, 0);
     lcd.print("kph");
-    lcd.setCursor(92, 1);
+    lcd.setCursor(9, 1);
     lcd.print("rpm");
 }
 
 void setup()
 {
-    // start serial communication at the adapter defined baudrate
-    OBDUART.begin(OBD_SERIAL_BAUDRATE);
-#ifdef ENABLE_GPS
-    Serial2.begin(4800);
-#endif
-
     lcd.begin();
     lcd.clear();
     lcd.backlight(true);
     lcd.print("Initializing");
+
+    // start serial communication at the adapter defined baudrate
+    OBDUART.begin(OBD_SERIAL_BAUDRATE);
 
     // init SD card
     pinMode(SS, OUTPUT);
@@ -168,13 +182,24 @@ void setup()
 
     // initiate OBD-II connection until success
     lcd.setCursor(0, 3);
-    lcd.print("Waiting OBD Data");
+    lcd.print("OBD:No");
+
+#ifdef ENABLE_GPS
+    Serial1.begin(GPS_BAUDRATE);
+    delay(100);
+    if (Serial1.available()) {
+        lcd.setCursor(9, 3);
+        lcd.print("GPS:No");
+    }
+#endif
 
     while (!obd.Init());
+
     obd.ReadSensor(PID_DISTANCE, startDistance);
 
     lcd.setCursor(0, 3);
-    lcd.print("OBD Connected!  ");
+    lcd.setCursor(4, 3);
+    lcd.print("Yes");
     delay(1000);
 
     InitScreen();
@@ -208,11 +233,11 @@ void ProcessGPSData(char c)
         len = sprintf(databuf, "%d,F02,%ld %ld\n", (int)(curTime - lastTime), lat, lon);
         sdfile.write((uint8_t*)databuf, len);
         // display LAT/LON
-        sprintf(databuf, "%ld", lat);
+        sprintf(databuf, "%3d.%ld", (int)(lat / 100000), lat % 100000);
         lcd.setCursor(0, 2);
         lcd.print(databuf);
-        sprintf(databuf, "%ld", lon);
-        lcd.setCursor(8 * 8, 2);
+        sprintf(databuf, "%3d.%ld", (int)(lon / 100000), lon % 100000);
+        lcd.setCursor(0, 3);
         lcd.print(databuf);
     }
     len = sprintf(databuf, "%d,F03,%ld %ld\n", (int)(curTime - lastTime), gps.speed() * 1852 / 100);
@@ -236,26 +261,26 @@ void RetrieveData(byte pid)
         char* buf = databuf; // data in buffer saved, free for other use
         if (datacount % 100 == 99) {
             sdfile.flush();
-            sprintf(buf, "%4u KB", (int)(filesize >> 10));
-            lcd.setCursor(72, 3);
+            sprintf(buf, "%4uKB", (int)(filesize >> 10));
+            lcd.setCursor(10, 3);
             lcd.print(buf);
         }
 
         switch (pid) {
         case PID_RPM:
-            sprintf(buf, "%4d", value);
+            sprintf(buf, "%4u", (unsigned int)value % 10000);
             lcd.setCursor(0, 0);
             lcd.printLarge(buf);
             break;
         case PID_SPEED:
-            sprintf(buf, "%3d", value);
-            lcd.setCursor(16, 1);
+            sprintf(buf, "%3u", (unsigned int)value % 1000);
+            lcd.setCursor(2, 1);
             lcd.printLarge(buf);
             break;
         case PID_DISTANCE:
             if (value >= startDistance) {
-                sprintf(buf, "%d km   ", value - startDistance);
-                lcd.setCursor(0, 3);
+                sprintf(buf, "%4dkm", value - startDistance);
+                lcd.setCursor(10, 2);
                 lcd.print(buf);
             }
             break;
@@ -263,8 +288,8 @@ void RetrieveData(byte pid)
     }
 
 #ifdef ENABLE_GPS
-    while (Serial2.available()) {
-        ProcessGPSData(Serial2.read());
+    while (Serial1.available()) {
+        ProcessGPSData(Serial1.read());
     }
 #endif
 

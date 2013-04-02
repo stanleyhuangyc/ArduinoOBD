@@ -81,4 +81,5 @@ protected:
 	virtual char ReadData();
 	virtual void WriteData(const char* s);
 	virtual void WriteData(const char c);
+	virtual void DataTimeout() {}
 };

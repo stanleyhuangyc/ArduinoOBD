@@ -139,6 +139,7 @@ void LCD_OLED::clear()
 {
     ScI2cMxFillArea(OLED_ADDRESS, 0, 7, 0, 127, 0);
     delay(10);
+    setCursor(0, 0);
 }
 
 void LCD_OLED::begin()
