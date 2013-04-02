@@ -118,6 +118,7 @@ void LCD_OLED::write(char c)
 {
     char s[2] = {c};
     ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_line, m_column, s);
+    m_column = (m_column + 8) & 0x7f;
 }
 
 void LCD_OLED::print(const char* s)
