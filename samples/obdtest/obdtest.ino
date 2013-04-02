@@ -7,7 +7,7 @@
 #define INIT_CMD_COUNT 8
 #define MAX_CMD_LEN 6
 
-const char initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r","0100\r","0120\r","0140\r","0145\r"};
+const char initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0100\r","0120\r","0140\r","0145\r"};
 
 //SoftwareSerial softSerial(2, 3); // RX, TX
 
@@ -22,7 +22,7 @@ uint16_t pid = 0x0145;
 int stateMPU6050;
 
 //create object to control an LCD.
-LCD_1602 lcd;
+LCD_OLED lcd;
 
 class COBDTester : public COBD
 {
@@ -68,7 +68,7 @@ public:
                     }
                 }
             }
-            delay(200);
+            delay(1000);
         }
         errors = 0;
         return true;
@@ -100,7 +100,7 @@ void readMPU6050()
   // With the default settings of the MPU-6050,
   // there is no filter enabled, and the values
   // are not very stable.
-  
+
   lcd.setCursor(0, 1);
   error = MPU6050_read (MPU6050_ACCEL_XOUT_H, (uint8_t *) &accel_t_gyro, sizeof(accel_t_gyro));
   if (error != 0) {
@@ -163,6 +163,7 @@ void query()
 
     lcd.setCursor(0, 0);
     lcd.print(buf);
+    lcd.setCursor(6, 0);
 
     obd.dataMode = (byte)(pid >> 8);
     obd.Query((byte)pid);
@@ -182,7 +183,7 @@ void setup()
     lcd.clear();
     lcd.print("Init MPU6050...");
     lcd.setCursor(0, 1);
-    
+
     stateMPU6050 = MPU6050_init();
 
     char buf[16];
@@ -194,19 +195,18 @@ void setup()
       do {
        readMPU6050();
        delay(100);
-      } while (millis() - t <= 10000); 
+      } while (millis() - t <= 10000);
     }
     delay(1000);
 
     do {
         lcd.clear();
         lcd.print("Init OBD...");
-        
+
       if (stateMPU6050 == 0) {
          readMPU6050();
       }
-
-        delay(500);
+      delay(500);
     } while(!obd.Init());
 
     lcd.setCursor(0, 1);
@@ -221,17 +221,20 @@ void loop()
     if (Serial.available()) {
         char c = Serial.read();
         if (c == '\r' || c == '\n') {
-            lcd.setCursor(1, 6);
+            lcd.setCursor(6, 0);
         } else if (c == '>') {
             lcd.setCursor(15, 0);
             lcd.write(c);
-            lcd.setCursor(1, 6);
+            lcd.setCursor(6, 0);
+            delay(100);
             query();
         } else {
             lcd.write(c);
+            delay(10);
         }
     }
 
+#if 0
 	adc_key_in = analogRead(0);    // read the value from the sensor
 	key = get_key(adc_key_in);		        // convert into key press
 	if (key != oldkey) {
@@ -292,4 +295,5 @@ void loop()
 			}
 		}
 	}
+#endif
 }
