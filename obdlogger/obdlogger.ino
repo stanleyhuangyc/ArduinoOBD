@@ -57,6 +57,8 @@ class COBD2 : public COBD
 public:
     void DataTimeout()
     {
+#ifdef ENABLE_GPS
+        // detect GPS signal
         while (Serial1.available()) {
             if (gps.encode(Serial1.read())) {
                 if (datacount == 0) {
@@ -65,6 +67,7 @@ public:
                 }
             }
         }
+#endif
     }
 };
 
