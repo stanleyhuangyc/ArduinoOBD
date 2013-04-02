@@ -240,12 +240,12 @@ bool COBD::Init(bool passive)
             strcpy_P(cmd, s_initcmd[i]);
             WriteData(cmd);
         }
-	n = 0;
-	prompted = 0;
+        n = 0;
+        prompted = 0;
         currentMillis = millis();
-		for (;;) {
-			if (DataAvailable()) {
-				char c = ReadData();
+        for (;;) {
+            if (DataAvailable()) {
+                char c = ReadData();
                 if (c == '>') {
                     buffer[n] = 0;
                     prompted++;
@@ -254,16 +254,17 @@ bool COBD::Init(bool passive)
                 }
             } else if (prompted) {
                 break;
-		} else {
-				unsigned long elapsed = millis() - currentMillis;
-				if (elapsed > OBD_TIMEOUT_INIT) {
-				    // init timeout
-				    //WriteData("\r");
-				    return false;
-				}
-			}
-		}
-	}
+            } else {
+                unsigned long elapsed = millis() - currentMillis;
+                if (elapsed > OBD_TIMEOUT_INIT) {
+                    // init timeout
+                    //WriteData("\r");
+                    return false;
+                }
+                DataTimeout();
+            }
+        }
+    }
     errors = 0;
 	return true;
 }
