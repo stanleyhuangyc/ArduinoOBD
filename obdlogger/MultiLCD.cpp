@@ -114,6 +114,12 @@ const PROGMEM unsigned char font5x8[][5] = {
   { 0x00, 0x00, 0x00, 0x00, 0x00 }   // 7f
 };
 
+void LCD_OLED::write(char c)
+{
+    char s[2] = {c};
+    ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_line, m_column, s);
+}
+
 void LCD_OLED::print(const char* s)
 {
     ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_line, m_column, s);

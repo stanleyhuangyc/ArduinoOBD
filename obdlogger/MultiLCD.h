@@ -24,6 +24,7 @@ public:
         m_column = column << 3;
         m_line = line << 1;
     }
+    void write(char c);
     void print(const char* s);
     void printLarge(const char* s);
     void clear();
