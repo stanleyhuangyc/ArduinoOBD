@@ -118,12 +118,19 @@ void LCD_OLED::write(char c)
 {
     char s[2] = {c};
     ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_line, m_column, s);
-    m_column = (m_column + 8) & 0x7f;
+    m_column += 8;
+    if (m_column >= 128) {
+        m_column = 0;
+        m_line++;
+    }
 }
 
 void LCD_OLED::print(const char* s)
 {
     ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_line, m_column, s);
+    m_column += (strlen(s) << 3);
+    m_line += (m_column >> 7) << 1;
+    m_column %= 0x7f;
 }
 
 void LCD_OLED::printLarge(const char* s)
@@ -137,7 +144,11 @@ void LCD_OLED::printLarge(const char* s)
         } else {
             ScI2cMxFillArea(OLED_ADDRESS, m_line, m_line + 1, m_column, m_column + 16, 0);
         }
-        m_column = (m_column + 16) & 0x7f;
+        m_column += 16;
+        if (m_column >= 128) {
+            m_column = 0;
+            m_line++;
+        }
         s++;
     }
 }
