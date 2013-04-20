@@ -14,8 +14,8 @@
 #include "MPU6050.h"
 
 //#define SD_CS_PIN 4 // ethernet shield with SD
-#define SD_CS_PIN 7 // microduino
-//#define SD_CS_PIN 10 // SD breakout
+//#define SD_CS_PIN 7 // microduino
+#define SD_CS_PIN 10 // SD breakout
 
 #define GPS_BAUDRATE 4800 /* bps */
 
@@ -25,7 +25,7 @@
 #define PID_GPS_ALTITUDE 0xF03
 #define PID_GPS_SPEED 0xF04
 
-#define DATASET_INTERVAL 1000 /* ms */
+#define DATASET_INTERVAL 250 /* ms */
 
 // GPS logging can only be enabled when there is additional serial UART
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644P__)
@@ -112,7 +112,7 @@ bool ShowCardInfo()
         lcd.print(buf);
         return true;
   } else {
-      lcd.setCursor(0, 1);
+        lcd.setCursor(0, 1);
         lcd.print("No SD Card      ");
         return false;
   }
@@ -131,6 +131,7 @@ static void CheckSD()
             continue;
         }
 
+        delay(1000);
         SD.begin(SD_CS_PIN);
 
         // determine file name
@@ -146,6 +147,7 @@ static void CheckSD()
         lcd.print("SD error  ");
     }
 
+    lcd.clearLine(2);
     lcd.setCursor(0, 2);
     lcd.print(filename);
 
@@ -161,11 +163,12 @@ static void CheckSD()
 
 void InitScreen()
 {
+    byte n = lcd.getLines() <= 2 ? 6 : 9;
     lcd.clear();
     lcd.backlight(true);
-    lcd.setCursor(9, 0);
+    lcd.setCursor(n, 0);
     lcd.print("kph");
-    lcd.setCursor(9, 1);
+    lcd.setCursor(n, 1);
     lcd.print("rpm");
 }
 
@@ -174,7 +177,10 @@ void setup()
     lcd.begin();
     lcd.clear();
     lcd.backlight(true);
-    lcd.print("Initializing");
+    lcd.print("OBD/GPS Logger");
+    lcd.setCursor(0, 1);
+    lcd.print("Initializing...");
+    delay(2000);
 
     // start serial communication at the adapter defined baudrate
     OBDUART.begin(OBD_SERIAL_BAUDRATE);
@@ -184,16 +190,20 @@ void setup()
     CheckSD();
 
     // initiate OBD-II connection until success
+    lcd.clearLine(3);
     lcd.setCursor(0, 3);
     lcd.print("OBD:No");
 
 #ifdef ENABLE_GPS
     Serial1.begin(GPS_BAUDRATE);
-    delay(100);
-    if (Serial1.available()) {
-        lcd.setCursor(9, 3);
-        lcd.print("GPS:No");
-    }
+    unsigned long t = millis();
+    do {
+        if (Serial1.available()) {
+            lcd.setCursor(9, 3);
+            lcd.print("GPS:No");
+            break;
+        }
+    } while (millis() - t <= 1000);
 #endif
 
     while (!obd.Init());
@@ -235,13 +245,15 @@ void ProcessGPSData(char c)
         gps.get_position(&lat, &lon, &fix_age);
         len = sprintf(databuf, "%d,F02,%ld %ld\n", (int)(curTime - lastTime), lat, lon);
         sdfile.write((uint8_t*)databuf, len);
-        // display LAT/LON
-        sprintf(databuf, "%3d.%ld", (int)(lat / 100000), lat % 100000);
-        lcd.setCursor(0, 2);
-        lcd.print(databuf);
-        sprintf(databuf, "%3d.%ld", (int)(lon / 100000), lon % 100000);
-        lcd.setCursor(0, 3);
-        lcd.print(databuf);
+        // display LAT/LON if screen is big enough
+        if (lcd.getLines() > 3) {
+            sprintf(databuf, "%3d.%ld", (int)(lat / 100000), lat % 100000);
+            lcd.setCursor(0, 2);
+            lcd.print(databuf);
+            sprintf(databuf, "%3d.%ld", (int)(lon / 100000), lon % 100000);
+            lcd.setCursor(0, 3);
+            lcd.print(databuf);
+        }
     }
     len = sprintf(databuf, "%d,F03,%ld %ld\n", (int)(curTime - lastTime), gps.speed() * 1852 / 100);
     sdfile.write((uint8_t*)databuf, len);
@@ -310,7 +322,7 @@ void RetrieveData(byte pid)
 void loop()
 {
     static char count = 0;
-    static unsigned long t = millis();
+    unsigned long t = millis();
 
     switch (count++) {
     case 0:
