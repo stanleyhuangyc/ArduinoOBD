@@ -22,7 +22,7 @@ public:
     void setCursor(unsigned char column, unsigned char line)
     {
         m_column = column << 3;
-        m_line = line << 1;
+        m_line = line == -1 ? m_line + 2 : (line << 1);
     }
     void write(char c);
     void print(const char* s);
