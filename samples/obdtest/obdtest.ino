@@ -2,12 +2,15 @@
 #include <Wire.h>
 #include "MultiLCD.h"
 #include "OBD.h"
-#include "MPU6050.h"
 
-#define INIT_CMD_COUNT 8
+#define INIT_CMD_COUNT 4
 #define MAX_CMD_LEN 6
 
-const char initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0100\r","0120\r","0140\r","0145\r"};
+#define HAVE_ACCEL 0
+
+int MPU6050_read(int start, uint8_t *buffer, int size);
+
+const char initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0902\r"};
 
 //SoftwareSerial softSerial(2, 3); // RX, TX
 
@@ -18,11 +21,18 @@ char key=-1;
 char oldkey=-1;
 
 byte index = 0;
-uint16_t pid = 0x0145;
+uint16_t pid = 0x0111;
+
+#if HAVE_ACCEL
+#include "MPU6050.h"
+
 int stateMPU6050;
+#endif
 
 //create object to control an LCD.
 LCD_OLED lcd;
+//LCD_PCD8544 lcd; /* for LCD4884 shield or Nokia 5100 screen module */
+//LCD_1602 lcd;
 
 class COBDTester : public COBD
 {
@@ -36,7 +46,6 @@ public:
 
         for (unsigned char i = 0; i < INIT_CMD_COUNT; i++) {
             lcd.clear();
-            lcd.setCursor(0, 0);
             lcd.print(initcmd[i]);
             lcd.setCursor(0, 1);
             WriteData(initcmd[i]);
@@ -53,9 +62,11 @@ public:
                         buffer[n++] = c;
 
                         if (c == '\r' || c == '\n')
-                            lcd.setCursor(0, 1);
-                        else
+                            lcd.setCursor(0, -1);
+                        else {
                             lcd.write(c);
+                            delay(1);
+                        }
                     }
                 } else if (prompted) {
                     break;
@@ -64,12 +75,44 @@ public:
                     if (elapsed > OBD_TIMEOUT_INIT) {
                         // init timeout
                         //WriteData("\r");
-                        return false;
+                        lcd.print("Timeout!");
+                        if (i == 0) return false;
+                        i--;
+                        break;
                     }
                 }
             }
-            delay(1000);
+            delay(500);
         }
+        delay(4500);
+
+        char* data;
+        memset(pidmap, 0, sizeof(pidmap));
+        for (byte i = 0; i < 4; i++) {
+            lcd.clear();
+            sprintf(buffer, "PIDs [%02x-%02x]", i * 0x20 + 1, i * 0x20 + 0x20);
+            lcd.print(buffer);
+            Query(i * 0x20);
+            data = GetResponse(i * 0x20, buffer);
+            if (!data) break;
+            lcd.setCursor(0, 1);
+            lcd.print(data);
+            delay(500);
+            data--;
+            for (byte n = 0; n < 4; n++) {
+                if (data[n * 3] != ' ')
+                    break;
+                pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
+            }
+        }
+        // display pid map
+        lcd.clear();
+        for (byte i = 0; i < sizeof(pidmap); i++) {
+            sprintf(buffer, "%02X ", pidmap[i]);
+            lcd.print(buffer);
+        }
+        delay(3000);
+
         errors = 0;
         return true;
     }
@@ -88,6 +131,7 @@ char get_key(unsigned int input)
 	return -1;
 }
 
+#if HAVE_ACCEL
 void readMPU6050()
 {
   int error;
@@ -138,6 +182,7 @@ void readMPU6050()
   lcd.setCursor(0, 1);
   lcd.print(buf);
 }
+#endif
 
 void query()
 {
@@ -163,23 +208,27 @@ void query()
 
     lcd.setCursor(0, 0);
     lcd.print(buf);
-    lcd.setCursor(6, 0);
+    lcd.setCursor(0, 1);
 
     obd.dataMode = (byte)(pid >> 8);
     obd.Query((byte)pid);
 
+#if HAVE_ACCEL
     if (stateMPU6050 == 0) {
       readMPU6050();
     }
+#endif
 }
 
 void setup()
 {
     Wire.begin();
     lcd.begin();
+    lcd.print("OBD TESTER v1.2");
     OBDUART.begin(38400);
+    delay(1000);
 
-
+#if HAVE_ACCEL
     lcd.clear();
     lcd.print("Init MPU6050...");
     lcd.setCursor(0, 1);
@@ -198,41 +247,77 @@ void setup()
       } while (millis() - t <= 10000);
     }
     delay(1000);
+#endif
 
     do {
         lcd.clear();
         lcd.print("Init OBD...");
 
+#if HAVE_ACCEL
       if (stateMPU6050 == 0) {
          readMPU6050();
       }
+#endif
       delay(500);
     } while(!obd.Init());
 
-    lcd.setCursor(0, 1);
-    lcd.print("CONNECTED!   ");
-    delay(1000);
+    char buffer[16];
     lcd.clear();
-    query();
+    sprintf(buffer, "RPM:%c", obd.IsValidPID(PID_RPM) ? 'Y' : 'N');
+    lcd.print(buffer);
+    lcd.setCursor(8, 0);
+    sprintf(buffer, "SPD:%c", obd.IsValidPID(PID_SPEED) ? 'Y' : 'N');
+    lcd.print(buffer);
+
+    lcd.setCursor(0, 1);
+    sprintf(buffer, "THR:%c", obd.IsValidPID(PID_THROTTLE) ? 'Y' : 'N');
+    lcd.print(buffer);
+    lcd.setCursor(8, 1);
+    sprintf(buffer, "LOAD:%c", obd.IsValidPID(PID_ENGINE_LOAD) ? 'Y' : 'N');
+    lcd.print(buffer);
+
+    lcd.setCursor(0, 2);
+    sprintf(buffer, "MAF:%c", obd.IsValidPID(PID_MAF_FLOW) ? 'Y' : 'N');
+    lcd.print(buffer);
+    lcd.setCursor(8, 2);
+    sprintf(buffer, "MAP:%c", obd.IsValidPID(PID_INTAKE_MAP) ? 'Y' : 'N');
+    lcd.print(buffer);
+
+    lcd.setCursor(0, 3);
+    sprintf(buffer, "FUEL:%c", obd.IsValidPID(PID_FUEL_LEVEL) ? 'Y' : 'N');
+    lcd.print(buffer);
+    lcd.setCursor(8, 3);
+    sprintf(buffer, "FKPA:%c", obd.IsValidPID(PID_FUEL_PRESSURE) ? 'Y' : 'N');
+    lcd.print(buffer);
+    delay(5000);
+    lcd.clear();
+    //query();
 }
 
 void loop()
 {
-    if (Serial.available()) {
-        char c = Serial.read();
-        if (c == '\r' || c == '\n') {
-            lcd.setCursor(6, 0);
-        } else if (c == '>') {
-            lcd.setCursor(15, 0);
-            lcd.write(c);
-            lcd.setCursor(6, 0);
-            delay(100);
-            query();
+    int value;
+    char buffer[OBD_RECV_BUF_SIZE];
+    obd.Query((byte)pid);
+    buffer[0] = 0;
+    while (!obd.DataAvailable());
+    char* data = obd.GetResponse((byte)pid, buffer);
+    lcd.setCursor(0, 1);
+    lcd.print(buffer);
+    lcd.setCursor(0, 0);
+    if (!data) {
+        // try recover next time
+        obd.WriteData('\r');
+        lcd.print("Data Error");
+    } else {
+        if (obd.GetParsedData((byte)pid, data, value)) {
+            sprintf(buffer, "[%04X]=%d ", pid, value);
         } else {
-            lcd.write(c);
-            delay(10);
+            sprintf(buffer, "Parse Error");
         }
+        lcd.print(buffer);
     }
+    delay(50);
 
 #if 0
 	adc_key_in = analogRead(0);    // read the value from the sensor
