@@ -9,13 +9,14 @@
 #include <avr/pgmspace.h>
 #include "OBD.h"
 
-#define INIT_CMD_COUNT 7
+#define INIT_CMD_COUNT 4
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r","0100\r","0120\r","0140\r"};
+const char PROGMEM s_initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r"};
 const char PROGMEM s_searching[] = "SEARCHING";
 const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
-const char PROGMEM s_cmd_sleep[MAX_CMD_LEN] = "atlp\r";
+const char PROGMEM s_cmd_sleep[] = "atlp\r";
+const char PROGMEM s_cmd_vin[] = "0902\r";
 const char PROGMEM s_response_begin[] = "41 ";
 
 unsigned int hex2uint16(const char *p)
@@ -176,7 +177,7 @@ bool COBD::GetParsedData(byte pid, char* data, int& result)
 		break;
 	case PID_SPEED:
 	case PID_BAROMETRIC:
-	case PID_INTAKE_PRESSURE:
+	case PID_INTAKE_MAP:
 		result = GetSmallValue(data);
 		break;
 	case PID_TIMING_ADVANCE:
@@ -227,6 +228,16 @@ void COBD::Sleep(int seconds)
     }
 }
 
+bool COBD::IsValidPID(byte pid)
+{
+    if (pid >= 0x7f)
+        return false;
+    pid--;
+    byte i = pid >> 3;
+    byte b = 0x80 >> (pid & 0x7);
+    return pidmap[i] & b;
+}
+
 bool COBD::Init(bool passive)
 {
 	unsigned long currentMillis;
@@ -263,6 +274,20 @@ bool COBD::Init(bool passive)
                 }
                 DataTimeout();
             }
+        }
+    }
+
+    // load pid map
+    memset(pidmap, 0, sizeof(pidmap));
+    for (byte i = 0; i < 4; i++) {
+        Query(i * 0x20);
+        char* data = GetResponse(i * 0x20, buffer);
+        if (!data) break;
+        data--;
+        for (byte n = 0; n < 4; n++) {
+            if (data[n * 3] != ' ')
+                break;
+            pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
         }
     }
     errors = 0;

@@ -1,7 +1,8 @@
 /*************************************************************************
-* OBD-II (ELM327) data accessing library for Arduino
+* Arduino OBD-II UART Adapter Library
+* http://www.arduinodev.com/hardware/obd-kit
 * Distributed under GPL v2.0
-* Copyright (c) 2012 Stanley Huang <stanleyhuangyc@gmail.com>
+* (C)2012~2013 Written by Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
 *************************************************************************/
 
@@ -9,7 +10,7 @@
 #define OBD_TIMEOUT_LONG 7000 /* ms */
 #define OBD_TIMEOUT_INIT 3000 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
-#define OBD_RECV_BUF_SIZE 48
+#define OBD_RECV_BUF_SIZE 64
 
 #ifndef OBDUART
 #ifdef __AVR_ATmega32U4__ /* for Leonardo */
@@ -30,7 +31,7 @@
 #define PID_ABS_ENGINE_LOAD 0x43
 #define PID_AMBIENT_TEMP 0x46
 #define PID_FUEL_PRESSURE 0x0A
-#define PID_INTAKE_PRESSURE 0x0B
+#define PID_INTAKE_MAP 0x0B
 #define PID_BAROMETRIC 0x33
 #define PID_TIMING_ADVANCE 0x0E
 #define PID_FUEL_LEVEL 0x2F
@@ -43,25 +44,24 @@ unsigned char hex2uint8(const char *p);
 class COBD
 {
 public:
-    COBD()
-    {
-        dataMode = 1;
-        errors = 0;
-    }
+    COBD():dataMode(1),errors(0) {}
 	bool Init(bool passive = false);
 	bool ReadSensor(byte pid, int& result, bool passive = false);
+	bool IsValidPID(byte pid);
 	void Sleep(int seconds);
-	// Query and GetResponse for advanced usage only
+	// following APIs are for advanced usages only
 	void Query(byte pid);
+    bool GetParsedData(byte pid, char* data, int& result);
 	virtual char* GetResponse(byte pid, char* buffer);
 	virtual bool GetResponse(byte pid, int& result);
 	virtual bool GetResponsePassive(byte& pid, int& result);
 	virtual bool DataAvailable();
+	virtual char ReadData();
+	virtual void WriteData(const char* s);
+	virtual void WriteData(const char c);
 	byte dataMode;
 	byte errors;
-	//char recvBuf[OBD_RECV_BUF_SIZE];
 protected:
-    static bool GetParsedData(byte pid, char* data, int& result);
 	static int GetPercentageValue(char* data)
 	{
 		return (int)hex2uint8(data) * 100 / 255;
@@ -78,8 +78,6 @@ protected:
 	{
 		return (int)hex2uint8(data) - 40;
 	}
-	virtual char ReadData();
-	virtual void WriteData(const char* s);
-	virtual void WriteData(const char c);
 	virtual void DataTimeout() {}
+	byte pidmap[4 * 4];
 };
