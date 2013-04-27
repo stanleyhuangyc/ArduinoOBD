@@ -1,12 +1,25 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "MultiLCD.h"
+#include "TinyGPS.h"
 #include "OBD.h"
+#include "MPU6050.h"
 
 #define INIT_CMD_COUNT 4
 #define MAX_CMD_LEN 6
 
-#define HAVE_ACCEL 0
+// GPS logging can only be enabled when there is additional hardware serial UART
+#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
+#define GPSUART Serial3
+#elif defined(__AVR_ATmega644P__)
+#define GPSUART Serial1
+#endif
+
+#define GPS_BAUDRATE 4800 /* bps */
+
+#ifdef GPSUART
+TinyGPS gps;
+#endif // GPSUART
 
 int MPU6050_read(int start, uint8_t *buffer, int size);
 
@@ -23,11 +36,7 @@ char oldkey=-1;
 byte index = 0;
 uint16_t pid = 0x0111;
 
-#if HAVE_ACCEL
-#include "MPU6050.h"
-
-int stateMPU6050;
-#endif
+bool hasMPU6050 = false;
 
 //create object to control an LCD.
 LCD_OLED lcd;
@@ -61,11 +70,11 @@ public:
                     } else if (n < OBD_RECV_BUF_SIZE - 1) {
                         buffer[n++] = c;
 
-                        if (c == '\r' || c == '\n')
-                            lcd.setCursor(0, -1);
-                        else {
+                        if (c == '\n')
+                            lcd.changeLine();
+                        else if (c >= ' ') {
                             lcd.write(c);
-                            delay(1);
+                            delay(5);
                         }
                     }
                 } else if (prompted) {
@@ -84,7 +93,7 @@ public:
             }
             delay(500);
         }
-        delay(4500);
+        delay(1500);
 
         char* data;
         memset(pidmap, 0, sizeof(pidmap));
@@ -111,14 +120,74 @@ public:
             sprintf(buffer, "%02X ", pidmap[i]);
             lcd.print(buffer);
         }
-        delay(3000);
+        delay(2000);
 
         errors = 0;
         return true;
     }
+    void SendQuery()
+    {
+        char buf[17];
+        switch (index) {
+        case 0:
+            sprintf(buf, "[%04X]", pid);
+            break;
+        case 1:
+            sprintf(buf, "%03X[%01X]", pid >> 4, pid & 0xf);
+            break;
+        case 2:
+            sprintf(buf, "%02X[%01X]%01X", pid >> 8, (pid >> 4) & 0xf, pid & 0xf);
+            break;
+        case 3:
+            sprintf(buf, "%01X[%01X]%02X", pid >> 12, (pid >> 8) & 0xf, pid & 0xff);
+            break;
+        case 4:
+            sprintf(buf, "[%01X]%03X", pid >> 12, pid & 0xfff);
+            break;
+        }
+
+        lcd.setCursor(0, 0);
+        lcd.print(buf);
+
+        dataMode = (byte)(pid >> 8);
+        Query((byte)pid);
+    }
+    void Recover()
+    {
+        WriteData('\r');
+    }
 };
 
 COBDTester obd;
+
+#ifdef GPSUART
+void ShowGPSData()
+{
+    // parsed GPS data is ready
+    char buf[32];
+    unsigned long fix_age;
+
+    if (lcd.getLines() > 2) {
+        unsigned long date, time;
+        gps.get_datetime(&date, &time, &fix_age);
+        sprintf(buf, "TIME:%ld", time);
+        lcd.setCursor(0, 2);
+        lcd.print(buf);
+    }
+
+    if (lcd.getLines() > 3) {
+        long lat, lon;
+        gps.get_position(&lat, &lon, &fix_age);
+        // display LAT/LON if screen is big enough
+        lcd.setCursor(0, 3);
+        if ((millis() / 1000) & 1)
+            sprintf(buf, "LAT:%3d.%5ld", (int)(lat / 100000), lat % 100000);
+        else
+            sprintf(buf, "LON:%3d.%5ld", (int)(lon / 100000), lon % 100000);
+        lcd.print(buf);
+    }
+}
+#endif
 
 // Convert ADC value to key number
 char get_key(unsigned int input)
@@ -131,8 +200,7 @@ char get_key(unsigned int input)
 	return -1;
 }
 
-#if HAVE_ACCEL
-void readMPU6050()
+void testMPU6050()
 {
   int error;
   float dT;
@@ -148,7 +216,7 @@ void readMPU6050()
   lcd.setCursor(0, 1);
   error = MPU6050_read (MPU6050_ACCEL_XOUT_H, (uint8_t *) &accel_t_gyro, sizeof(accel_t_gyro));
   if (error != 0) {
-    lcd.print("ACC Error!");
+    lcd.print("MPU6050 N/A");
     return;
   }
 
@@ -182,82 +250,51 @@ void readMPU6050()
   lcd.setCursor(0, 1);
   lcd.print(buf);
 }
-#endif
 
-void query()
-{
-    char buf[17];
-
-    switch (index) {
-    case 0:
-        sprintf(buf, "[%04X]", pid);
-        break;
-    case 1:
-        sprintf(buf, "%03X[%01X]", pid >> 4, pid & 0xf);
-        break;
-    case 2:
-        sprintf(buf, "%02X[%01X]%01X", pid >> 8, (pid >> 4) & 0xf, pid & 0xf);
-        break;
-    case 3:
-        sprintf(buf, "%01X[%01X]%02X", pid >> 12, (pid >> 8) & 0xf, pid & 0xff);
-        break;
-    case 4:
-        sprintf(buf, "[%01X]%03X", pid >> 12, pid & 0xfff);
-        break;
-    }
-
-    lcd.setCursor(0, 0);
-    lcd.print(buf);
-    lcd.setCursor(0, 1);
-
-    obd.dataMode = (byte)(pid >> 8);
-    obd.Query((byte)pid);
-
-#if HAVE_ACCEL
-    if (stateMPU6050 == 0) {
-      readMPU6050();
-    }
-#endif
-}
 
 void setup()
 {
     Wire.begin();
     lcd.begin();
-    lcd.print("OBD TESTER v1.2");
+    lcd.print("OBD TESTER 1.2");
     OBDUART.begin(38400);
-    delay(1000);
-
-#if HAVE_ACCEL
-    lcd.clear();
-    lcd.print("Init MPU6050...");
-    lcd.setCursor(0, 1);
-
-    stateMPU6050 = MPU6050_init();
-
-    char buf[16];
-    if (stateMPU6050 != 0) {
-        sprintf(buf, "Error: %d", stateMPU6050);
-        lcd.print(buf);
-    } else {
-       unsigned long t = millis();
-      do {
-       readMPU6050();
-       delay(100);
-      } while (millis() - t <= 10000);
-    }
-    delay(1000);
+#ifdef GPSUART
+    GPSUART.begin(GPS_BAUDRATE);
 #endif
 
     do {
         lcd.clear();
-        lcd.print("Init OBD...");
+        lcd.print("Init MPU6050...");
+        lcd.setCursor(0, 1);
 
-#if HAVE_ACCEL
-      if (stateMPU6050 == 0) {
-         readMPU6050();
-      }
+        hasMPU6050 = MPU6050_init() == 0;
+        if (hasMPU6050) {
+            unsigned long t = millis();
+            do {
+                testMPU6050();
+                delay(100);
+            } while (millis() - t <= 10000);
+        }
+        delay(1000);
+
+#ifdef GPSUART
+        if (GPSUART.available()) {
+            lcd.clear();
+            lcd.print("Init GPS...");
+            do {
+                if (gps.encode(GPSUART.read())) {
+                    // GPS data ready
+                    ShowGPSData();
+                }
+            } while (GPSUART.available());
+            delay(1000);
+        }
 #endif
+        lcd.clear();
+        lcd.print("Init OBD...");
+        if (hasMPU6050) {
+            testMPU6050();
+        }
       delay(500);
     } while(!obd.Init());
 
@@ -265,31 +302,31 @@ void setup()
     lcd.clear();
     sprintf(buffer, "RPM:%c", obd.IsValidPID(PID_RPM) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(8, 0);
+    lcd.setCursor(6, 0);
     sprintf(buffer, "SPD:%c", obd.IsValidPID(PID_SPEED) ? 'Y' : 'N');
     lcd.print(buffer);
 
     lcd.setCursor(0, 1);
     sprintf(buffer, "THR:%c", obd.IsValidPID(PID_THROTTLE) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(8, 1);
+    lcd.setCursor(6, 1);
     sprintf(buffer, "LOAD:%c", obd.IsValidPID(PID_ENGINE_LOAD) ? 'Y' : 'N');
     lcd.print(buffer);
 
     lcd.setCursor(0, 2);
     sprintf(buffer, "MAF:%c", obd.IsValidPID(PID_MAF_FLOW) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(8, 2);
+    lcd.setCursor(6, 2);
     sprintf(buffer, "MAP:%c", obd.IsValidPID(PID_INTAKE_MAP) ? 'Y' : 'N');
     lcd.print(buffer);
 
     lcd.setCursor(0, 3);
     sprintf(buffer, "FUEL:%c", obd.IsValidPID(PID_FUEL_LEVEL) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(8, 3);
+    lcd.setCursor(6, 3);
     sprintf(buffer, "FKPA:%c", obd.IsValidPID(PID_FUEL_PRESSURE) ? 'Y' : 'N');
     lcd.print(buffer);
-    delay(5000);
+    delay(3000);
     lcd.clear();
     //query();
 }
@@ -298,26 +335,53 @@ void loop()
 {
     int value;
     char buffer[OBD_RECV_BUF_SIZE];
-    obd.Query((byte)pid);
-    buffer[0] = 0;
-    while (!obd.DataAvailable());
-    char* data = obd.GetResponse((byte)pid, buffer);
-    lcd.setCursor(0, 1);
-    lcd.print(buffer);
-    lcd.setCursor(0, 0);
-    if (!data) {
-        // try recover next time
-        obd.WriteData('\r');
-        lcd.print("Data Error");
-    } else {
-        if (obd.GetParsedData((byte)pid, data, value)) {
-            sprintf(buffer, "[%04X]=%d ", pid, value);
-        } else {
-            sprintf(buffer, "Parse Error");
+    // issue a query for specified OBD-II pid
+
+    obd.SendQuery();
+
+    do {
+#ifdef GPSUART
+        // while waiting for response, test GPS
+        while (GPSUART.available()) {
+            if (gps.encode(GPSUART.read())) {
+                // GPS data ready
+                ShowGPSData();
+            }
         }
+#endif
+    } while (!obd.DataAvailable());
+
+    // check OBD response
+    buffer[0] = 0;
+    char* data = obd.GetResponse((byte)pid, buffer);
+    lcd.setCursor(6, 0);
+    if (!data) {
+        lcd.print("Data Error");
+        // try recover next time
+        obd.Recover();
+    } else if (!obd.GetParsedData((byte)pid, data, value)) {
+        lcd.print("Parse Error");
+        lcd.setCursor(0, 1);
+        lcd.print(buffer);
+    } else {
+        if (!hasMPU6050) {
+            char *p = buffer;
+            while (*p && *p < ' ') p++;
+            for (char *q = p; *q; q++) {
+                if (*q < ' ') *q = ' ';
+            }
+            lcd.setCursor(0, 1);
+            lcd.print(p);
+        }
+        sprintf(buffer, "=%d", value);
+        lcd.setCursor(6, 0);
         lcd.print(buffer);
     }
-    delay(50);
+
+    // test MPU6050
+    if (hasMPU6050) {
+        testMPU6050();
+    }
 
 #if 0
 	adc_key_in = analogRead(0);    // read the value from the sensor
