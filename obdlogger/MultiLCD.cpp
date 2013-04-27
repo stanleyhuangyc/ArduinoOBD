@@ -121,7 +121,7 @@ void LCD_OLED::write(char c)
     m_column += 8;
     if (m_column >= 128) {
         m_column = 0;
-        m_line++;
+        m_line += 2;
     }
 }
 
@@ -147,7 +147,7 @@ void LCD_OLED::printLarge(const char* s)
         m_column += 16;
         if (m_column >= 128) {
             m_column = 0;
-            m_line++;
+            m_line += 2;
         }
         s++;
     }

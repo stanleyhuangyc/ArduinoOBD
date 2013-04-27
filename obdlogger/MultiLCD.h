@@ -9,6 +9,7 @@ public:
     virtual void backlight(bool on) {}
     virtual byte getLines() = 0;
     virtual byte getCols() = 0;
+    virtual void changeLine() {}
 };
 
 class LCD_PCD8544 : public LCD_Common, public PCD8544
@@ -42,6 +43,11 @@ public:
     {
         m_column = column << 3;
         m_line = line << 1;
+    }
+    void changeLine()
+    {
+        m_column = 0;
+        m_line += 2;
     }
     void write(char c);
     void print(const char* s);
