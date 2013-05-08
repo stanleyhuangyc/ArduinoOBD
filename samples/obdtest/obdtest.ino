@@ -15,7 +15,7 @@
 #define GPSUART Serial1
 #endif
 
-#define GPS_BAUDRATE 4800 /* bps */
+#define GPS_BAUDRATE 38400 /* bps */
 
 #ifdef GPSUART
 TinyGPS gps;
@@ -170,7 +170,7 @@ void ShowGPSData()
     if (lcd.getLines() > 2) {
         unsigned long date, time;
         gps.get_datetime(&date, &time, &fix_age);
-        sprintf(buf, "TIME:%ld", time);
+        sprintf(buf, "TIME: %08ld", time);
         lcd.setCursor(0, 2);
         lcd.print(buf);
     }
@@ -180,10 +180,10 @@ void ShowGPSData()
         gps.get_position(&lat, &lon, &fix_age);
         // display LAT/LON if screen is big enough
         lcd.setCursor(0, 3);
-        if ((millis() / 1000) & 1)
-            sprintf(buf, "LAT:%3d.%5ld", (int)(lat / 100000), lat % 100000);
+        if (((unsigned int)millis() / 1000) & 1)
+            sprintf(buf, "LAT: %d.%5ld  ", (int)(lat / 100000), lat % 100000);
         else
-            sprintf(buf, "LON:%3d.%5ld", (int)(lon / 100000), lon % 100000);
+            sprintf(buf, "LON: %d.%5ld  ", (int)(lon / 100000), lon % 100000);
         lcd.print(buf);
     }
 }
@@ -257,7 +257,7 @@ void setup()
     Wire.begin();
     lcd.begin();
     lcd.print("OBD TESTER 1.2");
-    OBDUART.begin(38400);
+    OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef GPSUART
     GPSUART.begin(GPS_BAUDRATE);
 #endif
@@ -281,12 +281,6 @@ void setup()
         if (GPSUART.available()) {
             lcd.clear();
             lcd.print("Init GPS...");
-            do {
-                if (gps.encode(GPSUART.read())) {
-                    // GPS data ready
-                    ShowGPSData();
-                }
-            } while (GPSUART.available());
             delay(1000);
         }
 #endif
@@ -302,29 +296,29 @@ void setup()
     lcd.clear();
     sprintf(buffer, "RPM:%c", obd.IsValidPID(PID_RPM) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(6, 0);
+    lcd.setCursor(7, 0);
     sprintf(buffer, "SPD:%c", obd.IsValidPID(PID_SPEED) ? 'Y' : 'N');
     lcd.print(buffer);
 
     lcd.setCursor(0, 1);
     sprintf(buffer, "THR:%c", obd.IsValidPID(PID_THROTTLE) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(6, 1);
-    sprintf(buffer, "LOAD:%c", obd.IsValidPID(PID_ENGINE_LOAD) ? 'Y' : 'N');
+    lcd.setCursor(7, 1);
+    sprintf(buffer, "LOD:%c", obd.IsValidPID(PID_ENGINE_LOAD) ? 'Y' : 'N');
     lcd.print(buffer);
 
     lcd.setCursor(0, 2);
     sprintf(buffer, "MAF:%c", obd.IsValidPID(PID_MAF_FLOW) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(6, 2);
+    lcd.setCursor(7, 2);
     sprintf(buffer, "MAP:%c", obd.IsValidPID(PID_INTAKE_MAP) ? 'Y' : 'N');
     lcd.print(buffer);
 
     lcd.setCursor(0, 3);
-    sprintf(buffer, "FUEL:%c", obd.IsValidPID(PID_FUEL_LEVEL) ? 'Y' : 'N');
+    sprintf(buffer, "FUE:%c", obd.IsValidPID(PID_FUEL_LEVEL) ? 'Y' : 'N');
     lcd.print(buffer);
-    lcd.setCursor(6, 3);
-    sprintf(buffer, "FKPA:%c", obd.IsValidPID(PID_FUEL_PRESSURE) ? 'Y' : 'N');
+    lcd.setCursor(7, 3);
+    sprintf(buffer, "PRE:%c", obd.IsValidPID(PID_FUEL_PRESSURE) ? 'Y' : 'N');
     lcd.print(buffer);
     delay(3000);
     lcd.clear();
@@ -335,21 +329,27 @@ void loop()
 {
     int value;
     char buffer[OBD_RECV_BUF_SIZE];
-    // issue a query for specified OBD-II pid
+    bool gpsReady = false;
 
+    // issue a query for specified OBD-II pid
     obd.SendQuery();
 
     do {
 #ifdef GPSUART
         // while waiting for response, test GPS
-        while (GPSUART.available()) {
+        unsigned long start = millis();
+        while (GPSUART.available() && millis() - start < 100) {
             if (gps.encode(GPSUART.read())) {
-                // GPS data ready
-                ShowGPSData();
+                gpsReady = true;
             }
         }
 #endif
     } while (!obd.DataAvailable());
+
+#ifdef GPSUART
+    if (gpsReady)
+        ShowGPSData();
+#endif
 
     // check OBD response
     buffer[0] = 0;
