@@ -9,13 +9,14 @@
 #include <avr/pgmspace.h>
 #include "OBD.h"
 
-#define INIT_CMD_COUNT 7
+#define INIT_CMD_COUNT 4
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r","0100\r","0120\r","0140\r"};
+const char PROGMEM s_initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r"};
 const char PROGMEM s_searching[] = "SEARCHING";
 const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
-const char PROGMEM s_cmd_sleep[MAX_CMD_LEN] = "atlp\r";
+const char PROGMEM s_cmd_sleep[] = "atlp\r";
+const char PROGMEM s_cmd_vin[] = "0902\r";
 const char PROGMEM s_response_begin[] = "41 ";
 
 unsigned int hex2uint16(const char *p)
@@ -63,53 +64,94 @@ void COBD::Query(unsigned char pid)
 {
 	char cmd[8];
 	sprintf_P(cmd, s_cmd_fmt, dataMode, pid);
-	WriteData(cmd);
+	write(cmd);
 }
 
 bool COBD::ReadSensor(byte pid, int& result, bool passive)
 {
-    if (passive) {
-        bool hasData;
-        unsigned long tick = millis();
-        while (!(hasData = DataAvailable()) && millis() - tick < OBD_TIMEOUT_SHORT);
-        if (!hasData) {
-            errors++;
-            return false;
-        }
-    } else {
-        Query(pid);
+    // send a query command
+    Query(pid);
+    // wait for reponse
+    bool hasData;
+    unsigned long tick = millis();
+    do {
+        DataIdleLoop();
+    } while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
+    if (!hasData) {
+        errors++;
+        return false;
     }
-    return GetResponse(pid, result);
+    // receive and parse the response
+    return GetResponseParsed(pid, result);
 }
 
-bool COBD::DataAvailable()
+bool COBD::available()
 {
 	return OBDUART.available();
 }
 
-char COBD::ReadData()
+char COBD::read()
 {
 	return OBDUART.read();
 }
 
-void COBD::WriteData(const char* s)
+void COBD::write(const char* s)
 {
 	OBDUART.write(s);
 }
 
-void COBD::WriteData(const char c)
+void COBD::write(const char c)
 {
 	OBDUART.write(c);
 }
 
-char* COBD::GetResponse(byte pid, char* buffer)
+int COBD::GetConvertedValue(byte pid, char* data)
+{
+    int result;
+	switch (pid) {
+	case PID_RPM:
+		result = GetLargeValue(data) >> 2;
+		break;
+	case PID_FUEL_PRESSURE:
+		result = GetSmallValue(data) * 3;
+		break;
+	case PID_COOLANT_TEMP:
+	case PID_INTAKE_TEMP:
+	case PID_AMBIENT_TEMP:
+		result = GetTemperatureValue(data);
+		break;
+	case PID_ABS_ENGINE_LOAD:
+		result = GetLargeValue(data) * 100 / 255;
+		break;
+	case PID_MAF_FLOW:
+		result = GetLargeValue(data) / 100;
+		break;
+	case PID_THROTTLE:
+	case PID_ENGINE_LOAD:
+	case PID_FUEL_LEVEL:
+		result = GetPercentageValue(data);
+		break;
+	case PID_TIMING_ADVANCE:
+		result = (GetSmallValue(data) - 128) >> 1;
+		break;
+	case PID_DISTANCE:
+	case PID_RUNTIME:
+		result = GetLargeValue(data);
+		break;
+	default:
+		result = GetSmallValue(data);
+	}
+	return result;
+}
+
+char* COBD::GetResponse(byte& pid, char* buffer)
 {
 	unsigned long startTime = millis();
 	byte i = 0;
 
 	for (;;) {
-		if (DataAvailable()) {
-			char c = ReadData();
+		if (available()) {
+			char c = read();
 			buffer[i] = c;
 			if (++i == OBD_RECV_BUF_SIZE - 1) {
                 // buffer overflow
@@ -139,7 +181,9 @@ char* COBD::GetResponse(byte pid, char* buffer)
 	char *p = buffer;
 	while ((p = strstr_P(p, s_response_begin))) {
         p += 3;
-        if (pid == 0 || hex2uint8(p) == pid) {
+        byte curpid = hex2uint8(p);
+        if (pid == 0) pid = curpid;
+        if (curpid == pid) {
             errors = 0;
             p += 2;
             if (*p == ' ')
@@ -149,82 +193,38 @@ char* COBD::GetResponse(byte pid, char* buffer)
 	return 0;
 }
 
-bool COBD::GetParsedData(byte pid, char* data, int& result)
-{
-	switch (pid) {
-	case PID_RPM:
-		result = GetLargeValue(data) >> 2;
-		break;
-	case PID_FUEL_PRESSURE:
-		result = GetSmallValue(data) * 3;
-		break;
-	case PID_COOLANT_TEMP:
-	case PID_INTAKE_TEMP:
-	case PID_AMBIENT_TEMP:
-		result = GetTemperatureValue(data);
-		break;
-	case PID_ABS_ENGINE_LOAD:
-		result = GetLargeValue(data) * 100 / 255;
-		break;
-	case PID_MAF_FLOW:
-		result = GetLargeValue(data) / 100;
-		break;
-	case PID_THROTTLE:
-	case PID_ENGINE_LOAD:
-	case PID_FUEL_LEVEL:
-		result = GetPercentageValue(data);
-		break;
-	case PID_SPEED:
-	case PID_BAROMETRIC:
-	case PID_INTAKE_PRESSURE:
-		result = GetSmallValue(data);
-		break;
-	case PID_TIMING_ADVANCE:
-		result = (GetSmallValue(data) - 128) >> 1;
-		break;
-	case PID_DISTANCE:
-	case PID_RUNTIME:
-		result = GetLargeValue(data);
-		break;
-	default:
-		return false;
-	}
-	return true;
-}
-
-bool COBD::GetResponse(byte pid, int& result)
+bool COBD::GetResponseParsed(byte& pid, int& result)
 {
     char buffer[OBD_RECV_BUF_SIZE];
     char* data = GetResponse(pid, buffer);
     if (!data) {
         // try recover next time
-        WriteData('\r');
+        write('\r');
 		return false;
     }
-    return GetParsedData(pid, data, result);
-}
-
-bool COBD::GetResponsePassive(byte& pid, int& result)
-{
-    char buffer[OBD_RECV_BUF_SIZE];
-    char* data = GetResponse(0, buffer);
-    if (!data) {
-        // try recover next time
-        return false;
-    }
-    pid = hex2uint8(data - 3);
-    return GetParsedData(pid, data, result);
+    result = GetConvertedValue(pid, data);
+    return true;
 }
 
 void COBD::Sleep(int seconds)
 {
     char cmd[MAX_CMD_LEN];
     strcpy_P(cmd, s_cmd_sleep);
-    WriteData(cmd);
+    write(cmd);
     if (seconds) {
         delay((unsigned long)seconds << 10);
-        WriteData('\r');
+        write('\r');
     }
+}
+
+bool COBD::IsValidPID(byte pid)
+{
+    if (pid >= 0x7f)
+        return false;
+    pid--;
+    byte i = pid >> 3;
+    byte b = 0x80 >> (pid & 0x7);
+    return pidmap[i] & b;
 }
 
 bool COBD::Init(bool passive)
@@ -238,14 +238,14 @@ bool COBD::Init(bool passive)
         if (!passive) {
             char cmd[MAX_CMD_LEN];
             strcpy_P(cmd, s_initcmd[i]);
-            WriteData(cmd);
+            write(cmd);
         }
         n = 0;
         prompted = 0;
         currentMillis = millis();
         for (;;) {
-            if (DataAvailable()) {
-                char c = ReadData();
+            if (available()) {
+                char c = read();
                 if (c == '>') {
                     buffer[n] = 0;
                     prompted++;
@@ -261,8 +261,23 @@ bool COBD::Init(bool passive)
                     //WriteData("\r");
                     return false;
                 }
-                DataTimeout();
+                InitIdleLoop();
             }
+        }
+    }
+
+    // load pid map
+    memset(pidmap, 0, sizeof(pidmap));
+    for (byte i = 0; i < 4; i++) {
+        byte pid = i * 0x20;
+        Query(pid);
+        char* data = GetResponse(pid, buffer);
+        if (!data) break;
+        data--;
+        for (byte n = 0; n < 4; n++) {
+            if (data[n * 3] != ' ')
+                break;
+            pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
         }
     }
     errors = 0;

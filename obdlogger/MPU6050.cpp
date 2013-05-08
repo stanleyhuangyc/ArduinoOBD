@@ -192,4 +192,5 @@ int MPU6050_readout(accel_t_gyro_union* accel_t_gyro)
   SWAP (accel_t_gyro->reg.x_gyro_h, accel_t_gyro->reg.x_gyro_l);
   SWAP (accel_t_gyro->reg.y_gyro_h, accel_t_gyro->reg.y_gyro_l);
   SWAP (accel_t_gyro->reg.z_gyro_h, accel_t_gyro->reg.z_gyro_l);
+  return 0;
 }
