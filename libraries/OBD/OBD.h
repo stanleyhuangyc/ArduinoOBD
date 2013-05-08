@@ -1,8 +1,7 @@
 /*************************************************************************
-* Arduino OBD-II UART Adapter Library
-* http://www.arduinodev.com/hardware/obd-kit
+* OBD-II (ELM327) data accessing library for Arduino
 * Distributed under GPL v2.0
-* (C)2012~2013 Written by Stanley Huang <stanleyhuangyc@gmail.com>
+* Copyright (c) 2012 Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
 *************************************************************************/
 
@@ -13,7 +12,7 @@
 #define OBD_RECV_BUF_SIZE 64
 
 #ifndef OBDUART
-#ifdef __AVR_ATmega32U4__ /* for Leonardo */
+#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
 #define OBDUART Serial1
 #else
 #define OBDUART Serial
@@ -49,19 +48,15 @@ public:
 	bool ReadSensor(byte pid, int& result, bool passive = false);
 	bool IsValidPID(byte pid);
 	void Sleep(int seconds);
-	// following APIs are for advanced usages only
+	// Query and GetResponse for advanced usage only
 	void Query(byte pid);
-    bool GetParsedData(byte pid, char* data, int& result);
-	virtual char* GetResponse(byte pid, char* buffer);
-	virtual bool GetResponse(byte pid, int& result);
-	virtual bool GetResponsePassive(byte& pid, int& result);
-	virtual bool DataAvailable();
-	virtual char ReadData();
-	virtual void WriteData(const char* s);
-	virtual void WriteData(const char c);
+	char* GetResponse(byte& pid, char* buffer);
+	bool GetResponseParsed(byte& pid, int& result);
 	byte dataMode;
 	byte errors;
+	//char recvBuf[OBD_RECV_BUF_SIZE];
 protected:
+    static int GetConvertedValue(byte pid, char* data);
 	static int GetPercentageValue(char* data)
 	{
 		return (int)hex2uint8(data) * 100 / 255;
@@ -78,6 +73,11 @@ protected:
 	{
 		return (int)hex2uint8(data) - 40;
 	}
-	virtual void DataTimeout() {}
+	virtual bool available();
+	virtual char read();
+	virtual void write(const char* s);
+	virtual void write(const char c);
+	virtual void InitIdleLoop() {}
+	virtual void DataIdleLoop() {}
 	byte pidmap[4 * 4];
 };
