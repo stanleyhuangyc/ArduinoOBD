@@ -13,18 +13,31 @@
 #include "TinyGPS.h"
 #include "MPU6050.h"
 
-//configurations
-
+/***************************
+* Choose SD pin here       *
+***************************/
 #define SD_CS_PIN 4 // ethernet shield with SD
 //#define SD_CS_PIN 7 // microduino
 //#define SD_CS_PIN 10 // SD breakout
 
+/***************************
+* Set GPS baudrate here    *
+***************************/
 #define GPS_BAUDRATE 38400 /* bps */
 
+/***************************
+* Choose LCD model here    *
+***************************/
 //#define USE_OLED
 #define USE_LCD1602
 //#define USE_LCD4884
 
+
+/***************************
+* Other options            *
+***************************/
+#define USE_MPU6050
+#define USE_GPS
 //#define FAKE_OBD_DATA
 
 // logger states
@@ -46,6 +59,7 @@
 #define GPS_DATA_TIMEOUT 3000 /* ms */
 #define FILE_NAME_FORMAT "OBD%05d.CSV"
 
+#ifdef USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
 #define GPSUART Serial3
@@ -63,6 +77,7 @@
 TinyGPS gps;
 
 #endif // GPSUART
+#endif
 
 // SD card
 Sd2Card card;
@@ -93,50 +108,14 @@ class CLogger : public COBD
 {
 public:
     CLogger():state(0) {}
-    void InitIdleLoop()
-    {
-        // called while initializing
-#ifdef GPSUART
-        // detect GPS signal
-        if (GPSUART.available()) {
-            if (gps.encode(GPSUART.read())) {
-                state |= STATE_SD_READY;
-                lastGPSDataTime = millis();
-            }
-        }
-        if (state & STATE_ACC_READY) {
-            accel_t_gyro_union data;
-            MPU6050_readout(&data);
-            char buf[8];
-            sprintf(buf, "X:%4d", data.value.x_accel / 190);
-            lcd.setCursor(10, 1);
-            lcd.print(buf);
-#if LCD_LINES > 2
-            sprintf(buf, "Y:%4d", data.value.y_accel / 190);
-            lcd.setCursor(10, 2);
-            lcd.print(buf);
-            sprintf(buf, "Z:%4d", data.value.z_accel / 190);
-            lcd.setCursor(10, 3);
-            lcd.print(buf);
-#endif
-            delay(100);
-        }
-#endif
-    }
-    void DataIdleLoop()
-    {
-        // called while waiting for OBD-II response
-#ifdef GPSUART
-        if (GPSUART.available())
-            ProcessGPS();
-#endif
-    }
     void Setup()
     {
         ShowStates();
 
+#ifdef USE_MPU6050
         if (MPU6050_init() == 0) state |= STATE_ACC_READY;
         ShowStates();
+#endif
 
 #ifdef GPSUART
         unsigned long t = millis();
@@ -296,9 +275,45 @@ public:
         return true;
     }
 private:
+    void InitIdleLoop()
+    {
+        // called while initializing
+#ifdef GPSUART
+        // detect GPS signal
+        if (GPSUART.available()) {
+            if (gps.encode(GPSUART.read())) {
+                state |= STATE_SD_READY;
+                lastGPSDataTime = millis();
+            }
+        }
+#ifdef USE_MPU6050
+        if (state & STATE_ACC_READY) {
+            accel_t_gyro_union data;
+            MPU6050_readout(&data);
+            char buf[8];
+            sprintf(buf, "X:%4d", data.value.x_accel / 190);
+            lcd.setCursor(10, 1);
+            lcd.print(buf);
+#if LCD_LINES > 2
+            sprintf(buf, "Y:%4d", data.value.y_accel / 190);
+            lcd.setCursor(10, 2);
+            lcd.print(buf);
+            sprintf(buf, "Z:%4d", data.value.z_accel / 190);
+            lcd.setCursor(10, 3);
+            lcd.print(buf);
+#endif
+            delay(100);
+        }
+#endif
+#endif
+    }
+    void DataIdleLoop()
+    {
+        if (GPSUART.available())
+            ProcessGPS();
+    }
     void ProcessGPS()
     {
-        char buf[32];
         // process GPS data
         char c = GPSUART.read();
         if (!gps.encode(c))
@@ -312,6 +327,7 @@ private:
         unsigned long fix_age;
         int len;
         unsigned long date, time;
+        char buf[32];
         gps.get_datetime(&date, &time, &fix_age);
         len = sprintf(buf, "%u,F01,%ld %ld\n", elapsed, date, time);
         sdfile.write((uint8_t*)buf, len);
@@ -321,15 +337,17 @@ private:
         len = sprintf(buf, "%u,F02,%ld %ld\n", elapsed, lat, lon);
         sdfile.write((uint8_t*)buf, len);
 
-#if LCD_LINES > 2
         // display LAT/LON if screen is big enough
         if (((unsigned int)dataTime / 1000) & 1)
             sprintf(buf, "%d.%ld  ", (int)(lat / 100000), lat % 100000);
         else
             sprintf(buf, "%d.%ld  ", (int)(lon / 100000), lon % 100000);
+#if LCD_LINES > 2
         lcd.setCursor(0, 3);
-        lcd.print(buf);
+#else
+        lcd.setCursor(0, 1);
 #endif
+        lcd.print(buf);
 
         unsigned int speed = (unsigned int)(gps.speed() * 1852 / 100 / 1000);
         ShowSensorData(PID_SPEED, speed);
@@ -342,11 +360,14 @@ private:
     }
     void ProcessAccelerometer()
     {
+#ifdef USE_MPU6050
         accel_t_gyro_union data;
         MPU6050_readout(&data);
         uint32_t dataTime = millis();
 
+#if LCD_LINES > 2
         ShowGForce(data.value.y_accel);
+#endif
 
         int len;
         uint16_t elapsed = (uint16_t)(dataTime - lastDataTime);
@@ -358,30 +379,53 @@ private:
         len = sprintf(buf, "%u,F11,%d %d %d\n", data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
         sdfile.write((uint8_t*)buf, len);
         lastDataTime = dataTime;
+#endif
     }
     void LogData(byte pid)
     {
+        char buffer[OBD_RECV_BUF_SIZE];
         int value;
         uint32_t start = millis();
 
 #ifndef FAKE_OBD_DATA
         // send a query to OBD adapter for specified OBD-II pid
-        if (ReadSensor(pid, value)) {
-            // save data timestamp at first time
-            uint32_t dataTime = millis();
-
-            // display data on screen
-            ShowSensorData(pid, value);
-
-            // log data to SD card
-            char buf[32];
-            uint16_t elapsed = (uint16_t)(dataTime - lastDataTime);
-            byte len = sprintf(buf, "%u,%X,%d\n", elapsed, pid, value);
-            // log OBD data
-            sdfile.write((uint8_t*)buf, len);
-            fileSize += len;
-            lastDataTime = dataTime;
+        Query(pid);
+        // wait for reponse
+        bool hasData;
+        do {
+            DataIdleLoop();
+        } while (!(hasData = available()) && millis() - start < OBD_TIMEOUT_SHORT);
+        // no need to continue if no data available
+        if (!hasData) {
+            errors++;
+            return;
         }
+
+        // get response from OBD adapter
+        pid = 0;
+        char* data = GetResponse(pid, buffer);
+        if (!data) {
+            // try recover next time
+            write('\r');
+            return;
+        }
+        // keep data timestamp of returned data as soon as possible
+        uint32_t dataTime = millis();
+
+        // convert raw data to normal value
+        value = GetConvertedValue(pid, data);
+
+        // display data on screen
+        ShowSensorData(pid, value);
+
+        // log data to SD card
+        char buf[32];
+        uint16_t elapsed = (uint16_t)(dataTime - lastDataTime);
+        byte len = sprintf(buf, "%u,%X,%d\n", elapsed, pid, value);
+        // log OBD data
+        sdfile.write((uint8_t*)buf, len);
+        fileSize += len;
+        lastDataTime = dataTime;
 
         // flush SD data every 1KB
         if (fileSize - lastFileSize >= 1024) {
@@ -460,7 +504,11 @@ private:
         switch (pid) {
         case PID_RPM:
             sprintf(buf, "%4u", (unsigned int)value % 10000);
+#if LCD_LINES <= 2
+            lcd.setCursor(8, 0);
+#else
             lcd.setCursor(4, 2);
+#endif
             lcd.print(buf);
             break;
         case PID_SPEED:
@@ -490,8 +538,8 @@ private:
     virtual void ShowGForce(int g)
     {
         byte n;
-        /* 0~2g -> 0~8 */
-        g /= 128 * 25;
+        /* 0~1.5g -> 0~8 */
+        g /= 85 * 25;
         lcd.setCursor(0, 1);
         if (g == 0) {
             lcd.clearLine(1);
@@ -517,12 +565,21 @@ private:
     {
         lcd.clear();
         lcd.backlight(true);
-        lcd.setCursor(lcd.getLines() <= 2 ? 4 : 6, 0);
+#if LCD_LINES <= 2
+        lcd.setCursor(4, 0);
+#else
+        lcd.setCursor(6, 0);
+#endif
         lcd.print("kph");
+#if LCD_LINES <= 2
+        lcd.setCursor(13, 0);
+        lcd.print("rpm");
+#else
         lcd.setCursor(0, 2);
         lcd.print("RPM:");
         lcd.setCursor(9, 2);
         lcd.print("THR:  %");
+#endif
     }
 };
 
