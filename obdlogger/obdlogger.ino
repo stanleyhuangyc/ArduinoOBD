@@ -62,6 +62,7 @@ static uint32_t fileSize = 0;
 static uint32_t lastFileSize = 0;
 static uint32_t lastDataTime;
 static uint32_t lastGPSDataTime = 0;
+static uint16_t lastSpeed = 0;
 static int startDistance = 0;
 static uint16_t fileIndex = 0;
 
@@ -230,7 +231,7 @@ public:
             volumesize *= volume.clusterCount();
             volumesize >>= 10;
 
-            sprintf(buf, "%dGB", (int)(volumesize + 511) >> 10);
+            sprintf(buf, "%dGB", (int)((volumesize + 511) / 1000));
             lcd.print(buf);
         } else {
             lcd.print("No SD Card      ");
@@ -320,10 +321,10 @@ private:
         uint16_t elapsed = (uint16_t)(dataTime - lastDataTime);
         char buf[20];
         // log x/y/z of accelerometer
-        len = sprintf(buf, "%u,F10,%d %d %d", data.value.x_accel, data.value.y_accel, data.value.z_accel);
+        len = sprintf(buf, "%u,F10,%d %d %d\n", data.value.x_accel, data.value.y_accel, data.value.z_accel);
         sdfile.write((uint8_t*)buf, len);
         // log x/y/z of gyro meter
-        len = sprintf(buf, "%u,F11,%d %d %d", data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+        len = sprintf(buf, "%u,F11,%d %d %d\n", data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
         sdfile.write((uint8_t*)buf, len);
     }
     void LogData(byte pid)
@@ -412,9 +413,12 @@ private:
             lcd.print(buf);
             break;
         case PID_SPEED:
-            sprintf(buf, "%3u", (unsigned int)value % 1000);
-            lcd.setCursor(0, 0);
-            lcd.printLarge(buf);
+            if (lastSpeed != value) {
+                sprintf(buf, "%3u", (unsigned int)value % 1000);
+                lcd.setCursor(0, 0);
+                lcd.printLarge(buf);
+                lastSpeed = value;
+            }
             break;
         case PID_THROTTLE:
             sprintf(buf, "%2d", value % 100);
@@ -434,7 +438,7 @@ private:
     {
         byte n;
         /* 0~2g -> 0~8 */
-        g /= 190 * 25;
+        g /= 128 * 25;
         lcd.setCursor(0, 1);
         if (g == 0) {
             lcd.clearLine(1);
