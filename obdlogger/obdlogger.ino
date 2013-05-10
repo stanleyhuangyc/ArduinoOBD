@@ -13,12 +13,21 @@
 #include "TinyGPS.h"
 #include "MPU6050.h"
 
-//#define SD_CS_PIN 4 // ethernet shield with SD
-#define SD_CS_PIN 7 // microduino
+//configurations
+
+#define SD_CS_PIN 4 // ethernet shield with SD
+//#define SD_CS_PIN 7 // microduino
 //#define SD_CS_PIN 10 // SD breakout
 
 #define GPS_BAUDRATE 38400 /* bps */
 
+//#define USE_OLED
+#define USE_LCD1602
+//#define USE_LCD4884
+
+//#define FAKE_OBD_DATA
+
+// logger states
 #define STATE_SD_READY 0x1
 #define STATE_OBD_READY 0x2
 #define STATE_GPS_CONNECTED 0x4
@@ -45,7 +54,14 @@
 #endif
 
 #ifdef GPSUART
+
+#define PMTK_SET_NMEA_UPDATE_1HZ "$PMTK220,1000*1F"
+#define PMTK_SET_NMEA_UPDATE_5HZ "$PMTK220,200*2C"
+#define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
+#define PMTK_SET_NMEA_OUTPUT_ALLDATA "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
+
 TinyGPS gps;
+
 #endif // GPSUART
 
 // SD card
@@ -54,9 +70,16 @@ SdVolume volume;
 File sdfile;
 
 // enable one LCD
+#if defined(USE_OLED)
 LCD_OLED lcd; /* for I2C OLED module */
-//LCD_PCD8544 lcd; /* for LCD4884 shield or Nokia 5100 screen module */
-//LCD_1602 lcd; /* for LCD1602 shield */
+#define LCD_LINES 4
+#elif defined(USE_LCD1602)
+LCD_1602 lcd; /* for LCD1602 shield */
+#define LCD_LINES 2
+#elif defined(USE_LCD4884)
+LCD_PCD8544 lcd; /* for LCD4884 shield or Nokia 5100 screen module */
+#define LCD_LINES 5
+#endif // defined
 
 static uint32_t fileSize = 0;
 static uint32_t lastFileSize = 0;
@@ -86,14 +109,16 @@ public:
             MPU6050_readout(&data);
             char buf[8];
             sprintf(buf, "X:%4d", data.value.x_accel / 190);
-            lcd.setCursor(9, 1);
+            lcd.setCursor(10, 1);
             lcd.print(buf);
+#if LCD_LINES > 2
             sprintf(buf, "Y:%4d", data.value.y_accel / 190);
-            lcd.setCursor(9, 2);
+            lcd.setCursor(10, 2);
             lcd.print(buf);
             sprintf(buf, "Z:%4d", data.value.z_accel / 190);
-            lcd.setCursor(9, 3);
+            lcd.setCursor(10, 3);
             lcd.print(buf);
+#endif
             delay(100);
         }
 #endif
@@ -123,16 +148,20 @@ public:
         } while (millis() - t <= 1000);
 #endif
 
+#ifndef FAKE_OBD_DATA
         do {
             ShowStates();
         } while (!Init());
+#endif
 
         state |= STATE_OBD_READY;
 
         ShowStates();
         delay(1000);
 
+#ifndef FAKE_OBD_DATA
         ReadSensor(PID_DISTANCE, startDistance);
+#endif
 
         // open file for logging
         if (!(state & STATE_SD_READY)) {
@@ -292,6 +321,7 @@ private:
         len = sprintf(buf, "%u,F02,%ld %ld\n", elapsed, lat, lon);
         sdfile.write((uint8_t*)buf, len);
 
+#if LCD_LINES > 2
         // display LAT/LON if screen is big enough
         if (((unsigned int)dataTime / 1000) & 1)
             sprintf(buf, "%d.%ld  ", (int)(lat / 100000), lat % 100000);
@@ -299,6 +329,7 @@ private:
             sprintf(buf, "%d.%ld  ", (int)(lon / 100000), lon % 100000);
         lcd.setCursor(0, 3);
         lcd.print(buf);
+#endif
 
         unsigned int speed = (unsigned int)(gps.speed() * 1852 / 100 / 1000);
         ShowSensorData(PID_SPEED, speed);
@@ -326,13 +357,15 @@ private:
         // log x/y/z of gyro meter
         len = sprintf(buf, "%u,F11,%d %d %d\n", data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
         sdfile.write((uint8_t*)buf, len);
+        lastDataTime = dataTime;
     }
     void LogData(byte pid)
     {
+        int value;
         uint32_t start = millis();
 
+#ifndef FAKE_OBD_DATA
         // send a query to OBD adapter for specified OBD-II pid
-        int value;
         if (ReadSensor(pid, value)) {
             // save data timestamp at first time
             uint32_t dataTime = millis();
@@ -360,13 +393,30 @@ private:
             lcd.print(buf);
             lastFileSize = fileSize;
         }
-
-        // if OBD response is very fast, go on processing GPS data for a while
-        while (millis() - start < OBD_MIN_INTERVAL) {
-#ifdef GPSUART
-            if (GPSUART.available())
-                ProcessGPS();
+#else
+        switch (pid) {
+        case PID_RPM:
+            value = 600 + (start / 10) % 6400;
+            break;
+        case PID_SPEED:
+            value = (start / 200) % 220;
+            break;
+        case PID_THROTTLE:
+            value = (start / 100) % 100;
+            break;
+        case PID_DISTANCE:
+            value = start / 60000;
+            break;
+        default:
+            value = 0;
+        }
+        lastDataTime = millis();
+        // display data on screen
+        ShowSensorData(pid, value);
 #endif
+        // if OBD response is very fast, go on processing other data for a while
+        while (millis() - start < OBD_MIN_INTERVAL) {
+            DataIdleLoop();
         }
     }
     void Reconnect()
@@ -388,9 +438,6 @@ private:
     void ShowStates()
     {
         lcd.setCursor(0, 1);
-        lcd.print("OBD:");
-        lcd.print((state & STATE_OBD_READY) ? "Yes" : "No");
-        lcd.setCursor(0, 2);
         lcd.print("GPS:");
         if (state & STATE_GPS_READY)
             lcd.print("Yes");
@@ -398,10 +445,14 @@ private:
             lcd.print("--");
         else
             lcd.print("No");
-
-        lcd.setCursor(0, 3);
+#if LCD_LINES > 2
+        lcd.setCursor(0, 2);
         lcd.print("ACC:");
         lcd.print((state & STATE_ACC_READY) ? "Yes" : "No");
+        lcd.setCursor(0, 3);
+        lcd.print("OBD:");
+        lcd.print((state & STATE_OBD_READY) ? "Yes" : "No");
+#endif
     }
     virtual void ShowSensorData(byte pid, int value)
     {
@@ -420,6 +471,7 @@ private:
                 lastSpeed = value;
             }
             break;
+#if LCD_LINES > 2
         case PID_THROTTLE:
             sprintf(buf, "%2d", value % 100);
             lcd.setCursor(13, 2);
@@ -432,6 +484,7 @@ private:
                 lcd.print(buf);
             }
             break;
+#endif
         }
     }
     virtual void ShowGForce(int g)
@@ -464,7 +517,7 @@ private:
     {
         lcd.clear();
         lcd.backlight(true);
-        lcd.setCursor(lcd.getLines() <= 2 ? 4 : 7, 0);
+        lcd.setCursor(lcd.getLines() <= 2 ? 4 : 6, 0);
         lcd.print("kph");
         lcd.setCursor(0, 2);
         lcd.print("RPM:");
@@ -487,9 +540,14 @@ void setup()
     Wire.begin();
 
     // start serial communication at the adapter defined baudrate
+#ifndef FAKE_OBD_DATA
     OBDUART.begin(OBD_SERIAL_BAUDRATE);
+#endif
 #ifdef GPSUART
     GPSUART.begin(GPS_BAUDRATE);
+    // switching to 10Hz mode, effective only for MTK3329
+    GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
+    GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
 #endif
 
     pinMode(SS, OUTPUT);
