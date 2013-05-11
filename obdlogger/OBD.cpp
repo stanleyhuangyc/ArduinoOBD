@@ -69,20 +69,20 @@ void COBD::Query(unsigned char pid)
 
 bool COBD::ReadSensor(byte pid, int& result, bool passive)
 {
-    // send a query command
-    Query(pid);
-    // wait for reponse
-    bool hasData;
-    unsigned long tick = millis();
-    do {
-        DataIdleLoop();
-    } while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
-    if (!hasData) {
-        errors++;
-        return false;
-    }
-    // receive and parse the response
-    return GetResponseParsed(pid, result);
+	// send a query command
+	Query(pid);
+	// wait for reponse
+	bool hasData;
+	unsigned long tick = millis();
+	do {
+		DataIdleLoop();
+	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
+	if (!hasData) {
+		errors++;
+		return false;
+	}
+	// receive and parse the response
+	return GetResponseParsed(pid, result);
 }
 
 bool COBD::available()
