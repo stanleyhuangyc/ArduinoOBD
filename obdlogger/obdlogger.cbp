@@ -447,11 +447,11 @@
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
+					<Add option="-O2" />
 					<Add option="-x c++" />
 					<Add option="-mmcu=$(MCU)" />
 					<Add option="-DF_CPU=16000000L" />
 					<Add option="-D__AVR_ATmega2560__" />
-					<Add option="-O2" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
 					<Add directory="$(ARDUINO_DIR)/libraries" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/mega" />
@@ -472,8 +472,8 @@
 					<Variable name="BOARD_ID" value="mega2560" />
 					<Variable name="MCU" value="atmega2560" />
 					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="57600" />
-					<Variable name="UPLOAD_PORT" value="" />
+					<Variable name="UPLOAD_BAUDRATE" value="115200" />
+					<Variable name="UPLOAD_PORT" value="COM37" />
 				</Environment>
 			</Target>
 			<Target title="Arduino Mega 1280">
