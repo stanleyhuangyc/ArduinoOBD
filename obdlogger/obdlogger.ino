@@ -13,31 +13,32 @@
 #include "TinyGPS.h"
 #include "MPU6050.h"
 
-/***************************
-* Choose SD pin here       *
-***************************/
-#define SD_CS_PIN 4 // ethernet shield with SD
+/**************************************
+* Choose SD pin here
+**************************************/
+#define SD_CS_PIN 4 // ethernet shield
 //#define SD_CS_PIN 7 // microduino
 //#define SD_CS_PIN 10 // SD breakout
 
-/***************************
-* Set GPS baudrate here    *
-***************************/
+/**************************************
+* Set GPS baudrate here
+**************************************/
 #define GPS_BAUDRATE 38400 /* bps */
 
-/***************************
-* Choose LCD model here    *
-***************************/
-//#define USE_OLED
-#define USE_LCD1602
+/**************************************
+* Choose LCD model here
+**************************************/
+#define USE_OLED
+//#define USE_LCD1602
 //#define USE_LCD4884
 
-
-/***************************
-* Other options            *
-***************************/
+/**************************************
+* Other options
+**************************************/
 #define USE_MPU6050
 #define USE_GPS
+#define OBD_MIN_INTERVAL 100 /* ms */
+#define GPS_DATA_TIMEOUT 3000 /* ms */
 //#define FAKE_OBD_DATA
 
 // logger states
@@ -55,8 +56,6 @@
 #define PID_ACC 0xF10
 #define PID_GYRO 0xF11
 
-#define OBD_MIN_INTERVAL 100 /* ms */
-#define GPS_DATA_TIMEOUT 3000 /* ms */
 #define FILE_NAME_FORMAT "OBD%05d.CSV"
 
 #ifdef USE_GPS
@@ -94,7 +93,7 @@ LCD_1602 lcd; /* for LCD1602 shield */
 #elif defined(USE_LCD4884)
 LCD_PCD8544 lcd; /* for LCD4884 shield or Nokia 5100 screen module */
 #define LCD_LINES 5
-#endif // defined
+#endif
 
 static uint32_t fileSize = 0;
 static uint32_t lastFileSize = 0;
@@ -209,6 +208,7 @@ public:
     {
         lcd.setCursor(0, 0);
         state &= ~STATE_SD_READY;
+        pinMode(SS, OUTPUT);
         if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
             const char* type;
             char buf[20];
@@ -227,6 +227,7 @@ public:
                 type = "SDx";
             }
 
+            lcd.clear();
             lcd.print(type);
             lcd.write(' ');
             if (!volume.init(card)) {
@@ -593,8 +594,12 @@ void setup()
     lcd.print("OBD/GPS Logger");
     lcd.setCursor(0, 1);
     lcd.print("Initializing...");
+    lcd.setCursor(0, 1);
 
+#if defined(USE_OLED)
+    // for I2C OLED
     Wire.begin();
+#endif
 
     // start serial communication at the adapter defined baudrate
 #ifndef FAKE_OBD_DATA
@@ -607,11 +612,8 @@ void setup()
     GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
 #endif
 
-    pinMode(SS, OUTPUT);
+    delay(500);
 
-    delay(1000);
-
-    lcd.clear();
     logger.CheckSD();
     logger.Setup();
 }
