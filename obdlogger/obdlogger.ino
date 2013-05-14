@@ -16,14 +16,16 @@
 /**************************************
 * Choose SD pin here
 **************************************/
-#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 7 // microduino
+//#define SD_CS_PIN 4 // ethernet shield
+#define SD_CS_PIN 7 // microduino
 //#define SD_CS_PIN 10 // SD breakout
 
 /**************************************
-* Set GPS baudrate here
+* Config GPS here
 **************************************/
+#define USE_GPS
 #define GPS_BAUDRATE 38400 /* bps */
+//#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
 /**************************************
 * Choose LCD model here
@@ -36,9 +38,9 @@
 * Other options
 **************************************/
 #define USE_MPU6050
-#define USE_GPS
 #define OBD_MIN_INTERVAL 100 /* ms */
-#define GPS_DATA_TIMEOUT 3000 /* ms */
+#define GPS_DATA_TIMEOUT 2000 /* ms */
+//#define CONSOLE Serial
 //#define FAKE_OBD_DATA
 
 // logger states
@@ -47,14 +49,15 @@
 #define STATE_GPS_CONNECTED 0x4
 #define STATE_GPS_READY 0x8
 #define STATE_ACC_READY 0x10
+#define STATE_DATE_SAVED 0x20
 
 // additional PIDs (non-OBD)
-#define PID_GPS_DATETIME 0xF01
-#define PID_GPS_COORDINATE 0xF02
-#define PID_GPS_ALTITUDE 0xF03
-#define PID_GPS_SPEED 0xF04
-#define PID_ACC 0xF10
-#define PID_GYRO 0xF11
+#define PID_GPS_DATETIME 0xF0
+#define PID_GPS_SPEED 0xF01
+#define PID_GPS_COORDINATE 0xF2
+#define PID_GPS_ALTITUDE 0xF3
+#define PID_ACC 0xF8
+#define PID_GYRO 0xF9
 
 #define FILE_NAME_FORMAT "OBD%05d.CSV"
 
@@ -72,6 +75,7 @@
 #define PMTK_SET_NMEA_UPDATE_5HZ "$PMTK220,200*2C"
 #define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
 #define PMTK_SET_NMEA_OUTPUT_ALLDATA "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
+#define PMTK_SET_BAUDRATE "$PMTK251,115200*1F"
 
 TinyGPS gps;
 
@@ -99,7 +103,7 @@ static uint32_t fileSize = 0;
 static uint32_t lastFileSize = 0;
 static uint32_t lastDataTime;
 static uint32_t lastGPSDataTime = 0;
-static uint16_t lastSpeed = 0;
+static uint16_t lastSpeed = -1;
 static int startDistance = 0;
 static uint16_t fileIndex = 0;
 
@@ -135,7 +139,9 @@ public:
         state |= STATE_OBD_READY;
 
         ShowStates();
-        delay(1000);
+        delay(500);
+
+        ShowPidsInfo();
 
 #ifndef FAKE_OBD_DATA
         ReadSensor(PID_DISTANCE, startDistance);
@@ -169,7 +175,7 @@ public:
 
         LogData(PID_RPM);
 
-        if (millis() - lastGPSDataTime > GPS_DATA_TIMEOUT) {
+        if (millis() - lastGPSDataTime > GPS_DATA_TIMEOUT || gps.satellites() < 3) {
             // GPS not ready
             state &= ~STATE_GPS_READY;
             LogData(PID_SPEED);
@@ -243,6 +249,7 @@ public:
             sprintf(buf, "%dGB", (int)((volumesize + 511) / 1000));
             lcd.print(buf);
         } else {
+            lcd.clear();
             lcd.print("No SD Card      ");
             return false;
         }
@@ -282,9 +289,24 @@ private:
 #ifdef GPSUART
         // detect GPS signal
         if (GPSUART.available()) {
-            if (gps.encode(GPSUART.read())) {
-                state |= STATE_SD_READY;
+            char c = GPSUART.read();
+            if (gps.encode(c)) {
+                state |= STATE_GPS_READY;
                 lastGPSDataTime = millis();
+#ifdef CONSOLE
+                unsigned long date, time;
+                gps.get_datetime(&date, &time, 0);
+                long lat, lon;
+                gps.get_position(&lat, &lon, 0);
+                CONSOLE.print("Time:");
+                CONSOLE.print(time);
+                CONSOLE.print(" LAT:");
+                CONSOLE.print(lat);
+                CONSOLE.print(" LON:");
+                CONSOLE.println(lon);
+            } else if (!(state & STATE_GPS_READY)) {
+                CONSOLE.write(c);
+#endif
             }
         }
 #ifdef USE_MPU6050
@@ -322,42 +344,46 @@ private:
 
         // parsed GPS data is ready
         uint32_t dataTime = millis();
-        lastGPSDataTime = dataTime;
-
         uint16_t elapsed = (uint16_t)(dataTime - lastDataTime);
-        unsigned long fix_age;
         int len;
-        unsigned long date, time;
         char buf[32];
-        gps.get_datetime(&date, &time, &fix_age);
-        len = sprintf(buf, "%u,F01,%ld %ld\n", elapsed, date, time);
+        unsigned long date, time;
+        gps.get_datetime(&date, &time, 0);
+        len = sprintf(buf, "%u,F0,%ld %ld\n", elapsed, date, time);
         sdfile.write((uint8_t*)buf, len);
-
-        long lat, lon;
-        gps.get_position(&lat, &lon, &fix_age);
-        len = sprintf(buf, "%u,F02,%ld %ld\n", elapsed, lat, lon);
-        sdfile.write((uint8_t*)buf, len);
-
-        // display LAT/LON if screen is big enough
-        if (((unsigned int)dataTime / 1000) & 1)
-            sprintf(buf, "%d.%ld  ", (int)(lat / 100000), lat % 100000);
-        else
-            sprintf(buf, "%d.%ld  ", (int)(lon / 100000), lon % 100000);
-#if LCD_LINES > 2
-        lcd.setCursor(0, 3);
-#else
-        lcd.setCursor(0, 1);
-#endif
-        lcd.print(buf);
 
         unsigned int speed = (unsigned int)(gps.speed() * 1852 / 100 / 1000);
-        ShowSensorData(PID_SPEED, speed);
-        len = sprintf(buf, "%u,F03,%ld\n", elapsed, speed);
-        sdfile.write((uint8_t*)buf, len);
 
-        len = sprintf(buf, "%u,F04,%ld\n", elapsed, gps.altitude());
-        sdfile.write((uint8_t*)buf, len);
+        // no need to log GPS data when vehicle has not been moving
+        // that's when previous speed is zero and current speed is also zero
+        if (!(speed == 0 && lastSpeed == 0) && gps.satellites() >= 3) {
+            // lastSpeed will be updated
+            ShowSensorData(PID_SPEED, speed);
+            len = sprintf(buf, "%u,F1,%u\n", elapsed, speed);
+            sdfile.write((uint8_t*)buf, len);
+
+            long lat, lon;
+            gps.get_position(&lat, &lon, 0);
+            len = sprintf(buf, "%u,F2,%ld %ld\n", elapsed, lat, lon);
+            sdfile.write((uint8_t*)buf, len);
+
+            // display LAT/LON if screen is big enough
+            if (((unsigned int)dataTime / 1000) & 1)
+                sprintf(buf, "%d.%ld  ", (int)(lat / 100000), lat % 100000);
+            else
+                sprintf(buf, "%d.%ld  ", (int)(lon / 100000), lon % 100000);
+#if LCD_LINES > 2
+            lcd.setCursor(0, 3);
+#else
+            lcd.setCursor(0, 1);
+#endif
+            lcd.print(buf);
+
+            len = sprintf(buf, "%u,F3,%ld\n", elapsed, gps.altitude());
+            sdfile.write((uint8_t*)buf, len);
+        }
         lastDataTime = dataTime;
+        lastGPSDataTime = dataTime;
     }
     void ProcessAccelerometer()
     {
@@ -464,12 +490,44 @@ private:
             DataIdleLoop();
         }
     }
+    void ShowPidsInfo()
+    {
+        char buffer[16];
+        lcd.clear();
+        sprintf(buffer, "RPM:%c", IsValidPID(PID_RPM) ? 'Y' : 'N');
+        lcd.print(buffer);
+        lcd.setCursor(7, 0);
+        sprintf(buffer, "SPD:%c", IsValidPID(PID_SPEED) ? 'Y' : 'N');
+        lcd.print(buffer);
+
+        lcd.setCursor(0, 1);
+        sprintf(buffer, "THR:%c", IsValidPID(PID_THROTTLE) ? 'Y' : 'N');
+        lcd.print(buffer);
+        lcd.setCursor(7, 1);
+        sprintf(buffer, "LOD:%c", IsValidPID(PID_ENGINE_LOAD) ? 'Y' : 'N');
+        lcd.print(buffer);
+
+        lcd.setCursor(0, 2);
+        sprintf(buffer, "MAF:%c", IsValidPID(PID_MAF_FLOW) ? 'Y' : 'N');
+        lcd.print(buffer);
+        lcd.setCursor(7, 2);
+        sprintf(buffer, "MAP:%c", IsValidPID(PID_INTAKE_MAP) ? 'Y' : 'N');
+        lcd.print(buffer);
+
+        lcd.setCursor(0, 3);
+        sprintf(buffer, "FLV:%c", IsValidPID(PID_FUEL_LEVEL) ? 'Y' : 'N');
+        lcd.print(buffer);
+        lcd.setCursor(7, 3);
+        sprintf(buffer, "FPR:%c", IsValidPID(PID_FUEL_PRESSURE) ? 'Y' : 'N');
+        lcd.print(buffer);
+        delay(3000);
+    }
     void Reconnect()
     {
         sdfile.close();
         lcd.clear();
         lcd.print("Reconnecting...");
-        state &= ~(STATE_OBD_READY | STATE_ACC_READY);
+        state &= ~(STATE_OBD_READY | STATE_ACC_READY | STATE_DATE_SAVED);
         //digitalWrite(SD_CS_PIN, LOW);
         for (int i = 0; !Init(); i++) {
             if (i == 10) lcd.clear();
@@ -601,15 +659,21 @@ void setup()
     Wire.begin();
 #endif
 
-    // start serial communication at the adapter defined baudrate
-#ifndef FAKE_OBD_DATA
-    OBDUART.begin(OBD_SERIAL_BAUDRATE);
+#ifdef CONSOLE
+    CONSOLE.begin(115200);
 #endif
+    // start serial communication at the adapter defined baudrate
+    OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef GPSUART
+#ifdef GPS_OPEN_BAUDRATE
+    GPSUART.begin(GPS_OPEN_BAUDRATE);
+    GPSUART.println(PMTK_SET_BAUDRATE);
+    GPSUART.end();
+#endif
     GPSUART.begin(GPS_BAUDRATE);
     // switching to 10Hz mode, effective only for MTK3329
+    //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
     GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
-    GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
 #endif
 
     delay(500);
