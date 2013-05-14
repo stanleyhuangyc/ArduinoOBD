@@ -52,7 +52,7 @@ public:
 	void Query(byte pid);
 	char* GetResponse(byte& pid, char* buffer);
 	bool GetResponseParsed(byte& pid, int& result);
-	byte dataMode;
+	void SetDataMode(byte mode) { dataMode = mode; }
 	byte errors;
 	//char recvBuf[OBD_RECV_BUF_SIZE];
 protected:
@@ -80,4 +80,5 @@ protected:
 	virtual void InitIdleLoop() {}
 	virtual void DataIdleLoop() {}
 	byte pidmap[4 * 4];
+	byte dataMode;
 };
