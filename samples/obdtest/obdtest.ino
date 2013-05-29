@@ -39,9 +39,39 @@ uint16_t pid = 0x0111;
 bool hasMPU6050 = false;
 
 //create object to control an LCD.
-LCD_OLED lcd;
-//LCD_PCD8544 lcd; /* for LCD4884 shield or Nokia 5100 screen module */
+//LCD_OLED lcd;
+LCD_PCD8544 lcd;
 //LCD_1602 lcd;
+//LCD_ILI9325D lcd;
+
+#ifdef GPSUART
+void ShowGPSData()
+{
+    // parsed GPS data is ready
+    char buf[32];
+    unsigned long fix_age;
+
+    if (lcd.getLines() > 2) {
+        unsigned long date, time;
+        gps.get_datetime(&date, &time, &fix_age);
+        sprintf(buf, "TIME: %08ld", time);
+        lcd.setCursor(0, 2);
+        lcd.print(buf);
+    }
+
+    if (lcd.getLines() > 3) {
+        long lat, lon;
+        gps.get_position(&lat, &lon, &fix_age);
+        // display LAT/LON if screen is big enough
+        lcd.setCursor(0, 3);
+        if (((unsigned int)millis() / 1000) & 1)
+            sprintf(buf, "LAT: %d.%5ld  ", (int)(lat / 100000), lat % 100000);
+        else
+            sprintf(buf, "LON: %d.%5ld  ", (int)(lon / 100000), lon % 100000);
+        lcd.print(buf);
+    }
+}
+#endif
 
 class COBDTester : public COBD
 {
@@ -57,13 +87,13 @@ public:
             lcd.clear();
             lcd.print(initcmd[i]);
             lcd.setCursor(0, 1);
-            WriteData(initcmd[i]);
+            write(initcmd[i]);
             n = 0;
             prompted = 0;
             currentMillis = millis();
             for (;;) {
-                if (DataAvailable()) {
-                    char c = ReadData();
+                if (available()) {
+                    char c = read();
                     if (c == '>') {
                         buffer[n] = 0;
                         prompted++;
@@ -101,8 +131,9 @@ public:
             lcd.clear();
             sprintf(buffer, "PIDs [%02x-%02x]", i * 0x20 + 1, i * 0x20 + 0x20);
             lcd.print(buffer);
-            Query(i * 0x20);
-            data = GetResponse(i * 0x20, buffer);
+            byte pid = i * 0x20;
+            Query(pid);
+            data = GetResponse(pid, buffer);
             if (!data) break;
             lcd.setCursor(0, 1);
             lcd.print(data);
@@ -154,40 +185,61 @@ public:
     }
     void Recover()
     {
-        WriteData('\r');
+        write('\r');
+    }
+    void Loop()
+    {
+        int value;
+        char buffer[OBD_RECV_BUF_SIZE];
+        bool gpsReady = false;
+
+        // issue a query for specified OBD-II pid
+        SendQuery();
+
+        do {
+#ifdef GPSUART
+            // while waiting for response, test GPS
+            unsigned long start = millis();
+            while (GPSUART.available() && millis() - start < 100) {
+                if (gps.encode(GPSUART.read())) {
+                    gpsReady = true;
+                }
+            }
+#endif
+        } while (!available());
+
+#ifdef GPSUART
+        if (gpsReady)
+            ShowGPSData();
+#endif
+
+        // check OBD response
+        buffer[0] = 0;
+        byte curpid = (byte)pid;
+        char* data = GetResponse(curpid, buffer);
+        lcd.setCursor(6, 0);
+        if (!data) {
+            lcd.print("Data Error");
+            // try recover next time
+            Recover();
+        } else {
+            if (!hasMPU6050) {
+                char *p = buffer;
+                while (*p && *p < ' ') p++;
+                for (char *q = p; *q; q++) {
+                    if (*q < ' ') *q = ' ';
+                }
+                lcd.setCursor(0, 1);
+                lcd.print(p);
+            }
+            sprintf(buffer, "=%d", GetConvertedValue(curpid, data));
+            lcd.setCursor(6, 0);
+            lcd.print(buffer);
+        }
     }
 };
 
 COBDTester obd;
-
-#ifdef GPSUART
-void ShowGPSData()
-{
-    // parsed GPS data is ready
-    char buf[32];
-    unsigned long fix_age;
-
-    if (lcd.getLines() > 2) {
-        unsigned long date, time;
-        gps.get_datetime(&date, &time, &fix_age);
-        sprintf(buf, "TIME: %08ld", time);
-        lcd.setCursor(0, 2);
-        lcd.print(buf);
-    }
-
-    if (lcd.getLines() > 3) {
-        long lat, lon;
-        gps.get_position(&lat, &lon, &fix_age);
-        // display LAT/LON if screen is big enough
-        lcd.setCursor(0, 3);
-        if (((unsigned int)millis() / 1000) & 1)
-            sprintf(buf, "LAT: %d.%5ld  ", (int)(lat / 100000), lat % 100000);
-        else
-            sprintf(buf, "LON: %d.%5ld  ", (int)(lon / 100000), lon % 100000);
-        lcd.print(buf);
-    }
-}
-#endif
 
 // Convert ADC value to key number
 char get_key(unsigned int input)
@@ -327,62 +379,12 @@ void setup()
 
 void loop()
 {
-    int value;
-    char buffer[OBD_RECV_BUF_SIZE];
-    bool gpsReady = false;
-
-    // issue a query for specified OBD-II pid
-    obd.SendQuery();
-
-    do {
-#ifdef GPSUART
-        // while waiting for response, test GPS
-        unsigned long start = millis();
-        while (GPSUART.available() && millis() - start < 100) {
-            if (gps.encode(GPSUART.read())) {
-                gpsReady = true;
-            }
-        }
-#endif
-    } while (!obd.DataAvailable());
-
-#ifdef GPSUART
-    if (gpsReady)
-        ShowGPSData();
-#endif
-
-    // check OBD response
-    buffer[0] = 0;
-    char* data = obd.GetResponse((byte)pid, buffer);
-    lcd.setCursor(6, 0);
-    if (!data) {
-        lcd.print("Data Error");
-        // try recover next time
-        obd.Recover();
-    } else if (!obd.GetParsedData((byte)pid, data, value)) {
-        lcd.print("Parse Error");
-        lcd.setCursor(0, 1);
-        lcd.print(buffer);
-    } else {
-        if (!hasMPU6050) {
-            char *p = buffer;
-            while (*p && *p < ' ') p++;
-            for (char *q = p; *q; q++) {
-                if (*q < ' ') *q = ' ';
-            }
-            lcd.setCursor(0, 1);
-            lcd.print(p);
-        }
-        sprintf(buffer, "=%d", value);
-        lcd.setCursor(6, 0);
-        lcd.print(buffer);
-    }
+    obd.Loop();
 
     // test MPU6050
     if (hasMPU6050) {
         testMPU6050();
     }
-
 #if 0
 	adc_key_in = analogRead(0);    // read the value from the sensor
 	key = get_key(adc_key_in);		        // convert into key press
