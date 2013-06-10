@@ -89,7 +89,7 @@ void LCD4Bit_mod::commandWrite(byte value)
 
 
 //print the given character at the current cursor position. overwrites, doesn't insert.
-void LCD4Bit_mod::write(byte c)
+size_t LCD4Bit_mod::write(uint8_t c)
 {
   //set the RS and RW pins to show we're writing data
   digitalWrite(RS, HIGH);
@@ -97,18 +97,8 @@ void LCD4Bit_mod::write(byte c)
 
   //let pushByte worry about the intricacies of Enable, nibble order.
   pushByte(c);
-}
 
-
-//print the given string to the LCD at the current cursor position.  overwrites, doesn't insert.
-//While I don't understand why this was named printIn (PRINT IN?) in the original LiquidCrystal library, I've preserved it here to maintain the interchangeability of the two libraries.
-void LCD4Bit_mod::print(const char* msg)
-{
-  byte i;  //fancy int.  avoids compiler warning when comparing i with strlen()'s uint8_t
-  byte l = strlen(msg);
-  for (i=0; i < l; i++){
-    if (msg[i] >= 20) write(msg[i]);
-  }
+  return 1;
 }
 
 

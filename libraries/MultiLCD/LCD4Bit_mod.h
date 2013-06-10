@@ -3,7 +3,7 @@
 
 #include <inttypes.h>
 
-class LCD4Bit_mod {
+class LCD4Bit_mod : public Print {
 public:
     LCD4Bit_mod(byte num_lines = 2):USING_RW(false),RS(8),RW(11),Enable(9)
     {
@@ -15,8 +15,7 @@ public:
     }
     void commandWrite(byte value);
     void begin();
-    void write(byte value);
-    void print(const char* string);
+    size_t write(uint8_t c);
     void clear();
     //non-core---------------
     void setCursor(byte x, byte line);

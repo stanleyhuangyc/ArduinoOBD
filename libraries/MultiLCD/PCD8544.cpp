@@ -28,10 +28,6 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 
-
-#define PCD8544_CMD  LOW
-#define PCD8544_DATA HIGH
-
 extern const PROGMEM unsigned char font5x8[][5];
 
 /*
@@ -50,11 +46,8 @@ PCD8544::PCD8544(unsigned char sclk, unsigned char sdin,
 {}
 
 
-void PCD8544::begin(unsigned char width, unsigned char height, unsigned char model)
+void PCD8544::begin(unsigned char model)
 {
-    this->width = width;
-    this->height = height;
-
     this->column = 0;
     this->line = 0;
 
@@ -114,7 +107,7 @@ void PCD8544::clear()
 {
     this->setCursor(0, 0);
 
-    for (unsigned short i = 0; i < this->width * (this->height/8); i++) {
+    for (unsigned short i = 0; i < PCD8544_WIDTH * (PCD8544_HEIGHT/8); i++) {
         this->send(PCD8544_DATA, 0x00);
     }
 
@@ -126,7 +119,7 @@ void PCD8544::clearLine()
 {
     this->setCursor(0, this->line);
 
-    for (unsigned char i = 0; i < this->width; i++) {
+    for (unsigned char i = 0; i < PCD8544_WIDTH; i++) {
         this->send(PCD8544_DATA, 0x00);
     }
 
@@ -166,11 +159,18 @@ void PCD8544::home()
 
 void PCD8544::setCursor(unsigned char column, unsigned char line)
 {
-    this->column = (column * 6 % this->width);
-    this->line = (line % (this->height/9 + 1));
+    if (column > PCD8544_WIDTH) {
+        column = 0;
+        line++;
+    }
+    if (line > PCD8544_HEIGHT / 8)
+        line = 0;
 
-    this->send(PCD8544_CMD, 0x80 | this->column);
-    this->send(PCD8544_CMD, 0x40 | this->line);
+    this->column = column;
+    this->line = line;
+
+    this->send(PCD8544_CMD, 0x80 | column);
+    this->send(PCD8544_CMD, 0x40 | line);
 }
 
 
@@ -227,10 +227,10 @@ size_t PCD8544::write(uint8_t chr)
     this->send(PCD8544_DATA, 0x00);
 
     // Update the cursor position...
-    this->column = (this->column + 6) % this->width;
+    this->column = (this->column + 6) % PCD8544_WIDTH;
 
     if (this->column == 0) {
-        this->line = (this->line + 1) % (this->height/9 + 1);
+        this->line = (this->line + 1) % (PCD8544_HEIGHT/9 + 1);
     }
 
 #if ARDUINO >= 100
@@ -238,28 +238,30 @@ size_t PCD8544::write(uint8_t chr)
 #endif
 }
 
+void PCD8544::draw8x8(const unsigned char *data)
+{
+    // Output one column at a time...
+    for (unsigned char i = 0; i < 8; i++) {
+        this->send(PCD8544_DATA, data[i]);
+    }
+    this->setCursor(column + 8, line);
+}
 
-void PCD8544::drawBitmap(const unsigned char *data, unsigned char columns, unsigned char lines)
+void PCD8544::draw16x16(const unsigned char *data)
 {
     unsigned char scolumn = this->column;
     unsigned char sline = this->line;
-
-    // The bitmap will be clipped at the right/bottom edge of the display...
-    unsigned char mx = (scolumn + columns > this->width) ? (this->width - scolumn) : columns;
-    unsigned char my = (sline + lines > this->height/8) ? (this->height/8 - sline) : lines;
-
-    for (unsigned char y = 0; y < my; y++) {
-        this->setCursor(scolumn, sline + y);
-
-        for (unsigned char x = 0; x < mx; x++) {
-            this->send(PCD8544_DATA, data[y * columns + x]);
-        }
+    // Output one column at a time...
+    for (unsigned char i = 0; i < 16; i++) {
+        this->send(PCD8544_DATA, data[i]);
     }
-
-    // Leave the cursor in a consistent position...
-    this->setCursor(scolumn + columns, sline);
+    this->setCursor(scolumn, sline + 1);
+    for (unsigned char i = 0; i < 16; i++) {
+        this->send(PCD8544_DATA, data[i + 16]);
+    }
+    // Update the cursor position...
+    this->setCursor(scolumn + 16, sline);
 }
-
 
 void PCD8544::drawColumn(unsigned char lines, unsigned char value)
 {

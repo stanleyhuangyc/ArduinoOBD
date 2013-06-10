@@ -8,10 +8,8 @@
   Version:V1.1
 */
 
+#include <Arduino.h>
 extern "C" {
-  #include <stdlib.h>
-  #include <string.h>
-  #include <inttypes.h>
   #include "../Wire/utility/twi.h"
 }
 
@@ -522,7 +520,7 @@ int ZtLib::ScI2cMxSetLocation(uint8_t addr, uint8_t page,uint8_t column)
  *          3 .. data send, NACK received
  *          4 .. other twi error (lost bus arbitration, bus error, ..)
  */
-void ZtLib::ScI2cMxDisplayDot16x16(uint8_t addr, uint8_t page, uint8_t column, const char *str)
+void ZtLib::ScI2cMxDisplayDot16x16(uint8_t addr, uint8_t page, uint8_t column, unsigned char *str)
 {
     uint8_t buff[17];
     buff[0] = REG_DAT;
@@ -539,6 +537,14 @@ void ZtLib::ScI2cMxDisplayDot16x16(uint8_t addr, uint8_t page, uint8_t column, c
     }
     twi_writeTo(addr, buff, 17, 1, 1);
 }
+
+void ZtLib::ScI2cMxDisplayDot(uint8_t addr, const PROGMEM uint8_t* buffer, uint8_t len)
+{
+    uint8_t buff[9] = {REG_DAT};
+    memcpy_P(buff + 1, buffer, len);
+    twi_writeTo(addr, buff, 9, 1, 1);
+}
+
 /*
  * Function ScI2cMxDisplayArea
  * Desc     Set ZT.SC-I2CMx Display Area

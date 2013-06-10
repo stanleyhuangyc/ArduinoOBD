@@ -33,11 +33,15 @@
 #include <Arduino.h>
 #endif
 
-
 // Chip variants supported...
 #define CHIP_PCD8544 0
 #define CHIP_ST7576  1
 
+#define PCD8544_WIDTH 84
+#define PCD8544_HEIGHT 48
+
+#define PCD8544_CMD  LOW
+#define PCD8544_DATA HIGH
 
 class PCD8544: public Print {
     public:
@@ -49,7 +53,7 @@ class PCD8544: public Print {
                 unsigned char sce   = 5);  /* enable      (display pin 5) */
 
         // Display initialization (dimensions in pixels)...
-        void begin(unsigned char width=84, unsigned char height=48, unsigned char model=CHIP_PCD8544);
+        void begin(unsigned char model=CHIP_PCD8544);
         void stop();
 
         // Erase everything on the display...
@@ -82,21 +86,18 @@ class PCD8544: public Print {
         virtual size_t write(uint8_t chr);
 #endif
 
-        // Draw a bitmap at the current cursor position...
-        void drawBitmap(const unsigned char *data, unsigned char columns, unsigned char lines);
-
         // Draw a chart element at the current cursor position...
         void drawColumn(unsigned char lines, unsigned char value);
 
-        void changeLine()
-        {
-            column = 0;
-            line ++;
-        }
+        void draw8x8(const unsigned char *data);
+        void draw16x16(const unsigned char *data);
+
     protected:
         // Current cursor position...
         unsigned char column;
         unsigned char line;
+        // Send a command or data to the display...
+        void send(unsigned char type, unsigned char data);
 
     private:
         unsigned char pin_sclk;
@@ -105,16 +106,8 @@ class PCD8544: public Print {
         unsigned char pin_reset;
         unsigned char pin_sce;
 
-        // The size of the display, in pixels...
-        unsigned char width;
-        unsigned char height;
-
-
         // User-defined glyphs (below the ASCII space character)...
         const unsigned char *custom[' '];
-
-        // Send a command or data to the display...
-        void send(unsigned char type, unsigned char data);
 };
 
 

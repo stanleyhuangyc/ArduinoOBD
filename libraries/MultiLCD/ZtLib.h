@@ -1,10 +1,10 @@
 /*
   ZtLib.cpp - ZT module Drive Library for Wiring & Arduino
   Copyright (c) 2012 Alvin Li(Kozig/www.kozig.com).  All right reserved.
-  This library is free software; 
+  This library is free software;
   This library is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   Version:V1.1
 */
 
@@ -26,8 +26,8 @@
 #define DOT_BIT4       (1<<3)
 
 #define DISP_0BIT      (0)
-#define DISP_1BIT      (1)   
-#define DISP_2BIT      (2) 
+#define DISP_1BIT      (1)
+#define DISP_2BIT      (2)
 #define DISP_3BIT      (3)
 #define DISP_4BIT      (4)
 #define DISP_AUTO      (5)
@@ -89,7 +89,7 @@
 class ZtLib
 {
   private:
-  
+
   public:
     void I2cInit(void);
 // Module ZT.SEG8B4A036A FUNCTION
@@ -102,7 +102,7 @@ class ZtLib
     int Seg8b4a036aSetBrightness(uint8_t, uint8_t, uint8_t);
     int Seg8b4a036aSetAddress(uint8_t);
     int Seg8b4a036aDisplayBuff(uint8_t,uint8_t *);
-// Module ZT.SC-I2CMx    
+// Module ZT.SC-I2CMx
     int ScI2cMxReadState(uint8_t);
     int ScI2cMxReadVersion(uint8_t, uint8_t *);
     int ScI2cMxSetAddress(uint8_t);
@@ -116,7 +116,8 @@ class ZtLib
     int ScI2cMxDeactivateScroll(uint8_t);
     int ScI2cMxReset(uint8_t);
     int ScI2cMxSetLocation(uint8_t, uint8_t, uint8_t);
-    void ScI2cMxDisplayDot16x16(uint8_t, uint8_t, uint8_t, const char *);
+    void ScI2cMxDisplayDot(uint8_t, const PROGMEM uint8_t* buffer, uint8_t len);
+    void ScI2cMxDisplayDot16x16(uint8_t, uint8_t, uint8_t, unsigned char *);
     void ScI2cMxDisplayArea(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, const char *);
 };
 
