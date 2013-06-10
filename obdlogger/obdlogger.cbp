@@ -447,7 +447,7 @@
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
-					<Add option="-O2" />
+					<Add option="-O3" />
 					<Add option="-x c++" />
 					<Add option="-mmcu=$(MCU)" />
 					<Add option="-DF_CPU=16000000L" />
@@ -582,20 +582,6 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
-		<Unit filename="LCD4Bit_mod.cpp" />
-		<Unit filename="LCD4Bit_mod.h" />
-		<Unit filename="MPU6050.cpp" />
-		<Unit filename="MPU6050.h" />
-		<Unit filename="MultiLCD.cpp" />
-		<Unit filename="MultiLCD.h" />
-		<Unit filename="OBD.cpp" />
-		<Unit filename="OBD.h" />
-		<Unit filename="PCD8544.cpp" />
-		<Unit filename="PCD8544.h" />
-		<Unit filename="TinyGPS.cpp" />
-		<Unit filename="TinyGPS.h" />
-		<Unit filename="ZtLib.cpp" />
-		<Unit filename="ZtLib.h" />
 		<Unit filename="obdlogger.ino">
 			<Option compile="1" />
 			<Option link="1" />
