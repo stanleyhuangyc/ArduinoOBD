@@ -39,7 +39,8 @@ uint16_t pid = 0x0111;
 bool hasMPU6050 = false;
 
 //create object to control an LCD.
-//LCD_OLED lcd;
+//LCD_SSD1306 lcd;
+//LCD_ZTOLED lcd;
 LCD_PCD8544 lcd;
 //LCD_1602 lcd;
 //LCD_ILI9325D lcd;
@@ -303,6 +304,25 @@ void testMPU6050()
   lcd.print(buf);
 }
 
+void ShowECUCap()
+{
+    char buffer[24];
+    byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_ABS_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
+    const char* namelist[] = {"RPM", "SPEED", "THROTTLE", "ENG.LOAD1", "ENG.LOAD2", "MAF", "MAP", "FUEL LV.", "FUEL PRE.", "COOLANT", "INTAKE","AMBIENT", "IGNITION", "BARO"};
+    byte i = 0;
+    lcd.clear();
+    lcd.setFont(FONT_SIZE_SMALL);
+    for (; i < sizeof(pidlist) / sizeof(pidlist[0]) / 2; i++) {
+        lcd.setCursor(0, i);
+        sprintf(buffer, "%s:%c", namelist[i], obd.IsValidPID(pidlist[i]) ? 'Y' : 'N');
+        lcd.print(buffer);
+    }
+    for (byte row = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, row++) {
+        lcd.setCursor(64, row);
+        sprintf(buffer, "%s:%c", namelist[i], obd.IsValidPID(pidlist[i]) ? 'Y' : 'N');
+        lcd.print(buffer);
+    }
+}
 
 void setup()
 {
@@ -344,34 +364,6 @@ void setup()
       delay(500);
     } while(!obd.Init());
 
-    char buffer[16];
-    lcd.clear();
-    sprintf(buffer, "RPM:%c", obd.IsValidPID(PID_RPM) ? 'Y' : 'N');
-    lcd.print(buffer);
-    lcd.setCursor(7, 0);
-    sprintf(buffer, "SPD:%c", obd.IsValidPID(PID_SPEED) ? 'Y' : 'N');
-    lcd.print(buffer);
-
-    lcd.setCursor(0, 1);
-    sprintf(buffer, "THR:%c", obd.IsValidPID(PID_THROTTLE) ? 'Y' : 'N');
-    lcd.print(buffer);
-    lcd.setCursor(7, 1);
-    sprintf(buffer, "LOD:%c", obd.IsValidPID(PID_ENGINE_LOAD) ? 'Y' : 'N');
-    lcd.print(buffer);
-
-    lcd.setCursor(0, 2);
-    sprintf(buffer, "MAF:%c", obd.IsValidPID(PID_MAF_FLOW) ? 'Y' : 'N');
-    lcd.print(buffer);
-    lcd.setCursor(7, 2);
-    sprintf(buffer, "MAP:%c", obd.IsValidPID(PID_INTAKE_MAP) ? 'Y' : 'N');
-    lcd.print(buffer);
-
-    lcd.setCursor(0, 3);
-    sprintf(buffer, "FUE:%c", obd.IsValidPID(PID_FUEL_LEVEL) ? 'Y' : 'N');
-    lcd.print(buffer);
-    lcd.setCursor(7, 3);
-    sprintf(buffer, "PRE:%c", obd.IsValidPID(PID_FUEL_PRESSURE) ? 'Y' : 'N');
-    lcd.print(buffer);
     delay(3000);
     lcd.clear();
     //query();
