@@ -7,6 +7,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 #include "OBD.h"
 #include "SD.h"
 #include "MultiLCD.h"
@@ -18,14 +19,14 @@
 * Choose SD pin here
 **************************************/
 //#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 7 // microduino
-#define SD_CS_PIN 10 // SD breakout
+#define SD_CS_PIN 7 // microduino
+//#define SD_CS_PIN 10 // SD breakout
 
 /**************************************
 * Config GPS here
 **************************************/
 #define USE_GPS
-#define GPS_BAUDRATE 38400 /* bps */
+#define GPS_BAUDRATE 4800 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
 /**************************************
@@ -42,6 +43,7 @@
 #define USE_MPU6050
 #define OBD_MIN_INTERVAL 50 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
+#define ENABLE_DATA_OUT
 
 // logger states
 #define STATE_SD_READY 0x1
@@ -80,6 +82,30 @@
 TinyGPS gps;
 
 #endif // GPSUART
+#endif
+
+#ifdef ENABLE_DATA_OUT
+///////////////////////////////////////////////////////////////////////////
+//LOG_DATA data type
+typedef struct {
+    uint32_t /*DWORD*/ time;
+    uint16_t /*WORD*/ pid;
+    uint8_t /*BYTE*/ flags;
+    uint8_t /*BYTE*/ checksum;
+    union {
+        int16_t i16[2];
+        int32_t i32;
+        float f;
+    } data;
+    /*
+    union {
+        int16_t i16[6];
+        int32_t i32[3];
+        float f[3];
+    } data;*/
+} LOG_DATA;
+///////////////////////////////////////////////////////////////////////////
+SoftwareSerial softSerial(9, 10);
 #endif
 
 // SD card
@@ -152,7 +178,7 @@ public:
 
         ShowStates();
 
-        ShowPidsInfo();
+        ShowECUCap();
         delay(3000);
 
         ReadSensor(PID_DISTANCE, startDistance);
@@ -333,14 +359,14 @@ private:
             lcd.setCursor(98, 5);
             lcd.print(buf);
 
-            sprintf(buf, "GX%3d", data.value.x_gyro >> 10);
-            lcd.setCursor(66, 3);
+            sprintf(buf, "GX%3d", data.value.x_gyro / 256);
+            lcd.setCursor(64, 3);
             lcd.print(buf);
-            sprintf(buf, "GY%3d", data.value.y_gyro >> 10);
-            lcd.setCursor(66, 4);
+            sprintf(buf, "GY%3d", data.value.y_gyro / 256);
+            lcd.setCursor(64, 4);
             lcd.print(buf);
-            sprintf(buf, "GZ%3d", data.value.z_gyro >> 10);
-            lcd.setCursor(66, 5);
+            sprintf(buf, "GZ%3d", data.value.z_gyro / 256);
+            lcd.setCursor(64, 5);
             lcd.print(buf);
 
 #else
@@ -377,6 +403,9 @@ private:
         sdfile.write((uint8_t*)buf, len);
 
         unsigned int speed = (unsigned int)(gps.speed() * 1852 / 100 / 1000);
+#ifdef ENABLE_DATA_OUT
+        SendData(dataTime, 0xF00D, (float)speed);
+#endif
 
         // no need to log GPS data when vehicle has not been moving
         // that's when previous speed is zero and current speed is also zero
@@ -388,19 +417,25 @@ private:
 
             long lat, lon;
             gps.get_position(&lat, &lon, 0);
+
             len = sprintf(buf, "%u,F2,%ld %ld\n", elapsed, lat, lon);
             sdfile.write((uint8_t*)buf, len);
 
             len = sprintf(buf, "%u,F3,%ld\n", elapsed, gps.altitude());
             sdfile.write((uint8_t*)buf, len);
 
+#ifdef ENABLE_DATA_OUT
+            delay(10);
+            SendData(dataTime, 0xF00C, (float)gps.altitude());
+#endif
+
             lcd.setFont(FONT_SIZE_SMALL);
 #if LCD_LINES > 2
             if (((unsigned int)dataTime / 3000) & 1) {
-                sprintf(buf, "LAT:%d.%ld  ", (int)(lat / 100000), lat % 100000);
+                sprintf(buf, "LAT:%d.%05ld  ", (int)(lat / 100000), lat % 100000);
                 lcd.setCursor(0, 6);
                 lcd.print(buf);
-                sprintf(buf, "LON:%d.%ld  ", (int)(lon / 100000), lon % 100000);
+                sprintf(buf, "LON:%d.%05ld  ", (int)(lon / 100000), lon % 100000);
                 lcd.setCursor(0, 7);
                 lcd.print(buf);
             } else {
@@ -420,6 +455,11 @@ private:
             lcd.print(buf);
 #endif
 
+#ifdef ENABLE_DATA_OUT
+            SendData(dataTime, 0xF00A, (float)lat / 100000);
+            delay(20);
+            SendData(dataTime, 0xF00B, (float)lon / 100000);
+#endif
         }
         lastDataTime = dataTime;
         lastGPSDataTime = dataTime;
@@ -484,6 +524,10 @@ private:
         // convert raw data to normal value
         value = GetConvertedValue(pid, data);
 
+#ifdef ENABLE_DATA_OUT
+        SendData(dataTime, 0x0100 | pid, (float)value);
+#endif // ENABLE_DATA_OUT
+
         lastPID = pid;
         lastData = value;
 
@@ -515,7 +559,18 @@ private:
         }
 #endif
     }
-    void ShowPidsInfo()
+    void SendData(uint32_t time, uint16_t pid, float value)
+    {
+        LOG_DATA ld = {time, pid, 0, 1};
+        ld.data.f = value;
+        uint8_t checksum = 0;
+        for (int i = 0; i < sizeof(ld); i++) {
+            checksum ^= *((char*)&ld + i);
+        }
+        ld.checksum = checksum;
+        softSerial.write((uint8_t*)&ld, sizeof(LOG_DATA));
+    }
+    void ShowECUCap()
     {
         char buffer[24];
         byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_ABS_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
@@ -525,12 +580,12 @@ private:
         lcd.setFont(FONT_SIZE_SMALL);
         for (; i < sizeof(pidlist) / sizeof(pidlist[0]) / 2; i++) {
             lcd.setCursor(0, i);
-            sprintf(buffer, "%s:%c", namelist[i], IsValidPID(PID_RPM) ? 'Y' : 'N');
+            sprintf(buffer, "%s:%c", namelist[i], IsValidPID(pidlist[i]) ? 'Y' : 'N');
             lcd.print(buffer);
         }
         for (byte row = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, row++) {
             lcd.setCursor(64, row);
-            sprintf(buffer, "%s:%c", namelist[i], IsValidPID(PID_RPM) ? 'Y' : 'N');
+            sprintf(buffer, "%s:%c", namelist[i], IsValidPID(pidlist[i]) ? 'Y' : 'N');
             lcd.print(buffer);
         }
     }
@@ -675,6 +730,10 @@ void setup()
     lcd.print("OBD/GPS Logger");
     lcd.setCursor(0, 1);
     lcd.print("Initializing...");
+
+#ifdef ENABLE_DATA_OUT
+    softSerial.begin(9600);
+#endif // ENABLE_DATA_OUT
 
     // start serial communication at the adapter defined baudrate
     OBDUART.begin(OBD_SERIAL_BAUDRATE);
