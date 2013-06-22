@@ -25,13 +25,12 @@
 * Config GPS here
 **************************************/
 #define USE_GPS
-#define GPS_BAUDRATE 115200 /* bps */
+#define GPS_BAUDRATE 38400 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
 /**************************************
 * Other options
 **************************************/
-//#define USE_MPU6050
 //#define OBD_MIN_INTERVAL 200 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 //#define CONSOLE Serial
@@ -82,11 +81,11 @@ File sdfile;
 
 LCD_ILI9325D lcd; /* for 2.8" TFT shield */
 #define LCD_LINES 24
-#define CHAR_WIDTH 6
+#define CHAR_WIDTH 9
 
 static uint32_t fileSize = 0;
 static uint32_t lastFileSize = 0;
-static uint32_t lastDataTime;
+static uint32_t lastDataTime = 0;
 static uint32_t lastGPSDataTime = 0;
 static uint16_t lastSpeed = -1;
 static int startDistance = 0;
@@ -103,22 +102,19 @@ public:
     CLogger():state(0) {}
     void Setup()
     {
-        lcd.setLineHeight(10);
         ShowStates();
 
-#ifdef USE_MPU6050
         if (MPU6050_init() == 0) state |= STATE_ACC_READY;
         ShowStates();
-#endif
 
 #ifdef GPSUART
         unsigned long t = millis();
         do {
-            if (GPSUART.available()) {
+            if (GPSUART.available() && GPSUART.read() == '\r') {
                 state |= STATE_GPS_CONNECTED;
                 break;
             }
-        } while (millis() - t <= 1000);
+        } while (millis() - t <= 1500);
 #endif
 
         do {
@@ -128,7 +124,12 @@ public:
         state |= STATE_OBD_READY;
 
         ShowStates();
-        ShowPidsInfo();
+
+        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setCursor(0, 14);
+        lcd.print("VIN: XXXXXXXX");
+
+        ShowECUCap();
         delay(3000);
 
         ReadSensor(PID_DISTANCE, startDistance);
@@ -199,11 +200,11 @@ public:
             char buf[10];
             unsigned int sec = (t - startTime) / 1000;
             sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
-            lcd.setCursor(260, 3);
+            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setCursor(265, 2);
             lcd.print(buf);
-
             sprintf(buf, "%ums ", (uint16_t)(t - lastTime) / dataCount);
-            lcd.setCursor(260, 9);
+            lcd.setCursor(265, 11);
             lcd.print(buf);
 
             dataCount = 0;
@@ -219,7 +220,7 @@ public:
     {
         state &= ~STATE_SD_READY;
         pinMode(SS, OUTPUT);
-        lcd.setCursor(0, 3);
+        lcd.setCursor(0, 4);
         if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
             const char* type;
             char buf[20];
@@ -257,8 +258,8 @@ public:
             return false;
         }
 
+        lcd.setCursor(0, 6);
         if (!SD.begin(SD_CS_PIN)) {
-            lcd.setCursor(8 * CHAR_WIDTH, 0);
             lcd.print("Bad SD");
             return false;
         }
@@ -272,12 +273,11 @@ public:
             }
         }
         if (!fileIndex) {
-            lcd.setCursor(8 * CHAR_WIDTH, 8);
             lcd.print("Bad File");
             return false;
         }
 
-        lcd.setCursor(10 * CHAR_WIDTH, 3);
+        lcd.print("File:");
         lcd.print(filename);
         state |= STATE_SD_READY;
         return true;
@@ -289,7 +289,7 @@ private:
         char buf[10];
         unsigned int t = (millis() - startTime) / 1000;
         sprintf(buf, "%02u:%02u", t / 60, t % 60);
-        lcd.setCursor(0, 23);
+        lcd.setCursor(0, 22);
         lcd.print(buf);
 #ifdef GPSUART
         // detect GPS signal
@@ -315,28 +315,11 @@ private:
             }
         }
 #endif
-#ifdef USE_MPU6050
-        if (state & STATE_ACC_READY) {
-            accel_t_gyro_union data;
-            MPU6050_readout(&data);
-            char buf[8];
-            sprintf(buf, "X:%4d", data.value.x_accel / 190);
-            lcd.setCursor(10 * CHAR_WIDTH, 1);
-            lcd.print(buf);
-            sprintf(buf, "Y:%4d", data.value.y_accel / 190);
-            lcd.setCursor(10 * CHAR_WIDTH, 2);
-            lcd.print(buf);
-            sprintf(buf, "Z:%4d", data.value.z_accel / 190);
-            lcd.setCursor(10 * CHAR_WIDTH, 3);
-            lcd.print(buf);
-            delay(100);
-        }
-#endif
     }
 #ifdef GPSUART
     void DataIdleLoop()
     {
-        if (GPSUART.available())
+        if (lastDataTime && GPSUART.available())
             ProcessGPS();
     }
     void ProcessGPS()
@@ -366,20 +349,27 @@ private:
             len = sprintf(buf, "%u,F1,%u\n", elapsed, speed);
             sdfile.write((uint8_t*)buf, len);
 
-            long lat, lon;
+            long lat, lon, alt;
             gps.get_position(&lat, &lon, 0);
             len = sprintf(buf, "%u,F2,%ld %ld\n", elapsed, lat, lon);
             sdfile.write((uint8_t*)buf, len);
 
-            if (((unsigned int)dataTime / 1000) & 1)
-                sprintf(buf, "LAT:%d.%ld  ", (int)(lat / 100000), lat % 100000);
-            else
-                sprintf(buf, "LON:%d.%ld  ", (int)(lon / 100000), lon % 100000);
-            lcd.setCursor(0, 7);
-            lcd.print(buf);
-
-            len = sprintf(buf, "%u,F3,%ld\n", elapsed, gps.altitude());
+            alt = gps.altitude();
+            len = sprintf(buf, "%u,F3,%ld\n", elapsed, alt);
             sdfile.write((uint8_t*)buf, len);
+
+            lcd.setFont(FONT_SIZE_MEDIUM);
+            sprintf(buf, "%d.%ld", (int)(lat / 100000), lat % 100000);
+            lcd.setCursor(60, 17);
+            lcd.print(buf);
+            sprintf(buf, "%d.%ld", (int)(lon / 100000), lon % 100000);
+            lcd.setCursor(60, 20);
+            lcd.print(buf);
+            sprintf(buf, "%d.%02um ", (int)(alt / 100), (unsigned int)alt % 100);
+            lcd.setCursor(60, 23);
+            lcd.print(buf);
+            lcd.setCursor(51, 26);
+            lcd.printInt(gps.satellites(), 2);
         }
         lastDataTime = dataTime;
         lastGPSDataTime = dataTime;
@@ -387,16 +377,33 @@ private:
 #endif
     void ProcessAccelerometer()
     {
-#ifdef USE_MPU6050
+        char buf[20];
         accel_t_gyro_union data;
         MPU6050_readout(&data);
         uint32_t dataTime = millis();
 
-        ShowGForce(data.value.y_accel);
+        sprintf(buf, "%3d", data.value.x_accel / 160);
+        lcd.setCursor(197, 21);
+        lcd.print(buf);
+        sprintf(buf, "%3d", data.value.y_accel / 160);
+        lcd.setCursor(239, 21);
+        lcd.print(buf);
+        sprintf(buf, "%3d", data.value.z_accel / 160);
+        lcd.setCursor(281, 21);
+        lcd.print(buf);
+
+        sprintf(buf, "%3d", data.value.x_gyro / 256);
+        lcd.setCursor(197, 26);
+        lcd.print(buf);
+        sprintf(buf, "%3d", data.value.y_gyro / 256);
+        lcd.setCursor(239, 26);
+        lcd.print(buf);
+        sprintf(buf, "%3d", data.value.z_gyro / 256);
+        lcd.setCursor(281, 26);
+        lcd.print(buf);
 
         int len;
         uint16_t elapsed = (uint16_t)(dataTime - lastDataTime);
-        char buf[20];
         // log x/y/z of accelerometer
         len = sprintf(buf, "%u,F10,%d %d %d\n", data.value.x_accel, data.value.y_accel, data.value.z_accel);
         sdfile.write((uint8_t*)buf, len);
@@ -404,7 +411,6 @@ private:
         len = sprintf(buf, "%u,F11,%d %d %d\n", data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
         sdfile.write((uint8_t*)buf, len);
         lastDataTime = dataTime;
-#endif
     }
     void LogData(byte pid)
     {
@@ -459,8 +465,9 @@ private:
             sdfile.flush();
             // display logged data size
             char buf[7];
-            sprintf(buf, "%uKB", (int)(fileSize >> 10));
-            lcd.setCursor(260, 7);
+            sprintf(buf, "%uK", (int)(fileSize >> 10));
+            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setCursor(265, 8);
             lcd.print(buf);
             lastFileSize = fileSize;
         }
@@ -472,14 +479,17 @@ private:
         }
 #endif
     }
-    void ShowPidsInfo()
+    void ShowECUCap()
     {
         char buffer[24];
         byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
         const char* namelist[] = {"ENGINE RPM", "SPEED", "THROTTLE", "ENGINE LOAD", "MAF", "MAP", "FUEL LEVEL", "FUEL PRESSURE", "COOLANT TEMP", "INTAKE TEMP","AMBIENT TEMP", "IGNITION TIMING", "BAROMETER"};
 
+        lcd.setCursor(194, 6);
+        lcd.print("PID:");
+        lcd.setFont(FONT_SIZE_SMALL);
         for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
-            lcd.setCursor(30 * CHAR_WIDTH, i + 4);
+            lcd.setCursor(194, i + 8);
             sprintf(buffer, "%s: %s", namelist[i], IsValidPID(PID_RPM) ? "Yes" : "No");
             lcd.print(buffer);
         }
@@ -502,7 +512,8 @@ private:
     // screen layout related stuff
     void ShowStates()
     {
-        lcd.setCursor(0, 4);
+        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setCursor(0, 8);
         lcd.print("GPS:");
         if (state & STATE_GPS_READY)
             lcd.print("Yes");
@@ -511,10 +522,10 @@ private:
         else
             lcd.print("No");
 
-        lcd.setCursor(0, 5);
+        lcd.setCursor(0, 10);
         lcd.print("ACC:");
         lcd.print((state & STATE_ACC_READY) ? "Yes" : "No");
-        lcd.setCursor(0, 6);
+        lcd.setCursor(0, 12);
         lcd.print("OBD:");
         lcd.print((state & STATE_OBD_READY) ? "Yes" : "No");
     }
@@ -523,59 +534,36 @@ private:
         char buf[8];
         switch (pid) {
         case PID_RPM:
-            lcd.setCursor(34, 9);
-            lcd.printInt((unsigned int)value % 10000, FONT_SIZE_XLARGE, 4);
+            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setCursor(34, 7);
+            lcd.printInt((unsigned int)value % 10000, 4);
             break;
         case PID_SPEED:
             if (lastSpeed != value) {
-                lcd.setCursor(50, 3);
-                lcd.printInt((unsigned int)value % 1000, FONT_SIZE_XLARGE, 3);
+                lcd.setFont(FONT_SIZE_XLARGE);
+                lcd.setCursor(50, 2);
+                lcd.printInt((unsigned int)value % 1000, 3);
                 lastSpeed = value;
             }
             break;
-/*
         case PID_THROTTLE:
-            lcd.setCursor(66, 8);
-            lcd.printInt(value % 100, FONT_SIZE_XLARGE, 2);
+            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setCursor(39, 12);
+            lcd.printInt(value % 100, 3);
             break;
         case PID_INTAKE_TEMP:
-            lcd.setCursor(64, 3);
-            lcd.printInt(value, FONT_SIZE_LARGE, 3);
+            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setCursor(102, 12);
+            lcd.printInt(value % 1000, 3);
             break;
-*/
         case PID_DISTANCE:
             if ((unsigned int)value >= startDistance) {
+                lcd.setFont(FONT_SIZE_MEDIUM);
                 sprintf(buf, "%ukm", ((unsigned int)value - startDistance) % 1000);
-                lcd.setCursor(260, 5);
+                lcd.setCursor(265, 5);
                 lcd.print(buf);
             }
             break;
-        }
-    }
-    virtual void ShowGForce(int g)
-    {
-        byte n;
-        /* 0~1.5g -> 0~8 */
-        g /= 85 * 25;
-        lcd.setCursor(0, 1);
-        if (g == 0) {
-            lcd.clearLine(1);
-        } else if (g < 0 && g >= -8) {
-            for (n = 0; n < 8 + g; n++) {
-                lcd.write(' ');
-            }
-            for (; n < 8; n++) {
-                lcd.write('<');
-            }
-            lcd.print("        ");
-        } else if (g > 0 && g < 8) {
-            lcd.print("        ");
-            for (n = 0; n < g; n++) {
-                lcd.write('>');
-            }
-            for (; n < 8; n++) {
-                lcd.write(' ');
-            }
         }
     }
     virtual void InitScreen()
@@ -592,23 +580,45 @@ private:
         lcd.draw2x(frame0[0], 0, 124, 78, 58);
         lcd.draw2x(frame0[0], 164, 124, 78, 58);
 
-        lcd.setCursor(63, 2);
-        lcd.print("SPEED");
+        lcd.setFont(FONT_SIZE_SMALL);
         lcd.setCursor(110, 5);
         lcd.print("km/h");
-        lcd.setCursor(60, 8);
-        lcd.print("ENGINE");
-        lcd.setCursor(110, 11);
+        lcd.setCursor(110, 9);
         lcd.print("rpm");
+        lcd.setCursor(15, 12);
+        lcd.print("THR:    %");
+        lcd.setCursor(78, 12);
+        lcd.print("AIR:    C");
 
-        lcd.setCursor(190, 3);
+        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setCursor(175, 2);
         lcd.print("Elapsed:");
-        lcd.setCursor(190, 5);
+        lcd.setCursor(175, 5);
         lcd.print("Distance:");
-        lcd.setCursor(190, 7);
-        lcd.print("Data Size:");
-        lcd.setCursor(190, 9);
+        lcd.setCursor(175, 8);
+        lcd.print("Log Data:");
+        lcd.setCursor(175, 11);
         lcd.print("OBD Time:");
+
+        lcd.setCursor(15, 17);
+        lcd.print("LAT:");
+        lcd.setCursor(15, 20);
+        lcd.print("LON:");
+        lcd.setCursor(15, 23);
+        lcd.print("ALT:");
+        lcd.setCursor(15, 26);
+        lcd.print("SAT:");
+
+        lcd.setCursor(185, 18);
+        lcd.print("Accelerometer");
+        lcd.setCursor(200, 23);
+        lcd.print("Gyroscope");
+        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setCursor(185, 21);
+        lcd.print("X:     Y:     Z:");
+        lcd.setCursor(185, 26);
+        lcd.print("X:     Y:     Z:");
+
         /*
         lcd.setCursor(32, 4);
         lcd.print("%");
@@ -626,9 +636,11 @@ void setup()
 {
     lcd.begin();
     //lcd.clear();
+    lcd.setLineHeight(10);
+    lcd.setFont(FONT_SIZE_MEDIUM);
     lcd.backlight(true);
-    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE DATA LOGGER");
-    lcd.setCursor(0, 1);
+    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
+    lcd.setCursor(0, 2);
     lcd.print("Initializing...");
 
 #ifdef CONSOLE
