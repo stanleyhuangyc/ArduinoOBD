@@ -12,10 +12,11 @@
 void LCD_Common::printInt(unsigned int value, char padding)
 {
     unsigned int den = 10000;
-    for (byte i = 5; i > 0; i--, den /= 10) {
+    for (byte i = 5; i > 0; i--) {
         byte v = (byte)(value / den);
         value -= v * den;
-        if (v == 0 && padding) {
+        den /= 10;
+        if (v == 0 && padding && den) {
             if (padding >= i) {
                 writeDigit(-1);
             }
@@ -29,10 +30,11 @@ void LCD_Common::printInt(unsigned int value, char padding)
 void LCD_Common::printLong(unsigned long value, char padding)
 {
     unsigned long den = 1000000000;
-    for (byte i = 10; i > 0; i--, den /= 10) {
+    for (byte i = 10; i > 0; i--) {
         byte v = (byte)(value / den);
         value -= v * den;
-        if (v == 0 && padding) {
+        den /= 10;
+        if (v == 0 && padding && den) {
             if (padding >= i) {
                 writeDigit(-1);
             }
@@ -57,54 +59,49 @@ size_t LCD_ZTOLED::write(uint8_t c)
         if (c <= 0x20 || c >= 0x7f) {
             ScI2cMxFillArea(OLED_ADDRESS, m_column, m_column + 5, m_page, m_page, 0);
         } else {
-            setCursor(m_column, m_page);
             ScI2cMxDisplayDot(OLED_ADDRESS, font5x8[c - 0x21], 5);
         }
         m_column += 6;
+        ScI2cMxSetLocation(OLED_ADDRESS, m_page, m_column);
     } else {
         char s[2] = {c};
         ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_page, m_column, s);
         m_column += 8;
-        if (m_column >= 128) {
-            m_column = 0;
-            m_page += 2;
-        }
+        ScI2cMxSetLocation(OLED_ADDRESS, m_page, m_column);
     }
     return 1;
 }
 
-/*
-void LCD_ZTOLED::print(const char* s)
-{
-    ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_page, m_column, s);
-    m_column += (strlen(s) << 3);
-    m_page += (m_column >> 7) << 1;
-    m_column %= 0x7f;
-}
-*/
-
 void LCD_ZTOLED::writeDigit(byte n)
 {
-    if (n > 9) return;
-
     if (m_font == FONT_SIZE_SMALL) {
-        setCursor(m_column, m_page);
-        ScI2cMxDisplayDot(OLED_ADDRESS, font5x8[n + ('0' - 0x21)], 5);
+        if (n <= 9)
+            ScI2cMxDisplayDot(OLED_ADDRESS, font5x8[n + ('0' - 0x21)], 5);
+        else
+            ScI2cMxFillArea(OLED_ADDRESS, m_column, m_column + 5, m_page, m_page, 0);
         m_column += 6;
+        ScI2cMxSetLocation(OLED_ADDRESS, m_page, m_column);
     } else if (m_font == FONT_SIZE_MEDIUM) {
-        ScI2cMxDisplayDot(OLED_ADDRESS, digits8x8[n], 8);
+        if (n <= 9) {
+            ScI2cMxDisplayDot(OLED_ADDRESS, digits8x8[n], 8);
+        } else {
+            ScI2cMxFillArea(OLED_ADDRESS, m_column, m_column + 7, m_page, m_page, 0);
+
+        }
         m_column += 8;
+        ScI2cMxSetLocation(OLED_ADDRESS, m_page, m_column);
     } else if (m_font == FONT_SIZE_LARGE) {
         write('0' + n);
     } else {
         unsigned char data[32];
-        if (n >= 0 && n <= 9) {
+        if (n <= 9) {
             memcpy_P(data, digits16x16[n], 32);
         } else {
             memset(data, 0, sizeof(data));
         }
         ScI2cMxDisplayDot16x16(OLED_ADDRESS, m_page, m_column, data);
         m_column += 16;
+        ScI2cMxSetLocation(OLED_ADDRESS, m_page, m_column);
     }
 }
 
@@ -119,7 +116,7 @@ void LCD_ZTOLED::begin()
 {
     I2cInit();
     ScI2cMxReset(OLED_ADDRESS);
-    delay(10);
+    clear();
 }
 
 void LCD_PCD8544::writeDigit(byte n)
@@ -240,75 +237,133 @@ size_t LCD_SSD1306::write(uint8_t c)
 
 void LCD_SSD1306::writeDigit(byte n)
 {
-    if (n > 9) return;
-
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
     if (m_font == FONT_SIZE_SMALL) {
         n += '0' - 0x21;
         Wire.beginTransmission(_i2caddr);
         Wire.write(0x40);
-        for (byte i = 0; i < 5; i++) {
-            Wire.write(pgm_read_byte_near(&font5x8[n][i]));
+        if (n <= 9) {
+            for (byte i = 0; i < 5; i++) {
+                Wire.write(pgm_read_byte_near(&font5x8[n][i]));
+            }
+            Wire.write(0);
+        } else {
+            for (byte i = 0; i < 6; i++) {
+                Wire.write(0);
+            }
         }
-        Wire.write(0);
         Wire.endTransmission();
         m_col += 6;
     } else if (m_font == FONT_SIZE_MEDIUM) {
         Wire.beginTransmission(_i2caddr);
         Wire.write(0x40);
-        for (byte i = 0; i < 8; i++) {
-            Wire.write(pgm_read_byte_near(&digits8x8[n][i]));
+        if (n <= 9) {
+            for (byte i = 0; i < 8; i++) {
+                Wire.write(pgm_read_byte_near(&digits8x8[n][i]));
+            }
+        } else {
+            for (byte i = 0; i < 8; i++) {
+                Wire.write(0);
+            }
         }
         Wire.endTransmission();
         m_col += 8;
     } else if (m_font == FONT_SIZE_LARGE) {
-        n += '0' - 0x21;
-        ssd1306_command(0xB0 + m_row);//set page address
-        ssd1306_command(m_col & 0xf);//set lower column address
-        ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+        if (n <= 9) {
+            n += '0' - 0x21;
+            ssd1306_command(0xB0 + m_row);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
 
-        Wire.beginTransmission(_i2caddr);
-        Wire.write(0x40);
-        for (byte i = 0; i <= 14; i += 2) {
-            Wire.write(pgm_read_byte_near(&font8x16_terminal[n][i]));
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (byte i = 0; i <= 14; i += 2) {
+                Wire.write(pgm_read_byte_near(&font8x16_terminal[n][i]));
+            }
+            Wire.endTransmission();
+
+            ssd1306_command(0xB0 + m_row + 1);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (byte i = 1; i <= 15; i += 2) {
+                Wire.write(pgm_read_byte_near(&font8x16_terminal[n][i]));
+            }
+            Wire.endTransmission();
+        } else {
+            ssd1306_command(0xB0 + m_row);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (byte i = 0; i < 8; i++) {
+                Wire.write(0);
+            }
+            Wire.endTransmission();
+
+            ssd1306_command(0xB0 + m_row + 1);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (byte i = 0; i < 8; i++) {
+                Wire.write(0);
+            }
+            Wire.endTransmission();
         }
-        Wire.endTransmission();
-
-        ssd1306_command(0xB0 + m_row + 1);//set page address
-        ssd1306_command(m_col & 0xf);//set lower column address
-        ssd1306_command(0x10 | (m_col >> 4));//set higher column address
-
-        Wire.beginTransmission(_i2caddr);
-        Wire.write(0x40);
-        for (byte i = 1; i <= 15; i += 2) {
-            Wire.write(pgm_read_byte_near(&font8x16_terminal[n][i]));
-        }
-        Wire.endTransmission();
         m_col += 9;
     } else if (m_font == FONT_SIZE_XLARGE) {
-        byte i;
-        ssd1306_command(0xB0 + m_row);//set page address
-        ssd1306_command(m_col & 0xf);//set lower column address
-        ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+        if (n <= 9) {
+            byte i;
+            ssd1306_command(0xB0 + m_row);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
 
-        Wire.beginTransmission(_i2caddr);
-        Wire.write(0x40);
-        for (i = 0; i < 16; i ++) {
-            Wire.write(pgm_read_byte_near(&digits16x16[n][i]));
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (i = 0; i < 16; i ++) {
+                Wire.write(pgm_read_byte_near(&digits16x16[n][i]));
+            }
+            Wire.endTransmission();
+
+            ssd1306_command(0xB0 + m_row + 1);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (; i < 32; i ++) {
+                Wire.write(pgm_read_byte_near(&digits16x16[n][i]));
+            }
+            Wire.endTransmission();
+        } else {
+            ssd1306_command(0xB0 + m_row);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (byte i = 0; i < 16; i++) {
+                Wire.write(0);
+            }
+            Wire.endTransmission();
+
+            ssd1306_command(0xB0 + m_row + 1);//set page address
+            ssd1306_command(m_col & 0xf);//set lower column address
+            ssd1306_command(0x10 | (m_col >> 4));//set higher column address
+
+            Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for (byte i = 0; i < 16; i++) {
+                Wire.write(0);
+            }
+            Wire.endTransmission();
         }
-        Wire.endTransmission();
-
-        ssd1306_command(0xB0 + m_row + 1);//set page address
-        ssd1306_command(m_col & 0xf);//set lower column address
-        ssd1306_command(0x10 | (m_col >> 4));//set higher column address
-
-        Wire.beginTransmission(_i2caddr);
-        Wire.write(0x40);
-        for (; i < 32; i ++) {
-            Wire.write(pgm_read_byte_near(&digits16x16[n][i]));
-        }
-        Wire.endTransmission();
         m_col += 16;
     }
     TWBR = twbrbackup;

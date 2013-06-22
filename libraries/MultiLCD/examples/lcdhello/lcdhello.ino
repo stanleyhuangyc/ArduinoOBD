@@ -24,8 +24,6 @@ static const PROGMEM uint8_t smile[48 * 48 / 8] = {
 0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x03,0x07,0x0F,0x1F,0x1F,0x3F,0x3F,0x7F,0x7F,0x7E,0xFE,0xFE,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFE,0xFE,0x7E,0x7F,0x7F,0x3F,0x3F,0x1F,0x1F,0x0F,0x07,0x03,0x01,0x00,0x00,0x00,0x00,0x00,0x00,
 };
 
-#include "images.h"
-
 void setup()
 {
 	lcd.begin();
@@ -33,19 +31,11 @@ void setup()
 
 void loop()
 {
-    //lcd.draw2x(frame0[0], 0, 124, 78, 58);
-    //lcd.draw2x(frame0[0], 164, 124, 78, 58);
-    //lcd.draw2x(frame0[0], 0, 0, 78, 58);
-    //lcd.draw2x(frame0[0], 164, 0, 78, 58);
-    lcd.clear();
-    lcd.draw(smile, 40, 0, 48, 48);
-	lcd.setCursor(0, 6);
-	lcd.setFont(FONT_SIZE_MEDIUM);
-	lcd.print("Microduino+BLE");
+	lcd.clear();
+	lcd.draw(smile, 40, 8, 48, 48);
+	delay(1000);
 
-    delay(3000);
-
-    lcd.clear();
+	lcd.clear();
 	lcd.setCursor(0, 0);
 	lcd.setFont(FONT_SIZE_SMALL);
 	lcd.print("Hello, world!");
@@ -70,5 +60,5 @@ void loop()
 	lcd.setFont(FONT_SIZE_XLARGE);
 	lcd.printLong(12345678);
 
-    delay(3000);
+	delay(3000);
 }

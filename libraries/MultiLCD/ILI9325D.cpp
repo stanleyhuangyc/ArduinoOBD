@@ -380,7 +380,7 @@ void LCD_ILI9325D::writeDigit(byte n)
         if (n >= 0 && n <= 9) {
             memcpy_P(pgm_buffer, &font8x16_terminal[n + '0' - 0x21], 16);
         } else {
-            return;
+            memset(pgm_buffer, 0, 16);
         }
         SetXY(m_x, m_x + 15, m_y, m_y + 7);
         for (byte i = 0; i < 16; i++) {

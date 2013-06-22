@@ -132,7 +132,7 @@ private:
 class LCD_ILI9325D : public LCD_Common, public Print
 {
 public:
-    LCD_ILI9325D():m_lineHeight(10) {}
+    LCD_ILI9325D():m_lineHeight(8) {}
     void setCursor(uint16_t column, uint16_t line)
     {
         m_y = column;
