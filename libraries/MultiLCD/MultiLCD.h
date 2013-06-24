@@ -132,7 +132,7 @@ private:
 class LCD_ILI9325D : public LCD_Common, public Print
 {
 public:
-    LCD_ILI9325D():m_lineHeight(8) {}
+    LCD_ILI9325D():m_lineHeight(10) {}
     void setCursor(uint16_t column, uint16_t line)
     {
         m_y = column;
@@ -158,6 +158,7 @@ public:
     byte getCols() { return 30; }
 private:
     void writeDigit(byte n);
+    void clearPixels(uint16_t pixels);
     void SetXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1);
     void WriteData(uint16_t c);
     void WriteData(byte l, byte h);

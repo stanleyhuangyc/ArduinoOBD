@@ -1,3 +1,10 @@
+/*************************************************************************
+* Arduino Text Display Library for Multiple LCDs
+* Distributed under GPL v2.0
+* Copyright (c) 2013 Stanley Huang <stanleyhuangyc@live.com>
+* All rights reserved.
+*************************************************************************/
+
 #include <Arduino.h>
 #include "MultiLCD.h"
 
@@ -126,99 +133,99 @@ void LCD_ILI9325D::WriteCommandData(uint16_t cmd,uint16_t dat)
 
 void LCD_ILI9325D::begin()
 {
-	pinMode(RS,OUTPUT);
-	pinMode(WR,OUTPUT);
-	pinMode(CS,OUTPUT);
-	pinMode(RST,OUTPUT);
+    pinMode(RS,OUTPUT);
+    pinMode(WR,OUTPUT);
+    pinMode(CS,OUTPUT);
+    pinMode(RST,OUTPUT);
 
-	//DDRD = 0xFF;
+    //DDRD = 0xFF;
     for(int a=0;a < 8;a++)
     {
         pinMode(a,OUTPUT);
     }
 
-	digitalWrite(RST,HIGH);
+    digitalWrite(RST,HIGH);
     delay(1);
-	digitalWrite(RST,LOW);
-	delay(1);
+    digitalWrite(RST,LOW);
+    delay(1);
 
-	digitalWrite(RST,HIGH);
-	digitalWrite(CS,HIGH);
-	digitalWrite(WR,HIGH);
-	delay(50);
+    digitalWrite(RST,HIGH);
+    digitalWrite(CS,HIGH);
+    digitalWrite(WR,HIGH);
+    delay(50);
 
     PORTE = 0;
     PORTG = 0;
     PORTH = 0;
     lastData = 0;
 
-	WriteCommandData(0x0001,0x0100);
-	WriteCommandData(0x0002,0x0700);
-	WriteCommandData(0x0003,0x1030);
-	WriteCommandData(0x0004,0x0000);
-	WriteCommandData(0x0008,0x0207);
-	WriteCommandData(0x0009,0x0000);
-	WriteCommandData(0x000A,0x0000);
-	WriteCommandData(0x000C,0x0000);
-	WriteCommandData(0x000D,0x0000);
-	WriteCommandData(0x000F,0x0000);
-	//power on sequence VGHVGL
-	WriteCommandData(0x0010,0x0000);
-	WriteCommandData(0x0011,0x0007);
-	WriteCommandData(0x0012,0x0000);
-	WriteCommandData(0x0013,0x0000);
-	//vgh
-	WriteCommandData(0x0010,0x1290);
-	WriteCommandData(0x0011,0x0227);
-	//delays(100);
-	//vregiout
-	WriteCommandData(0x0012,0x001d); //0x001b
-	//delays(100);
-	//vom amplitude
-	WriteCommandData(0x0013,0x1500);
-	//delays(100);
-	//vom H
-	WriteCommandData(0x0029,0x0018);
-	WriteCommandData(0x002B,0x000D);
+    WriteCommandData(0x0001,0x0100);
+    WriteCommandData(0x0002,0x0700);
+    WriteCommandData(0x0003,0x1030);
+    WriteCommandData(0x0004,0x0000);
+    WriteCommandData(0x0008,0x0207);
+    WriteCommandData(0x0009,0x0000);
+    WriteCommandData(0x000A,0x0000);
+    WriteCommandData(0x000C,0x0000);
+    WriteCommandData(0x000D,0x0000);
+    WriteCommandData(0x000F,0x0000);
+    //power on sequence VGHVGL
+    WriteCommandData(0x0010,0x0000);
+    WriteCommandData(0x0011,0x0007);
+    WriteCommandData(0x0012,0x0000);
+    WriteCommandData(0x0013,0x0000);
+    //vgh
+    WriteCommandData(0x0010,0x1290);
+    WriteCommandData(0x0011,0x0227);
+    //delays(100);
+    //vregiout
+    WriteCommandData(0x0012,0x001d); //0x001b
+    //delays(100);
+    //vom amplitude
+    WriteCommandData(0x0013,0x1500);
+    //delays(100);
+    //vom H
+    WriteCommandData(0x0029,0x0018);
+    WriteCommandData(0x002B,0x000D);
 
-	//gamma
-	WriteCommandData(0x0030,0x0004);
-	WriteCommandData(0x0031,0x0307);
-	WriteCommandData(0x0032,0x0002);// 0006
-	WriteCommandData(0x0035,0x0206);
-	WriteCommandData(0x0036,0x0408);
-	WriteCommandData(0x0037,0x0507);
-	WriteCommandData(0x0038,0x0204);//0200
-	WriteCommandData(0x0039,0x0707);
-	WriteCommandData(0x003C,0x0405);// 0504
-	WriteCommandData(0x003D,0x0F02);
-	//ram
-	WriteCommandData(0x0050,0x0000);
-	WriteCommandData(0x0051,0x00EF);
-	WriteCommandData(0x0052,0x0000);
-	WriteCommandData(0x0053,0x013F);
-	WriteCommandData(0x0060,0xA700);
-	WriteCommandData(0x0061,0x0001);
-	WriteCommandData(0x006A,0x0000);
-	//
-	WriteCommandData(0x0080,0x0000);
-	WriteCommandData(0x0081,0x0000);
-	WriteCommandData(0x0082,0x0000);
-	WriteCommandData(0x0083,0x0000);
-	WriteCommandData(0x0084,0x0000);
-	WriteCommandData(0x0085,0x0000);
-	//
-	WriteCommandData(0x0090,0x0010);
-	WriteCommandData(0x0092,0x0600);
-	WriteCommandData(0x0093,0x0003);
-	WriteCommandData(0x0095,0x0110);
-	WriteCommandData(0x0097,0x0000);
-	WriteCommandData(0x0098,0x0000);
-	WriteCommandData(0x0007,0x0133);
+    //gamma
+    WriteCommandData(0x0030,0x0004);
+    WriteCommandData(0x0031,0x0307);
+    WriteCommandData(0x0032,0x0002);// 0006
+    WriteCommandData(0x0035,0x0206);
+    WriteCommandData(0x0036,0x0408);
+    WriteCommandData(0x0037,0x0507);
+    WriteCommandData(0x0038,0x0204);//0200
+    WriteCommandData(0x0039,0x0707);
+    WriteCommandData(0x003C,0x0405);// 0504
+    WriteCommandData(0x003D,0x0F02);
+    //ram
+    WriteCommandData(0x0050,0x0000);
+    WriteCommandData(0x0051,0x00EF);
+    WriteCommandData(0x0052,0x0000);
+    WriteCommandData(0x0053,0x013F);
+    WriteCommandData(0x0060,0xA700);
+    WriteCommandData(0x0061,0x0001);
+    WriteCommandData(0x006A,0x0000);
+    //
+    WriteCommandData(0x0080,0x0000);
+    WriteCommandData(0x0081,0x0000);
+    WriteCommandData(0x0082,0x0000);
+    WriteCommandData(0x0083,0x0000);
+    WriteCommandData(0x0084,0x0000);
+    WriteCommandData(0x0085,0x0000);
+    //
+    WriteCommandData(0x0090,0x0010);
+    WriteCommandData(0x0092,0x0600);
+    WriteCommandData(0x0093,0x0003);
+    WriteCommandData(0x0095,0x0110);
+    WriteCommandData(0x0097,0x0000);
+    WriteCommandData(0x0098,0x0000);
+    WriteCommandData(0x0007,0x0133);
     Disable();
 
-	m_color[0] = 0;
-	m_color[1] = 0xffff;
+    m_color[0] = 0;
+    m_color[1] = 0xffff;
     clear();
 }
 
@@ -252,6 +259,23 @@ void Pant(uint16_t color)
 }
 */
 
+void LCD_ILI9325D::clearPixels(uint16_t pixels)
+{
+    digitalWrite(RS,HIGH);//LCD_RS=0;
+    digitalWrite(CS,LOW);//LCD_CS =0;
+    PORTE = 0;
+    PORTG = 0;
+    PORTH = 0;
+    lastData = 0;
+    do {
+        digitalWrite(WR,LOW);//LCD_WR=0;
+        digitalWrite(WR,HIGH);//LCD_WR=1;
+        digitalWrite(WR,LOW);//LCD_WR=0;
+        digitalWrite(WR,HIGH);//LCD_WR=1;
+    } while (--pixels);
+    digitalWrite(CS,HIGH);//LCD_CS =0;
+}
+
 void LCD_ILI9325D::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
 	unsigned long count = (unsigned long)width * height;
@@ -263,12 +287,12 @@ void LCD_ILI9325D::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height
     PORTG = 0;
     PORTH = 0;
     lastData = 0;
-    while (count--) {
+    do {
         digitalWrite(WR,LOW);//LCD_WR=0;
         digitalWrite(WR,HIGH);//LCD_WR=1;
         digitalWrite(WR,LOW);//LCD_WR=0;
         digitalWrite(WR,HIGH);//LCD_WR=1;
-    }
+    } while (--count);
     digitalWrite(CS,HIGH);//LCD_CS =0;
 	m_x = x;
 	m_y = y;
@@ -287,25 +311,10 @@ size_t LCD_ILI9325D::write(uint8_t c)
         }
         m_y = 0;
         return 0;
-    } else if (c < ' ') {
-        return 0;
     }
 
     if (m_font == FONT_SIZE_SMALL) {
-        byte pgm_buffer[6] = {0};
-        if (c > 0x20 && c < 0x7f) {
-            memcpy_P(pgm_buffer, &font5x8[c - 0x21], 5);
-        }
-
-        SetXY(m_x, m_x + 7, m_y, m_y + 5);
-        for (byte i = 0; i < 5; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (byte j = 0; j < 8; j++) {
-                WriteData(m_color[d & 1]);
-                d >>= 1;
-            }
-        }
-
+        SetXY(m_x, m_x + 7, m_y, m_y + 4);
         m_y += 6;
         if (m_y >= 320) {
             m_x += 8;
@@ -314,23 +323,20 @@ size_t LCD_ILI9325D::write(uint8_t c)
                 m_x = 0;
             }
         }
-    } else {
-        byte pgm_buffer[16];
         if (c > 0x20 && c < 0x7f) {
-            memcpy_P(pgm_buffer, &font8x16_terminal[c - 0x21], 16);
-        } else {
-            memset(pgm_buffer, 0, sizeof(pgm_buffer));
-        }
-
-        SetXY(m_x, m_x + 15, m_y, m_y + 7);
-        for (byte i = 0; i < 16; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (byte j = 0; j < 8; j++) {
-                WriteData(m_color[d & 1]);
-                d >>= 1;
+            byte pgm_buffer[5];
+            memcpy_P(pgm_buffer, &font5x8[c - 0x21], 5);
+            for (byte i = 0; i < 5; i++) {
+                unsigned char d = pgm_buffer[i];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
             }
+        } else {
+            clearPixels(5 * 8);
         }
-
+    } else {
+        SetXY(m_x, m_x + 15, m_y, m_y + 7);
         m_y += 9;
         if (m_y >= 320) {
             m_x += 8;
@@ -338,6 +344,19 @@ size_t LCD_ILI9325D::write(uint8_t c)
             if (m_x >= 240) {
                 m_x = 0;
             }
+        }
+        if (c > 0x20 && c < 0x7f) {
+            byte pgm_buffer[16];
+            memcpy_P(pgm_buffer, &font8x16_terminal[c - 0x21], 16);
+            for (byte i = 0; i < 16; i++) {
+                unsigned char d = pgm_buffer[i];
+                for (byte j = 0; j < 8; j++) {
+                    WriteData(m_color[d & 1]);
+                    d >>= 1;
+                }
+            }
+        } else {
+            clearPixels(8 * 16);
         }
     }
 }
@@ -345,96 +364,85 @@ size_t LCD_ILI9325D::write(uint8_t c)
 void LCD_ILI9325D::writeDigit(byte n)
 {
     if (m_font == FONT_SIZE_SMALL) {
-        /*
-        byte pgm_buffer[16] = {0};
-        if (n >= 0 && n <= 9) {
-            memcpy_P(pgm_buffer, &font5x8[n + '0' - 0x21], 5);
-        }
-
-        SetXY(m_x, m_x + 7, m_y, m_y + 5);
-        for (byte i = 0; i < 5; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (byte j = 0; j < 8; j++, d >>= 1) {
-                WriteData(m_color[d & 1]);
-            }
-        }
-        m_y += 6;
-        */
-        byte pgm_buffer[8];
-        if (n >= 0 && n <= 9) {
-            memcpy_P(pgm_buffer, &digits8x8[n], 8);
-        } else {
-            memset(pgm_buffer, 0, 8);
-        }
-
         SetXY(m_x, m_x + 7, m_y, m_y + 7);
-        for (byte i = 0; i < 8; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (byte j = 0; j < 8; j++, d >>= 1) {
-                WriteData(m_color[d & 1]);
-            }
-        }
         m_y += 8;
-    } else if (m_font == FONT_SIZE_MEDIUM) {
-        byte pgm_buffer[16];
-        if (n >= 0 && n <= 9) {
-            memcpy_P(pgm_buffer, &font8x16_terminal[n + '0' - 0x21], 16);
-        } else {
-            memset(pgm_buffer, 0, 16);
-        }
-        SetXY(m_x, m_x + 15, m_y, m_y + 7);
-        for (byte i = 0; i < 16; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (byte j = 0; j < 8; j++, d >>= 1) {
-                WriteData(m_color[d & 1]);
+        if (n <= 9) {
+            byte pgm_buffer[8];
+            memcpy_P(pgm_buffer, &digits8x8[n], 8);
+            for (byte i = 0; i < 8; i++) {
+                unsigned char d = pgm_buffer[i];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
             }
-        }
-        m_y += 9;
-    } else if (m_font == FONT_SIZE_LARGE) {
-        byte pgm_buffer[32];
-        if (n >= 0 && n <= 9) {
-            memcpy_P(pgm_buffer, &digits16x16[n], sizeof(pgm_buffer));
-        } else {
-            memset(pgm_buffer, 0, sizeof(pgm_buffer));
-        }
 
-        SetXY(m_x, m_x + 15, m_y, m_y + 15);
-        for (byte i = 0; i < 16; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (byte j = 0; j < 8; j++, d >>= 1) {
-                WriteData(m_color[d & 1]);
-            }
-            d = pgm_buffer[i + 16];
-            for (byte j = 0; j < 8; j++, d >>= 1) {
-                WriteData(m_color[d & 1]);
-            }
-        }
-        m_y += 16;
-    } else if (m_font == FONT_SIZE_XLARGE) {
-        byte pgm_buffer[48];
-        if (n >= 0 && n <= 9) {
-            memcpy_P(pgm_buffer, &digits16x24[n], sizeof(pgm_buffer));
         } else {
-            memset(pgm_buffer, 0, sizeof(pgm_buffer));
+            clearPixels(8 * 8);
         }
-        SetXY(m_x, m_x + 23, m_y, m_y + 15);
-        for (int i = 0; i < 48; i++) {
-            unsigned char d = pgm_buffer[i];
-            for (int j = 0; j < 8; j++, d >>= 1) {
-                WriteData(m_color[d & 1]);
+    } else if (m_font == FONT_SIZE_MEDIUM) {
+        SetXY(m_x, m_x + 15, m_y, m_y + 7);
+        m_y += 9;
+        if (n <= 9) {
+            byte pgm_buffer[16];
+            memcpy_P(pgm_buffer, &font8x16_terminal[n + '0' - 0x21], 16);
+            for (byte i = 0; i < 16; i++) {
+                unsigned char d = pgm_buffer[i];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
             }
+        } else {
+            clearPixels(8 * 16);
         }
+    } else if (m_font == FONT_SIZE_LARGE) {
+        SetXY(m_x, m_x + 15, m_y, m_y + 15);
+        m_y += 16;
+        if (n <= 9) {
+            byte pgm_buffer[32];
+            memcpy_P(pgm_buffer, &digits16x16[n], sizeof(pgm_buffer));
+            for (byte i = 0; i < 16; i++) {
+                unsigned char d = pgm_buffer[i];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
+                d = pgm_buffer[i + 16];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
+            }
+        } else {
+            clearPixels(16 * 16);
+        }
+    } else if (m_font == FONT_SIZE_XLARGE) {
+        SetXY(m_x, m_x + 23, m_y, m_y + 15);
         m_y += 18;
+        if (n <= 9) {
+            byte pgm_buffer[48];
+            memcpy_P(pgm_buffer, &digits16x24[n], sizeof(pgm_buffer));
+            for (int i = 0; i < 48; i++) {
+                unsigned char d = pgm_buffer[i];
+                for (int j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
+            }
+        } else {
+            clearPixels(16 * 24);
+        }
     }
 }
 
 void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
-    uint16_t pixels = (uint16_t)width * height;
+    byte rows = height >> 3;
     SetXY(y, y + height - 1, x, x + width - 1);
-    do {
-        WriteData(pgm_read_byte_near(buffer++), pgm_read_byte_near(buffer++));
-    } while (--pixels);
+    for (uint16_t i = 0; i < width; i++) {
+        for (uint8_t h = 0; h < rows; h++) {
+            byte d = pgm_read_byte_near(buffer + i + width * h);
+            for (byte j = 0; j < 8; j++, d >>= 1) {
+                WriteData(m_color[d & 1]);
+            }
+        }
+    }
 }
 
 void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, byte width, byte height)
@@ -471,33 +479,5 @@ void LCD_ILI9325D::draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, 
         WriteData(rg, gb);
     } while (--count);
 }
-
-/*
-void Print16x24(int x, int y, uint16_t color, const char* data)
-{
-    SetXY(x, x + 23, y, y + 15);
-    for (int i = 0; i < 48; i++) {
-        unsigned char d = data[i];
-        for (int j = 0; j < 8; j++) {
-            WriteData((d & 1 ) ? color : 0);
-            d >>= 1;
-        }
-    }
-}
-
-void Print8x16(int x, int y, uint16_t color, const char* data)
-{
-    SetXY(x, x + 7, y, y + 15);
-    for (int i = 0; i < 16; i++) {
-        unsigned char d = *data;
-        for (int j = 0; j < 8; j++) {
-            WriteData((d & 1 ) ? color : 0);
-            d >>= 1;
-        }
-        data++;
-    }
-
-}
-*/
 
 #endif
