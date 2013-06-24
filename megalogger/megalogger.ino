@@ -83,6 +83,8 @@ LCD_ILI9325D lcd; /* for 2.8" TFT shield */
 #define LCD_LINES 24
 #define CHAR_WIDTH 9
 
+#define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 2))
+
 static uint32_t fileSize = 0;
 static uint32_t lastFileSize = 0;
 static uint32_t lastDataTime = 0;
@@ -201,10 +203,10 @@ public:
             unsigned int sec = (t - startTime) / 1000;
             sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
             lcd.setFont(FONT_SIZE_MEDIUM);
-            lcd.setCursor(265, 2);
+            lcd.setCursor(250, 2);
             lcd.print(buf);
             sprintf(buf, "%ums ", (uint16_t)(t - lastTime) / dataCount);
-            lcd.setCursor(265, 11);
+            lcd.setCursor(250, 11);
             lcd.print(buf);
 
             dataCount = 0;
@@ -289,7 +291,7 @@ private:
         char buf[10];
         unsigned int t = (millis() - startTime) / 1000;
         sprintf(buf, "%02u:%02u", t / 60, t % 60);
-        lcd.setCursor(0, 22);
+        lcd.setCursor(0, 28);
         lcd.print(buf);
 #ifdef GPSUART
         // detect GPS signal
@@ -382,6 +384,8 @@ private:
         MPU6050_readout(&data);
         uint32_t dataTime = millis();
 
+        lcd.setFont(FONT_SIZE_SMALL);
+
         sprintf(buf, "%3d", data.value.x_accel / 160);
         lcd.setCursor(197, 21);
         lcd.print(buf);
@@ -467,7 +471,7 @@ private:
             char buf[7];
             sprintf(buf, "%uK", (int)(fileSize >> 10));
             lcd.setFont(FONT_SIZE_MEDIUM);
-            lcd.setCursor(265, 8);
+            lcd.setCursor(250, 8);
             lcd.print(buf);
             lastFileSize = fileSize;
         }
@@ -481,17 +485,14 @@ private:
     }
     void ShowECUCap()
     {
-        char buffer[24];
         byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
         const char* namelist[] = {"ENGINE RPM", "SPEED", "THROTTLE", "ENGINE LOAD", "MAF", "MAP", "FUEL LEVEL", "FUEL PRESSURE", "COOLANT TEMP", "INTAKE TEMP","AMBIENT TEMP", "IGNITION TIMING", "BAROMETER"};
 
-        lcd.setCursor(194, 6);
-        lcd.print("PID:");
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFont(FONT_SIZE_MEDIUM);
         for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
-            lcd.setCursor(194, i + 8);
-            sprintf(buffer, "%s: %s", namelist[i], IsValidPID(PID_RPM) ? "Yes" : "No");
-            lcd.print(buffer);
+            lcd.setCursor(160, i * 2 + 4);
+            lcd.print(namelist[i]);
+            lcd.draw(IsValidPID(PID_RPM) ? tick : cross, 304, i * 16 + 32, 16, 16);
         }
     }
     void Reconnect()
@@ -560,7 +561,7 @@ private:
             if ((unsigned int)value >= startDistance) {
                 lcd.setFont(FONT_SIZE_MEDIUM);
                 sprintf(buf, "%ukm", ((unsigned int)value - startDistance) % 1000);
-                lcd.setCursor(265, 5);
+                lcd.setCursor(250, 5);
                 lcd.print(buf);
             }
             break;
@@ -568,18 +569,14 @@ private:
     }
     virtual void InitScreen()
     {
-        //lcd.clear();
-        lcd.setLineHeight(8);
-        lcd.backlight(true);
-
-        lcd.clear(156, 0, 8, 240);
-        lcd.clear(0, 116, 320, 8);
-
         lcd.draw2x(frame0[0], 0, 0, 78, 58);
         lcd.draw2x(frame0[0], 164, 0, 78, 58);
+        lcd.clear(156, 0, 8, 240);
+        lcd.clear(0, 116, 320, 8);
         lcd.draw2x(frame0[0], 0, 124, 78, 58);
         lcd.draw2x(frame0[0], 164, 124, 78, 58);
 
+        //lcd.setColor(RGB16(0x7f, 0x7f, 0x7f));
         lcd.setFont(FONT_SIZE_SMALL);
         lcd.setCursor(110, 5);
         lcd.print("km/h");
@@ -590,25 +587,26 @@ private:
         lcd.setCursor(78, 12);
         lcd.print("AIR:    C");
 
-        lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(175, 2);
-        lcd.print("Elapsed:");
-        lcd.setCursor(175, 5);
-        lcd.print("Distance:");
-        lcd.setCursor(175, 8);
-        lcd.print("Log Data:");
-        lcd.setCursor(175, 11);
-        lcd.print("OBD Time:");
+        //lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setCursor(185, 2);
+        lcd.print("ELAPSED:");
+        lcd.setCursor(185, 5);
+        lcd.print("DISTANCE:");
+        lcd.setCursor(185, 8);
+        lcd.print("LOG SIZE:");
+        lcd.setCursor(185, 11);
+        lcd.print("OBD TIME:");
 
-        lcd.setCursor(15, 17);
+        lcd.setCursor(20, 18);
         lcd.print("LAT:");
-        lcd.setCursor(15, 20);
+        lcd.setCursor(20, 21);
         lcd.print("LON:");
-        lcd.setCursor(15, 23);
+        lcd.setCursor(20, 24);
         lcd.print("ALT:");
-        lcd.setCursor(15, 26);
+        lcd.setCursor(20, 27);
         lcd.print("SAT:");
 
+        lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.setCursor(185, 18);
         lcd.print("Accelerometer");
         lcd.setCursor(200, 23);
@@ -619,6 +617,7 @@ private:
         lcd.setCursor(185, 26);
         lcd.print("X:     Y:     Z:");
 
+        //lcd.setColor(0xFFFF);
         /*
         lcd.setCursor(32, 4);
         lcd.print("%");
@@ -634,15 +633,6 @@ static CLogger logger;
 
 void setup()
 {
-    lcd.begin();
-    //lcd.clear();
-    lcd.setLineHeight(10);
-    lcd.setFont(FONT_SIZE_MEDIUM);
-    lcd.backlight(true);
-    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
-    lcd.setCursor(0, 2);
-    lcd.print("Initializing...");
-
 #ifdef CONSOLE
     CONSOLE.begin(115200);
 #endif
@@ -660,11 +650,16 @@ void setup()
     //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
     //GPSUART.println(PMTK_SET_NMEA_UPDATE_5HZ);
 #endif
+    Wire.begin();
 
-    delay(500);
-
-    //lcd.setColor(0x7FF);
-    lcd.print("OK");
+    lcd.begin();
+    //lcd.clear();
+    lcd.setLineHeight(8);
+    lcd.setFont(FONT_SIZE_MEDIUM);
+    lcd.backlight(true);
+    lcd.setColor(0xFFE0);
+    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
+    lcd.setColor(0xFFFF);
     logger.CheckSD();
     logger.Setup();
 }
