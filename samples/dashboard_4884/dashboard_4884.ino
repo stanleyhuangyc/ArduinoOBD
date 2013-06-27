@@ -10,14 +10,6 @@
 #include "OBD.h"
 #include "LCD4884.h"
 
-// the following line toggles between hardware serial and software serial
-// #define USE_SOFTSERIAL
-
-#ifdef USE_SOFTSERIAL
-#include <SoftwareSerial.h>
-SoftwareSerial mySerial(11, 12); // RX, TX
-#endif
-
 //keypad debounce parameter
 #define DEBOUNCE_MAX 15
 #define DEBOUNCE_ON  10
@@ -168,9 +160,10 @@ class COBDDash : public COBD
 public:
         void Connect()
         {
+                int value;
                 lcd.LCD_clear();
                 lcd.LCD_write_string(0, 0, "Connecting..", MENU_NORMAL);
-                for (int n = 0; !Init(); n++) {
+                for (int n = 0; !init(); n++) {
                   lcd.LCD_putchar('.');
                   if (n == 3) lcd.backlight(OFF);
                 }
@@ -178,17 +171,15 @@ public:
                 lcd.backlight(ON); //Turn on the backlight
                 lcd.LCD_clear();
                 lcd.LCD_write_string(0, 0, "Connected!", MENU_NORMAL);
-
-                int value;
                 lcd.LCD_write_string(0, 1, "Wait ECU start", MENU_NORMAL);
                 do {
                   delay(1000);
-                } while (!ReadSensor(PID_RPM, value));
+                } while (!readSensor(PID_RPM, value));
                 lcd.LCD_write_string(0, 2, "ECU started   ", MENU_NORMAL);
                 lcd.LCD_write_string(0, 3, "Wait ignition ", MENU_NORMAL);
                 do {
                   delay(100);
-                } while (!ReadSensor(PID_RPM, value) || value == 0);                         
+                } while (!readSensor(PID_RPM, value) || value == 0);                         
                 lcd.LCD_write_string(0, 4, "Engine started", MENU_NORMAL);
                 delay(1000);                
         }
@@ -272,49 +263,49 @@ public:
 private:
 	void DisplayData1()
 	{
-            if (ReadSensor(PID_RPM, value)) {
+            if (readSensor(PID_RPM, value)) {
 		ShowRPM(value);
             }
-            if (ReadSensor(PID_SPEED, value)) {
+            if (readSensor(PID_SPEED, value)) {
 		ShowSpeed(value);
             }
-            if (ReadSensor(PID_ENGINE_LOAD, value)) {
+            if (readSensor(PID_ENGINE_LOAD, value)) {
 		ShowEngineLoad(value);
             }
 	}
 	void DisplayData2()
 	{
-            if (ReadSensor(PID_RPM, value)) {
+            if (readSensor(PID_RPM, value)) {
 		ShowRPM(value);
             }
-            if (ReadSensor(PID_SPEED, value)) {
+            if (readSensor(PID_SPEED, value)) {
 		ShowSpeed2(value);
             }
 	}
 	void DisplayData21()
 	{
-            if (ReadSensor(PID_COOLANT_TEMP, value)) {
+            if (readSensor(PID_COOLANT_TEMP, value)) {
 		ShowTemperature(value, 42, 3);
             }
 	}
 	void DisplayData22()
 	{
-            if (ReadSensor(PID_INTAKE_TEMP, value)) {
+            if (readSensor(PID_INTAKE_TEMP, value)) {
 		ShowTemperature(value, 42, 4);
             }
 	}
 	void DisplayData23()
 	{
-            if (ReadSensor(PID_AMBIENT_TEMP, value)) {
+            if (readSensor(PID_AMBIENT_TEMP, value)) {
 		ShowTemperature(value, 42, 5);
             }
 	}
 	void DisplayData3()
 	{
-            if (ReadSensor(PID_SPEED, value)) {
+            if (readSensor(PID_SPEED, value)) {
 		ShowSpeed2(value);
             }
-            if (ReadSensor(PID_INTAKE_PRESSURE, value)) {
+            if (readSensor(PID_INTAKE_MAP, value)) {
               char buf[8];
               sprintf(buf, "%3u", value);
   	      lcd.LCD_write_string(24, 4, buf, MENU_NORMAL);
@@ -323,7 +314,7 @@ private:
               sprintf(buf, "%d.%02d", boost / 100, boost % 100);
 	      lcd.LCD_write_string_big(0, 0, buf, MENU_NORMAL);
             }
-            if (ReadSensor(PID_FUEL_PRESSURE, value)) {
+            if (readSensor(PID_FUEL_PRESSURE, value)) {
               char buf[8];
               sprintf(buf, "%3u", value);
               lcd.LCD_write_string(24, 5, buf, MENU_NORMAL);
@@ -446,12 +437,7 @@ void setup()
   
   pinMode(13, OUTPUT);
 
-#ifndef USE_SOFTSERIAL
-  OBDUART.begin(OBD_SERIAL_BAUDRATE);
-#else
-  Serial.begin(9600);
-  mySerial.begin(OBD_SERIAL_BAUDRATE);
-#endif
+  obd.begin();
 }
 
 // Timer2 interrupt routine -

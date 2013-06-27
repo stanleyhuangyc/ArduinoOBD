@@ -7,7 +7,6 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <SoftwareSerial.h>
 #include "OBD.h"
 #include "SD.h"
 #include "MultiLCD.h"
@@ -25,7 +24,7 @@
 /**************************************
 * Config GPS here
 **************************************/
-#define USE_GPS
+//#define USE_GPS
 #define GPS_BAUDRATE 4800 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
@@ -40,10 +39,10 @@
 /**************************************
 * Other options
 **************************************/
-#define USE_MPU6050
+//#define USE_MPU6050
 #define OBD_MIN_INTERVAL 50 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
-#define ENABLE_DATA_OUT
+//#define ENABLE_DATA_OUT
 
 // logger states
 #define STATE_SD_READY 0x1
@@ -105,7 +104,9 @@ typedef struct {
     } data;*/
 } LOG_DATA;
 ///////////////////////////////////////////////////////////////////////////
+#include <SoftwareSerial.h>
 SoftwareSerial softSerial(9, 10);
+
 #endif
 
 // SD card
@@ -172,7 +173,7 @@ public:
 
         do {
             ShowStates();
-        } while (!Init());
+        } while (!init());
 
         state |= STATE_OBD_READY;
 
@@ -181,7 +182,7 @@ public:
         ShowECUCap();
         delay(3000);
 
-        ReadSensor(PID_DISTANCE, startDistance);
+        readSensor(PID_DISTANCE, startDistance);
 
         // open file for logging
         if (!(state & STATE_SD_READY)) {
@@ -221,9 +222,11 @@ public:
 #endif
         LogData(PID_THROTTLE);
 
+#ifdef USE_MPU6050
         if (state & STATE_ACC_READY) {
             ProcessAccelerometer();
         }
+#endif
 
         switch (count++) {
         case 0:
@@ -321,7 +324,7 @@ public:
         return true;
     }
 private:
-    void InitIdleLoop()
+    void initIdleLoop()
     {
         // called while initializing
         char buf[10];
@@ -380,7 +383,7 @@ private:
 #endif
     }
 #ifdef GPSUART
-    void DataIdleLoop()
+    void dataIdleLoop()
     {
         if (GPSUART.available())
             ProcessGPS();
@@ -465,9 +468,9 @@ private:
         lastGPSDataTime = dataTime;
     }
 #endif
+#ifdef USE_MPU6050
     void ProcessAccelerometer()
     {
-#ifdef USE_MPU6050
         accel_t_gyro_union data;
         MPU6050_readout(&data);
         uint32_t dataTime = millis();
@@ -486,8 +489,8 @@ private:
         len = sprintf(buf, "%u,F11,%d %d %d\n", data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
         sdfile.write((uint8_t*)buf, len);
         lastDataTime = dataTime;
-#endif
     }
+#endif
     void LogData(byte pid)
     {
         char buffer[OBD_RECV_BUF_SIZE];
@@ -495,11 +498,11 @@ private:
         uint32_t start = millis();
 
         // send a query to OBD adapter for specified OBD-II pid
-        Query(pid);
+        sendQuery(pid);
         // wait for reponse
         bool hasData;
         do {
-            DataIdleLoop();
+            dataIdleLoop();
         } while (!(hasData = available()) && millis() - start < OBD_TIMEOUT_SHORT);
         // no need to continue if no data available
         if (!hasData) {
@@ -512,7 +515,7 @@ private:
 
         // get response from OBD adapter
         pid = 0;
-        char* data = GetResponse(pid, buffer);
+        char* data = getResponse(pid, buffer);
         if (!data) {
             // try recover next time
             write('\r');
@@ -522,7 +525,7 @@ private:
         uint32_t dataTime = millis();
 
         // convert raw data to normal value
-        value = GetConvertedValue(pid, data);
+        value = normalizeData(pid, data);
 
 #ifdef ENABLE_DATA_OUT
         SendData(dataTime, 0x0100 | pid, (float)value);
@@ -555,10 +558,11 @@ private:
         // if OBD response is very fast, go on processing other data for a while
 #ifdef OBD_MIN_INTERVAL
         while (millis() - start < OBD_MIN_INTERVAL) {
-            DataIdleLoop();
+            dataIdleLoop();
         }
 #endif
     }
+#ifdef ENABLE_DATA_OUT
     void SendData(uint32_t time, uint16_t pid, float value)
     {
         LOG_DATA ld = {time, pid, 0, 1};
@@ -570,6 +574,7 @@ private:
         ld.checksum = checksum;
         softSerial.write((uint8_t*)&ld, sizeof(LOG_DATA));
     }
+#endif
     void ShowECUCap()
     {
         char buffer[24];
@@ -580,12 +585,12 @@ private:
         lcd.setFont(FONT_SIZE_SMALL);
         for (; i < sizeof(pidlist) / sizeof(pidlist[0]) / 2; i++) {
             lcd.setCursor(0, i);
-            sprintf(buffer, "%s:%c", namelist[i], IsValidPID(pidlist[i]) ? 'Y' : 'N');
+            sprintf(buffer, "%s:%c", namelist[i], isValidPID(pidlist[i]) ? 'Y' : 'N');
             lcd.print(buffer);
         }
         for (byte row = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, row++) {
             lcd.setCursor(64, row);
-            sprintf(buffer, "%s:%c", namelist[i], IsValidPID(pidlist[i]) ? 'Y' : 'N');
+            sprintf(buffer, "%s:%c", namelist[i], isValidPID(pidlist[i]) ? 'Y' : 'N');
             lcd.print(buffer);
         }
     }
@@ -597,7 +602,7 @@ private:
         lcd.print("Reconnecting");
         state &= ~(STATE_OBD_READY | STATE_ACC_READY | STATE_DATE_SAVED);
         //digitalWrite(SD_CS_PIN, LOW);
-        for (int i = 0; !Init(); i++) {
+        for (int i = 0; !init(); i++) {
             if (i == 10) lcd.clear();
         }
         fileIndex++;
@@ -731,12 +736,12 @@ void setup()
     lcd.setCursor(0, 1);
     lcd.print("Initializing...");
 
+    logger.begin();
+
 #ifdef ENABLE_DATA_OUT
     softSerial.begin(9600);
 #endif // ENABLE_DATA_OUT
 
-    // start serial communication at the adapter defined baudrate
-    OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef GPSUART
 #ifdef GPS_OPEN_BAUDRATE
     GPSUART.begin(GPS_OPEN_BAUDRATE);

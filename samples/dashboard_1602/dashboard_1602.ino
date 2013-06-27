@@ -26,7 +26,7 @@ uint8_t modes[2] = {0, 2};
 
 const char modePids[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD,
 	PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_MAF_FLOW,
-	PID_ABS_ENGINE_LOAD, PID_FUEL_PRESSURE, PID_INTAKE_PRESSURE, PID_BAROMETRIC,
+	PID_ABS_ENGINE_LOAD, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_BAROMETRIC,
 	PID_TIMING_ADVANCE, PID_FUEL_LEVEL, PID_RUNTIME, PID_DISTANCE};
 
 const char* modeLabels[] = {
@@ -73,7 +73,7 @@ bool showData(int index)
 	uint8_t mode = modes[index];
 	uint8_t pid = modePids[mode];
 	digitalWrite(13, HIGH);   // set the LED on
-	if (!obd.ReadSensor(pid, value)) {
+	if (!obd.readSensor(pid, value)) {
                 // display received data on error
 		lcd.cursorTo(index + 1, 0);
 		lcd.printIn("Error");
@@ -99,7 +99,7 @@ bool setupConnection()
   char buf[16];
   lcd.clear();
   lcd.printIn("Connecting...");
-  while (!obd.Init()) {
+  while (!obd.init()) {
 	  lcd.cursorTo(2, 0);
 	  sprintf(buf, "Attempts #%d", ++errors);
 	  lcd.printIn(buf);
@@ -115,7 +115,7 @@ void setup()
 {
   pinMode(13, OUTPUT);  //we'll use the debug LED to output a heartbeat
   lcd.init();
-  OBDUART.begin(OBD_SERIAL_BAUDRATE);
+  obd.begin();
   setupConnection();
 }
 

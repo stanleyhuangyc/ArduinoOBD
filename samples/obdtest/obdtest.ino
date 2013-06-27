@@ -52,11 +52,12 @@ void ShowGPSData()
     char buf[32];
     unsigned long fix_age;
 
+    lcd.setFont(FONT_SIZE_SMALL);
     if (lcd.getLines() > 2) {
         unsigned long date, time;
         gps.get_datetime(&date, &time, &fix_age);
         sprintf(buf, "TIME: %08ld", time);
-        lcd.setCursor(0, 2);
+        lcd.setCursor(0, 6);
         lcd.print(buf);
     }
 
@@ -64,7 +65,7 @@ void ShowGPSData()
         long lat, lon;
         gps.get_position(&lat, &lon, &fix_age);
         // display LAT/LON if screen is big enough
-        lcd.setCursor(0, 3);
+        lcd.setCursor(0, 7);
         if (((unsigned int)millis() / 1000) & 1)
             sprintf(buf, "LAT: %d.%5ld  ", (int)(lat / 100000), lat % 100000);
         else
@@ -82,7 +83,7 @@ public:
         unsigned long currentMillis;
         unsigned char n;
         char prompted;
-        char buffer[OBD_RECV_BUF_SIZE];
+        char buffer[128];
 
         for (unsigned char i = 0; i < INIT_CMD_COUNT; i++) {
             lcd.clear();
@@ -98,14 +99,13 @@ public:
                     if (c == '>') {
                         buffer[n] = 0;
                         prompted++;
-                    } else if (n < OBD_RECV_BUF_SIZE - 1) {
+                    } else if (n < sizeof(buffer) - 1) {
                         buffer[n++] = c;
 
                         if (c == '\n')
                             lcd.changeLine();
                         else if (c >= ' ') {
                             lcd.write(c);
-                            delay(5);
                         }
                     }
                 } else if (prompted) {
@@ -133,8 +133,8 @@ public:
             sprintf(buffer, "PIDs [%02x-%02x]", i * 0x20 + 1, i * 0x20 + 0x20);
             lcd.print(buffer);
             byte pid = i * 0x20;
-            Query(pid);
-            data = GetResponse(pid, buffer);
+            sendQuery(pid);
+            data = getResponse(pid, buffer);
             if (!data) break;
             lcd.setCursor(0, 1);
             lcd.print(data);
@@ -182,7 +182,7 @@ public:
         lcd.print(buf);
 
         dataMode = (byte)(pid >> 8);
-        Query((byte)pid);
+        sendQuery((byte)pid);
     }
     void Recover()
     {
@@ -217,24 +217,23 @@ public:
         // check OBD response
         buffer[0] = 0;
         byte curpid = (byte)pid;
-        char* data = GetResponse(curpid, buffer);
+        char* data = getResponse(curpid, buffer);
         lcd.setCursor(6, 0);
         if (!data) {
-            lcd.print("Data Error");
+            lcd.setCursor(0, 2);
+            lcd.print("Error");
             // try recover next time
             Recover();
         } else {
-            if (!hasMPU6050) {
                 char *p = buffer;
                 while (*p && *p < ' ') p++;
                 for (char *q = p; *q; q++) {
                     if (*q < ' ') *q = ' ';
-                }
-                lcd.setCursor(0, 1);
-                lcd.print(p);
             }
-            sprintf(buffer, "=%d", GetConvertedValue(curpid, data));
-            lcd.setCursor(6, 0);
+            lcd.setCursor(0, 2);
+            lcd.print(p);
+            lcd.setCursor(7 * 9, 0);
+            sprintf(buffer, "%d", normalizeData(curpid, data));
             lcd.print(buffer);
         }
     }
@@ -266,9 +265,9 @@ void testMPU6050()
   // there is no filter enabled, and the values
   // are not very stable.
 
-  lcd.setCursor(0, 1);
   error = MPU6050_read (MPU6050_ACCEL_XOUT_H, (uint8_t *) &accel_t_gyro, sizeof(accel_t_gyro));
   if (error != 0) {
+    lcd.setCursor(0, 4);
     lcd.print("MPU6050 N/A");
     return;
   }
@@ -300,7 +299,7 @@ void testMPU6050()
     accel_t_gyro.value.y_accel / 128,
     accel_t_gyro.value.z_accel / 128);
   //Serial.println(buf);
-  lcd.setCursor(0, 1);
+  lcd.setCursor(0, 4);
   lcd.print(buf);
 }
 
@@ -314,12 +313,12 @@ void ShowECUCap()
     lcd.setFont(FONT_SIZE_SMALL);
     for (; i < sizeof(pidlist) / sizeof(pidlist[0]) / 2; i++) {
         lcd.setCursor(0, i);
-        sprintf(buffer, "%s:%c", namelist[i], obd.IsValidPID(pidlist[i]) ? 'Y' : 'N');
+        sprintf(buffer, "%s:%c", namelist[i], obd.isValidPID(pidlist[i]) ? 'Y' : 'N');
         lcd.print(buffer);
     }
     for (byte row = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, row++) {
         lcd.setCursor(64, row);
-        sprintf(buffer, "%s:%c", namelist[i], obd.IsValidPID(pidlist[i]) ? 'Y' : 'N');
+        sprintf(buffer, "%s:%c", namelist[i], obd.isValidPID(pidlist[i]) ? 'Y' : 'N');
         lcd.print(buffer);
     }
 }
@@ -345,7 +344,7 @@ void setup()
             do {
                 testMPU6050();
                 delay(100);
-            } while (millis() - t <= 10000);
+            } while (millis() - t <= 1000);
         }
         delay(1000);
 
@@ -364,6 +363,7 @@ void setup()
       delay(500);
     } while(!obd.Init());
 
+    ShowECUCap();
     delay(3000);
     lcd.clear();
     //query();

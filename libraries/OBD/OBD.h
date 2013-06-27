@@ -1,7 +1,7 @@
 /*************************************************************************
-* OBD-II (ELM327) data accessing library for Arduino
+* Arduino Library for OBD-II UART Adapter
 * Distributed under GPL v2.0
-* Copyright (c) 2012 Stanley Huang <stanleyhuangyc@gmail.com>
+* Copyright (c) 2012~2013 Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
 *************************************************************************/
 
@@ -44,32 +44,33 @@ class COBD
 {
 public:
     COBD():dataMode(1),errors(0) {}
-	bool Init(bool passive = false);
-	bool ReadSensor(byte pid, int& result, bool passive = false);
-	bool IsValidPID(byte pid);
-	void Sleep(int seconds);
+	void begin(int baudrate = OBD_SERIAL_BAUDRATE);
+	bool init(bool passive = false);
+	bool readSensor(byte pid, int& result, bool passive = false);
+	bool isValidPID(byte pid);
+	void sleep(int seconds);
 	// Query and GetResponse for advanced usage only
-	void Query(byte pid);
-	char* GetResponse(byte& pid, char* buffer);
-	bool GetResponseParsed(byte& pid, int& result);
+	void sendQuery(byte pid);
+	char* getResponse(byte& pid, char* buffer);
+	bool getResponseParsed(byte& pid, int& result);
 	byte dataMode;
 	byte errors;
 	//char recvBuf[OBD_RECV_BUF_SIZE];
 protected:
-    static int GetConvertedValue(byte pid, char* data);
-	static int GetPercentageValue(char* data)
+	static int normalizeData(byte pid, char* data);
+	static int getPercentageValue(char* data)
 	{
 		return (int)hex2uint8(data) * 100 / 255;
 	}
-	static int GetLargeValue(char* data)
+	static int getLargeValue(char* data)
 	{
 		return hex2uint16(data);
 	}
-	static int GetSmallValue(char* data)
+	static int getSmallValue(char* data)
 	{
 		return hex2uint8(data);
 	}
-	static int GetTemperatureValue(char* data)
+	static int getTemperatureValue(char* data)
 	{
 		return (int)hex2uint8(data) - 40;
 	}
@@ -77,7 +78,7 @@ protected:
 	virtual char read();
 	virtual void write(const char* s);
 	virtual void write(const char c);
-	virtual void InitIdleLoop() {}
-	virtual void DataIdleLoop() {}
+	virtual void initIdleLoop() {}
+	virtual void dataIdleLoop() {}
 	byte pidmap[4 * 4];
 };

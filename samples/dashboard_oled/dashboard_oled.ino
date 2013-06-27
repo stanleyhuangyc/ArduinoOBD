@@ -35,7 +35,7 @@ public:
         char buf[16];
 
         InitScreen();
-        for (int n = 1; !Init(); n++) {
+        for (int n = 1; !init(); n++) {
             sprintf(buf, "Connecting [%d]", n);
             if (n <= 20)
                 DisplayString(buf);
@@ -48,14 +48,14 @@ public:
         DisplayString("Wait ECU start", 0 , 2);
         do {
           delay(500);
-        } while (!ReadSensor(PID_RPM, value));
+        } while (!readSensor(PID_RPM, value));
         DisplayString("ECU started   ", 0 , 4);
         delay(500);
         DisplayString("Wait ignition ", 0 , 6);
         delay(500);
         do {
           delay(500);
-        } while (!ReadSensor(PID_RPM, value) || value == 0);
+        } while (!readSensor(PID_RPM, value) || value == 0);
         DisplayString("Engine started!", 0 , 6);
         delay(1000);
     }
@@ -71,35 +71,35 @@ public:
 
             if (count == 0) {
                 DisplayString("AIR:     ", 0, 6);
-                if (ReadSensor(PID_INTAKE_TEMP, value)) {
+                if (readSensor(PID_INTAKE_TEMP, value)) {
                     sprintf(buf, "%4dC", value);
                     DisplayString(buf, 11 * 8, 6);
                 }
             } else if (count == LOOP_COUNT / 2) {
                 DisplayString("ENGINE:  ", 0, 6);
-                if (ReadSensor(PID_COOLANT_TEMP, value)) {
+                if (readSensor(PID_COOLANT_TEMP, value)) {
                     sprintf(buf, "%4dC", value);
                     DisplayString(buf, 11 * 8, 6);
                 }
             }
             if (count < LOOP_COUNT / 2) {
-                if (ReadSensor(PID_INTAKE_PRESSURE, value)) {
+                if (readSensor(PID_INTAKE_MAP, value)) {
                   sprintf(buf, "%dkPa ", value);
                   DisplayString(buf, 5 * 8, 6);
                 }
             } else {
-                if (ReadSensor(PID_ENGINE_LOAD, value)) {
+                if (readSensor(PID_ENGINE_LOAD, value)) {
                   sprintf(buf, "%d%% ", value);
                   DisplayString(buf, 8 * 8, 6);
                 }
             }
 
-            if (ReadSensor(PID_RPM, value)) {
+            if (readSensor(PID_RPM, value)) {
               sprintf(buf, "%4d", value);
               DisplayLargeNumber(buf, 16, 0);
             }
 
-            if (ReadSensor(PID_SPEED, value)) {
+            if (readSensor(PID_SPEED, value)) {
               sprintf(buf, "%3d", value);
               DisplayLargeNumber(buf, 32, 3);
             }
@@ -153,6 +153,6 @@ void loop()
 
 void setup()
 {
-    OBDUART.begin(OBD_SERIAL_BAUDRATE);
+    dash.begin();
 }
 

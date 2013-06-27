@@ -582,6 +582,7 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
+		<Unit filename="images.h" />
 		<Unit filename="obdlogger.ino">
 			<Option compile="1" />
 			<Option link="1" />

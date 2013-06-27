@@ -1,7 +1,7 @@
 /*************************************************************************
-* OBD-II (ELM327) data accessing library for Arduino
+* Arduino Library for OBD-II UART Adapter
 * Distributed under GPL v2.0
-* Copyright (c) 2012 Stanley Huang <stanleyhuangyc@gmail.com>
+* Copyright (c) 2012~2013 Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
 *************************************************************************/
 
@@ -9,10 +9,9 @@
 #include <avr/pgmspace.h>
 #include "OBD.h"
 
-#define INIT_CMD_COUNT 4
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r"};
+const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r"};
 const char PROGMEM s_searching[] = "SEARCHING";
 const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
 const char PROGMEM s_cmd_sleep[] = "atlp\r";
@@ -60,29 +59,29 @@ unsigned char hex2uint8(const char *p)
 	return c1 << 4 | (c2 & 0xf);
 }
 
-void COBD::Query(unsigned char pid)
+void COBD::sendQuery(unsigned char pid)
 {
 	char cmd[8];
 	sprintf_P(cmd, s_cmd_fmt, dataMode, pid);
 	write(cmd);
 }
 
-bool COBD::ReadSensor(byte pid, int& result, bool passive)
+bool COBD::readSensor(byte pid, int& result, bool passive)
 {
 	// send a query command
-	Query(pid);
+	sendQuery(pid);
 	// wait for reponse
 	bool hasData;
 	unsigned long tick = millis();
 	do {
-		DataIdleLoop();
+		dataIdleLoop();
 	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
 	if (!hasData) {
 		errors++;
 		return false;
 	}
 	// receive and parse the response
-	return GetResponseParsed(pid, result);
+	return getResponseParsed(pid, result);
 }
 
 bool COBD::available()
@@ -105,46 +104,46 @@ void COBD::write(const char c)
 	OBDUART.write(c);
 }
 
-int COBD::GetConvertedValue(byte pid, char* data)
+int COBD::normalizeData(byte pid, char* data)
 {
 	int result;
 	switch (pid) {
 	case PID_RPM:
-		result = GetLargeValue(data) >> 2;
+		result = getLargeValue(data) >> 2;
 		break;
 	case PID_FUEL_PRESSURE:
-		result = GetSmallValue(data) * 3;
+		result = getSmallValue(data) * 3;
 		break;
 	case PID_COOLANT_TEMP:
 	case PID_INTAKE_TEMP:
 	case PID_AMBIENT_TEMP:
-		result = GetTemperatureValue(data);
+		result = getTemperatureValue(data);
 		break;
 	case PID_ABS_ENGINE_LOAD:
-		result = GetLargeValue(data) * 100 / 255;
+		result = getLargeValue(data) * 100 / 255;
 		break;
 	case PID_MAF_FLOW:
-		result = GetLargeValue(data) / 100;
+		result = getLargeValue(data) / 100;
 		break;
 	case PID_THROTTLE:
 	case PID_ENGINE_LOAD:
 	case PID_FUEL_LEVEL:
-		result = GetPercentageValue(data);
+		result = getPercentageValue(data);
 		break;
 	case PID_TIMING_ADVANCE:
-		result = (GetSmallValue(data) - 128) >> 1;
+		result = (getSmallValue(data) - 128) >> 1;
 		break;
 	case PID_DISTANCE:
 	case PID_RUNTIME:
-		result = GetLargeValue(data);
+		result = getLargeValue(data);
 		break;
 	default:
-		result = GetSmallValue(data);
+		result = getSmallValue(data);
 	}
 	return result;
 }
 
-char* COBD::GetResponse(byte& pid, char* buffer)
+char* COBD::getResponse(byte& pid, char* buffer)
 {
 	unsigned long startTime = millis();
 	byte i = 0;
@@ -174,7 +173,7 @@ char* COBD::GetResponse(byte& pid, char* buffer)
 				errors++;
 				break;
 			}
-			DataIdleLoop();
+			dataIdleLoop();
 		}
 	}
 	buffer[i] = 0;
@@ -194,20 +193,20 @@ char* COBD::GetResponse(byte& pid, char* buffer)
 	return 0;
 }
 
-bool COBD::GetResponseParsed(byte& pid, int& result)
+bool COBD::getResponseParsed(byte& pid, int& result)
 {
 	char buffer[OBD_RECV_BUF_SIZE];
-	char* data = GetResponse(pid, buffer);
+	char* data = getResponse(pid, buffer);
 	if (!data) {
 		// try recover next time
 		write('\r');
 		return false;
 	}
-	result = GetConvertedValue(pid, data);
+	result = normalizeData(pid, data);
 	return true;
 }
 
-void COBD::Sleep(int seconds)
+void COBD::sleep(int seconds)
 {
 	char cmd[MAX_CMD_LEN];
 	strcpy_P(cmd, s_cmd_sleep);
@@ -218,7 +217,7 @@ void COBD::Sleep(int seconds)
 	}
 }
 
-bool COBD::IsValidPID(byte pid)
+bool COBD::isValidPID(byte pid)
 {
 	if (pid >= 0x7f)
 		return false;
@@ -228,14 +227,19 @@ bool COBD::IsValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-bool COBD::Init(bool passive)
+void COBD::begin(int baudrate)
+{
+	OBDUART.begin(baudrate);
+}
+
+bool COBD::init(bool passive)
 {
 	unsigned long currentMillis;
 	unsigned char n;
 	char prompted;
 	char buffer[OBD_RECV_BUF_SIZE];
 
-	for (unsigned char i = 0; i < INIT_CMD_COUNT; i++) {
+	for (unsigned char i = 0; i < sizeof(s_initcmd) / sizeof(s_initcmd[0]); i++) {
 		if (!passive) {
 			char cmd[MAX_CMD_LEN];
 			strcpy_P(cmd, s_initcmd[i]);
@@ -262,7 +266,7 @@ bool COBD::Init(bool passive)
 					//WriteData("\r");
 					return false;
 				}
-				InitIdleLoop();
+				initIdleLoop();
 			}
 		}
 	}
@@ -271,8 +275,8 @@ bool COBD::Init(bool passive)
 	memset(pidmap, 0, sizeof(pidmap));
 	for (byte i = 0; i < 4; i++) {
 	byte pid = i * 0x20;
-	Query(pid);
-	char* data = GetResponse(pid, buffer);
+	sendQuery(pid);
+	char* data = getResponse(pid, buffer);
 	if (!data) break;
 	data--;
 	for (byte n = 0; n < 4; n++) {
