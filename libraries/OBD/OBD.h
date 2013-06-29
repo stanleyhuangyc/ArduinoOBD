@@ -43,8 +43,8 @@ unsigned char hex2uint8(const char *p);
 class COBD
 {
 public:
-    COBD():dataMode(1),errors(0) {}
-	void begin(int baudrate = OBD_SERIAL_BAUDRATE);
+	COBD():dataMode(1),errors(0) {}
+	void begin();
 	bool init(bool passive = false);
 	bool readSensor(byte pid, int& result, bool passive = false);
 	bool isValidPID(byte pid);

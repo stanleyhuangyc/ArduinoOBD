@@ -227,9 +227,9 @@ bool COBD::isValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-void COBD::begin(int baudrate)
+void COBD::begin()
 {
-	OBDUART.begin(baudrate);
+	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 }
 
 bool COBD::init(bool passive)
