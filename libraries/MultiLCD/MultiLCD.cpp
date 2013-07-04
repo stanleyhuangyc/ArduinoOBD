@@ -55,6 +55,14 @@ void LCD_ZTOLED::setCursor(byte column, byte line)
 
 size_t LCD_ZTOLED::write(uint8_t c)
 {
+    if (c == '\n') {
+        m_column = 0;
+        m_page += (m_font == FONT_SIZE_SMALL) ? 1 : 2;
+        return 0;
+    } else if (c == '\r') {
+        m_column = 0;
+        return 0;
+    }
     if (m_font == FONT_SIZE_SMALL) {
         if (c <= 0x20 || c >= 0x7f) {
             ScI2cMxFillArea(OLED_ADDRESS, m_column, m_column + 5, m_page, m_page, 0);
@@ -71,6 +79,16 @@ size_t LCD_ZTOLED::write(uint8_t c)
     }
     return 1;
 }
+
+/*
+void LCD_ZTOLED::print(const char* s)
+{
+    ScI2cMxDisplay8x16Str(OLED_ADDRESS, m_page, m_column, s);
+    m_column += (strlen(s) << 3);
+    m_page += (m_column >> 7) << 1;
+    m_column %= 0x7f;
+}
+*/
 
 void LCD_ZTOLED::writeDigit(byte n)
 {
@@ -166,6 +184,13 @@ void LCD_SSD1306::setCursor(byte column, byte line)
 
 size_t LCD_SSD1306::write(uint8_t c)
 {
+    if (c == '\n') {
+        setCursor(0, m_row + ((m_font == FONT_SIZE_SMALL) ? 1 : 2));
+        return 1;
+    } else if (c == '\r') {
+        m_col = 0;
+        return 1;
+    }
     if (m_font == FONT_SIZE_SMALL) {
         Wire.beginTransmission(_i2caddr);
         Wire.write(0x40);
@@ -181,7 +206,11 @@ size_t LCD_SSD1306::write(uint8_t c)
             }
         }
         Wire.endTransmission();
-        m_col += 8;
+        m_col += 6;
+        if (m_col >= 128) {
+            m_col = 0;
+            m_row ++;
+        }
     } else {
         if (c > 0x20 && c < 0x7f) {
             c -= 0x21;
@@ -231,6 +260,10 @@ size_t LCD_SSD1306::write(uint8_t c)
             Wire.endTransmission();
         }
         m_col += 9;
+        if (m_col >= 128) {
+            m_col = 0;
+            m_row += 2;
+        }
     }
     return 1;
 }
@@ -456,5 +489,7 @@ void LCD_SSD1306::clear(byte x, byte y, byte width, byte height)
             Wire.endTransmission();
         }
     }
+
+    setCursor(0, 0);
     TWBR = twbrbackup;
 }

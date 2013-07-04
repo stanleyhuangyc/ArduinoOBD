@@ -28,7 +28,6 @@ public:
     virtual void backlight(bool on) {}
     virtual byte getLines() = 0;
     virtual byte getCols() = 0;
-    virtual void changeLine() {}
     virtual void clearLine(byte line) {}
     void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height) {}
     void printInt(uint16_t value, char padding = -1);
@@ -53,11 +52,6 @@ public:
         setCursor(0, line);
         for (byte i = 14; i > 0; i--) write(' ');
     }
-    void changeLine()
-    {
-        column = 0;
-        line ++;
-    }
     void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height);
 private:
     void writeDigit(byte n);
@@ -73,11 +67,6 @@ public:
     byte getLines() { return 4; }
     byte getCols() { return 16; }
     void setCursor(byte column, byte line);
-    void changeLine()
-    {
-        m_column = 0;
-        m_page += 2;
-    }
     size_t write(uint8_t c);
     //void print(const char* s);
     void writeDigit(byte n);
