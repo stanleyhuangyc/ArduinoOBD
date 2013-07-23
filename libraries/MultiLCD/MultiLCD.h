@@ -12,6 +12,8 @@ typedef enum {
     FONT_SIZE_XLARGE
 } FONT_SIZE;
 
+#define FLAG_PAD_ZERO 1
+
 extern const PROGMEM unsigned char font5x8[][5];
 extern const PROGMEM unsigned char digits8x8[][8] ;
 extern const PROGMEM unsigned char digits16x16[][32];
@@ -23,8 +25,9 @@ extern const PROGMEM unsigned char font8x16_terminal[][16];
 class LCD_Common
 {
 public:
-    LCD_Common():m_font(0) {}
+    LCD_Common():m_font(FONT_SIZE_SMALL),m_flags(0) {}
     void setFont(FONT_SIZE size) { m_font = size; }
+    void setFlags(byte flags) { m_flags = flags; }
     virtual void backlight(bool on) {}
     virtual byte getLines() = 0;
     virtual byte getCols() = 0;
@@ -35,6 +38,7 @@ public:
 protected:
     virtual void writeDigit(byte n) {}
     byte m_font;
+    byte m_flags;
 };
 
 class LCD_PCD8544 : public LCD_Common, public PCD8544
@@ -121,7 +125,7 @@ private:
 class LCD_ILI9325D : public LCD_Common, public Print
 {
 public:
-    LCD_ILI9325D():m_lineHeight(10) {}
+    LCD_ILI9325D():m_lineHeight(10) { m_font = FONT_SIZE_MEDIUM; }
     void setCursor(uint16_t column, uint16_t line)
     {
         m_y = column;

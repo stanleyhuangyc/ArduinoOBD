@@ -301,7 +301,7 @@ void LCD_ILI9325D::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height
 size_t LCD_ILI9325D::write(uint8_t c)
 {
     if (c == '\n') {
-        m_x += 8;
+        m_x += (m_font + 1) << 3;
         return 0;
     } else if (c == '\r') {
         SetXY(m_x, m_x + 7, m_y, 319);
@@ -317,7 +317,7 @@ size_t LCD_ILI9325D::write(uint8_t c)
         SetXY(m_x, m_x + 7, m_y, m_y + 4);
         m_y += 6;
         if (m_y >= 320) {
-            m_x += 8;
+            m_x += (m_font + 1) << 3;
             m_y = 0;
             if (m_x >= 240) {
                 m_x = 0;
@@ -339,7 +339,7 @@ size_t LCD_ILI9325D::write(uint8_t c)
         SetXY(m_x, m_x + 15, m_y, m_y + 7);
         m_y += 9;
         if (m_y >= 320) {
-            m_x += 8;
+            m_x += (m_font + 1) << 3;
             m_y = 0;
             if (m_x >= 240) {
                 m_x = 0;

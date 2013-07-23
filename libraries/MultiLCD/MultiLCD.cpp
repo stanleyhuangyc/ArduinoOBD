@@ -18,7 +18,7 @@ void LCD_Common::printInt(unsigned int value, char padding)
         den /= 10;
         if (v == 0 && padding && den) {
             if (padding >= i) {
-                writeDigit(-1);
+                writeDigit((m_flags & FLAG_PAD_ZERO) ? 0 : -1);
             }
             continue;
         }
@@ -36,7 +36,7 @@ void LCD_Common::printLong(unsigned long value, char padding)
         den /= 10;
         if (v == 0 && padding && den) {
             if (padding >= i) {
-                writeDigit(-1);
+                writeDigit((m_flags & FLAG_PAD_ZERO) ? 0 : -1);
             }
             continue;
         }
@@ -273,10 +273,10 @@ void LCD_SSD1306::writeDigit(byte n)
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
     if (m_font == FONT_SIZE_SMALL) {
-        n += '0' - 0x21;
         Wire.beginTransmission(_i2caddr);
         Wire.write(0x40);
         if (n <= 9) {
+            n += '0' - 0x21;
             for (byte i = 0; i < 5; i++) {
                 Wire.write(pgm_read_byte_near(&font5x8[n][i]));
             }
