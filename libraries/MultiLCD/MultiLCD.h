@@ -29,16 +29,25 @@ public:
     void setFont(FONT_SIZE size) { m_font = size; }
     void setFlags(byte flags) { m_flags = flags; }
     virtual void backlight(bool on) {}
-    virtual byte getLines() = 0;
-    virtual byte getCols() = 0;
-    virtual void clearLine(byte line) {}
-    void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height) {}
+    virtual void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height) {}
     void printInt(uint16_t value, char padding = -1);
     void printLong(unsigned long value, char padding = -1);
 protected:
     virtual void writeDigit(byte n) {}
     byte m_font;
     byte m_flags;
+};
+
+class LCD_Null : public LCD_Common, public Print
+{
+public:
+    byte getLines() { return 0; }
+    byte getCols() { return 0; }
+    void clearLine(byte line) {}
+    void clear() {}
+    void begin() {}
+    void setCursor(byte column, byte line) {}
+    size_t write(uint8_t c) { return 0; }
 };
 
 class LCD_PCD8544 : public LCD_Common, public PCD8544
