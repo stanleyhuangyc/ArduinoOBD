@@ -81,4 +81,5 @@ protected:
 	virtual void initIdleLoop() {}
 	virtual void dataIdleLoop() {}
 	byte pidmap[4 * 4];
+	byte vin[17];
 };

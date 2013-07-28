@@ -11,7 +11,7 @@
 
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","ATI\r"};
+const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"\rATZ\r","ATE0\r","ATL1\r","ATI\r"};
 const char PROGMEM s_searching[] = "SEARCHING";
 const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
 const char PROGMEM s_cmd_sleep[] = "atlp\r";
@@ -77,6 +77,7 @@ bool COBD::readSensor(byte pid, int& result, bool passive)
 		dataIdleLoop();
 	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
 	if (!hasData) {
+        write('\r');
 		errors++;
 		return false;
 	}

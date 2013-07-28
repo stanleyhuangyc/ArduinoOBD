@@ -14,7 +14,7 @@ void setup()
 {
   // we'll use the debug LED as output
   pinMode(13, OUTPUT);  
-  // start serial communication at the adapter defined baudrate
+  // start communication with OBD-II UART adapter
   obd.begin();
   // initiate OBD-II connection until success
   while (!obd.init());  
