@@ -127,6 +127,7 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
+		<Unit filename="datalogger.h" />
 		<Unit filename="images.h" />
 		<Unit filename="megalogger.ino">
 			<Option compile="1" />
