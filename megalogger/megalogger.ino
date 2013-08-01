@@ -128,12 +128,11 @@ public:
 
         showStates();
 
-        lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(0, 14);
-        lcd.print("VIN: XXXXXXXX");
+        //lcd.setFont(FONT_SIZE_MEDIUM);
+        //lcd.setCursor(0, 14);
+        //lcd.print("VIN: XXXXXXXX");
 
         showECUCap();
-        delay(3000);
 
         readSensor(PID_DISTANCE, startDistance);
 
@@ -145,7 +144,14 @@ public:
             }
         }
 
-        openFile(fileIndex);
+        uint16_t flags = FLAG_CAR | FLAG_OBD;
+        if (state & STATE_GPS_CONNECTED) flags |= FLAG_GPS;
+        if (state & STATE_ACC_READY) flags |= FLAG_ACC;
+        uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
+        lcd.setCursor(0, 6);
+        lcd.print("File ID:");
+        lcd.printInt(index);
+        delay(5000);
 
         initScreen();
 
@@ -288,21 +294,6 @@ public:
             return false;
         }
 
-        char filename[13];
-        // now determine log file name
-        for (fileIndex = 1; fileIndex; fileIndex++) {
-            sprintf(filename, FILE_NAME_FORMAT, fileIndex);
-            if (!SD.exists(filename)) {
-                break;
-            }
-        }
-        if (!fileIndex) {
-            lcd.print("Bad File");
-            return false;
-        }
-
-        lcd.print("File:");
-        lcd.print(filename);
         state |= STATE_SD_READY;
         return true;
     }
@@ -664,12 +655,6 @@ static COBDLogger logger;
 
 void setup()
 {
-    delay(100);
-    lcd.begin();
-
-    logger.begin();
-    logger.initSender();
-
 #ifdef GPSUART
 #ifdef GPS_OPEN_BAUDRATE
     GPSUART.begin(GPS_OPEN_BAUDRATE);
@@ -680,9 +665,15 @@ void setup()
     GPSUART.begin(GPS_BAUDRATE);
     // switching to 10Hz mode, effective only for MTK3329
     //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
-    //GPSUART.println(PMTK_SET_NMEA_UPDATE_5HZ);
+    GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 #endif
     Wire.begin();
+
+    delay(200);
+    lcd.begin();
+
+    logger.begin();
+    logger.initSender();
 
     //lcd.clear();
     lcd.setLineHeight(8);
