@@ -1,3 +1,10 @@
+/*************************************************************************
+* Arduino GPS Data Logger / Speed Meter / Odometer
+* Distributed under GPL v2.0
+* Copyright (c) 2013 Stanley Huang <stanleyhuangyc@gmail.com>
+* All rights reserved.
+*************************************************************************/
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <MultiLCD.h>
