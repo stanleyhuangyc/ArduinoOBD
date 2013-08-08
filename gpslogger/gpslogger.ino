@@ -38,7 +38,7 @@ byte displayMode = 0;
 #else
 #define GPSUART Serial
 #endif
-#define GPS_BAUDRATE 115200
+#define GPS_BAUDRATE 38400
 
 #define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
 
@@ -86,44 +86,43 @@ void processGPS()
     }
 
     speed = (uint16_t)(gps.speed() * 1852 / 100);
+    if (speed < 1000) speed = 0;
     logger.logData(PID_GPS_SPEED, speed, 0);
 
-    byte satnew = gps.satellites();
-    if (satnew < 100) sat = satnew;
+    sat = gps.satellites();
 
     {
         long lat, lon;
         gps.get_position(&lat, &lon, 0);
         logger.logData(PID_GPS_COORDINATES, (float)lat / 100000, (float)lon / 100000);
 
-        if (logger.dataTime - lastTime >= 5000) {
+        if (logger.dataTime - lastTime >= 3000 && speed > 0) {
             int16_t latDiff = lat - lastLat;
             int16_t lonDiff = lon - lastLon;
 
-            if (latDiff > 0) {
-                heading[0] = 'N';
-            } else if (latDiff < 0) {
-                heading[0] = 'S';
-            } else {
-                heading[0] = ' ';
-            }
-            if (lonDiff > 0) {
-                heading[1] = 'E';
-            } else if (lonDiff < 0) {
-                heading[1] = 'W';
-            } else {
-                heading[1] = ' ';
-            }
+            uint16_t d = latDiff * latDiff + lonDiff * lonDiff;
+            if (d >= 100) {
+                distance += sqrt(d);
+                lastLat = lat;
+                lastLon = lon;
 
-            uint16_t d = sqrt(latDiff * latDiff + lonDiff * lonDiff);
-            if (d >= 10) {
-                distance += d;
+                if (latDiff > 0) {
+                    heading[0] = 'N';
+                } else if (latDiff < 0) {
+                    heading[0] = 'S';
+                } else {
+                    heading[0] = ' ';
+                }
+                if (lonDiff > 0) {
+                    heading[1] = 'E';
+                } else if (lonDiff < 0) {
+                    heading[1] = 'W';
+                } else {
+                    heading[1] = ' ';
+                }
             }
             lastTime = logger.dataTime;
-
         }
-        lastLat = lat;
-        lastLon = lon;
     }
 
     {
@@ -263,7 +262,7 @@ void displayMPU6050()
 
 void setup()
 {
-    Wire.begin(); 
+    Wire.begin();
     lcd.begin();
     lcd.setFont(FONT_SIZE_MEDIUM);
 
@@ -430,10 +429,12 @@ void displayMinorInfo()
 
     lcd.setFlags(0);
     lcd.setFont(FONT_SIZE_SMALL);
-    lcd.setCursor(116, 6);
-    lcd.printInt((uint16_t)sat, 2);
     lcd.setCursor(98, 7);
     lcd.printInt(records, 5);
+    if (sat < 100) {
+        lcd.setCursor(116, 6);
+        lcd.printInt((uint16_t)sat, 2);
+    }
 }
 
 void loop()
