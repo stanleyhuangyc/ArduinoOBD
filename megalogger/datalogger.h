@@ -1,5 +1,5 @@
 // configurations
-#define ENABLE_DATA_OUT 0
+#define ENABLE_DATA_OUT 1
 #define ENABLE_DATA_LOG 1
 
 typedef enum {
