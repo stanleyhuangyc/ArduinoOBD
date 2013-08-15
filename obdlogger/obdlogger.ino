@@ -9,20 +9,20 @@
 #include <Wire.h>
 #include <OBD.h>
 #include <SD.h>
-#include <MultiLCD.h>
 #include <TinyGPS.h>
 #include <MPU6050.h>
 #include <SoftwareSerial.h>
+#include "MultiLCD.h"
 #include "images.h"
 #include "datalogger.h"
 
 /**************************************
 * Choose SD pin here
 **************************************/
+//#define SD_CS_PIN SS // generic
 //#define SD_CS_PIN 4 // ethernet shield
 //#define SD_CS_PIN 7 // microduino
-//#define SD_CS_PIN 10 // SD breakout
-#define SD_CS_PIN SS
+#define SD_CS_PIN 10 // SD breakout
 
 /**************************************
 * Config GPS here

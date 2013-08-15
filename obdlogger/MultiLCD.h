@@ -5,6 +5,10 @@
 * All rights reserved.
 *************************************************************************/
 
+#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__)
+#define MEMORY_SAVING
+#endif
+
 typedef enum {
     FONT_SIZE_SMALL = 0,
     FONT_SIZE_MEDIUM,
