@@ -218,6 +218,7 @@ public:
         for (byte i = 0; i < HEADER_LEN - sizeof(hdr); i++)
             sdfile.write((uint8_t)0);
         dataSize = HEADER_LEN;
+        sdfile.flush();
         return fileIndex;
     }
     void closeFile()

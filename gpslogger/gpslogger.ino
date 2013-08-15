@@ -51,6 +51,8 @@ File sdfile;
 
 CDataLogger logger;
 
+void initScreen();
+
 bool initACC()
 {
     if (MPU6050_init() != 0)
@@ -79,56 +81,60 @@ void processGPS()
     // parsed GPS data is ready
     logger.dataTime = millis();
 
-    {
-        uint32_t date;
-        gps.get_datetime(&date, &time, 0);
-        logger.logData(PID_GPS_TIME, time, date);
-    }
+    uint32_t date;
+    gps.get_datetime(&date, &time, 0);
+    logger.logData(PID_GPS_TIME, time, date);
 
     speed = (uint16_t)(gps.speed() * 1852 / 100);
     if (speed < 1000) speed = 0;
     logger.logData(PID_GPS_SPEED, speed, 0);
 
+    if (sat >= 3 && gps.satellites() < 3) {
+        initScreen();
+    }
     sat = gps.satellites();
 
-    {
-        long lat, lon;
-        gps.get_position(&lat, &lon, 0);
-        logger.logData(PID_GPS_COORDINATES, (float)lat / 100000, (float)lon / 100000);
+    long lat, lon;
+    gps.get_position(&lat, &lon, 0);
+    logger.logData(PID_GPS_COORDINATES, (float)lat / 100000, (float)lon / 100000);
 
-        if (logger.dataTime - lastTime >= 3000 && speed > 0) {
-            int16_t latDiff = lat - lastLat;
-            int16_t lonDiff = lon - lastLon;
+    if (logger.dataTime - lastTime >= 3000 && speed > 0) {
+        if (lastLat == 0) lastLat = lat;
+        if (lastLon == 0) lastLon = lon;
 
-            uint16_t d = latDiff * latDiff + lonDiff * lonDiff;
-            if (d >= 100) {
-                distance += sqrt(d);
-                lastLat = lat;
-                lastLon = lon;
+        int16_t latDiff = lat - lastLat;
+        int16_t lonDiff = lon - lastLon;
 
-                if (latDiff > 0) {
-                    heading[0] = 'N';
-                } else if (latDiff < 0) {
-                    heading[0] = 'S';
-                } else {
-                    heading[0] = ' ';
-                }
-                if (lonDiff > 0) {
-                    heading[1] = 'E';
-                } else if (lonDiff < 0) {
-                    heading[1] = 'W';
-                } else {
-                    heading[1] = ' ';
-                }
+        uint16_t d = latDiff * latDiff + lonDiff * lonDiff;
+        if (d >= 100) {
+            distance += sqrt(d);
+            lastLat = lat;
+            lastLon = lon;
+
+            if (latDiff > 0) {
+                heading[0] = 'N';
+            } else if (latDiff < 0) {
+                heading[0] = 'S';
+            } else {
+                heading[0] = ' ';
             }
-            lastTime = logger.dataTime;
+            if (lonDiff > 0) {
+                heading[1] = 'E';
+            } else if (lonDiff < 0) {
+                heading[1] = 'W';
+            } else {
+                heading[1] = ' ';
+            }
         }
+        lastTime = logger.dataTime;
+
+        // flush file every several seconds
+        logger.flushFile();
     }
 
-    {
-        long alt = gps.altitude();
-        logger.logData(PID_GPS_ALTITUDE, (float)alt);
-    }
+    long alt = gps.altitude();
+    logger.logData(PID_GPS_ALTITUDE, (float)alt);
+
     records++;
 }
 
@@ -198,7 +204,7 @@ void initScreen()
         lcd.setFont(FONT_SIZE_SMALL);
         lcd.setCursor(110, 0);
         lcd.write(':');
-        lcd.setCursor(110, 1);
+        lcd.setCursor(110, 3);
         lcd.print("kph");
         lcd.setCursor(64, 3);
         lcd.print("km/h");
@@ -271,8 +277,6 @@ void setup()
 
     CheckSD();
 
-    unsigned long t = millis();
-
     lcd.setCursor(0, 2);
     lcd.print("ACC");
     lcd.draw(acc ? tick : cross, 32, 16, 16, 16);
@@ -294,6 +298,7 @@ void setup()
     do {
         if (!GPSUART.available()) continue;
         if (n == 0xff) {
+            // draw a tick (once)
             lcd.draw(tick, 32, 32, 16, 16);
             lcd.setCursor(0, 6);
             lcd.print("SAT ");
@@ -319,8 +324,7 @@ void setup()
             lcd.setCursor(32, 6);
             lcd.printInt(sat);
         }
-    } while (sat < 3 || millis() - start < 3000);
-    //} while (0);
+    } while (sat < 3 && millis() - start < 10000);
 
     GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 
@@ -335,9 +339,24 @@ void setup()
 
 void displaySpeedDistance()
 {
+    uint16_t elapsed = (millis() - start) / 1000;
+    uint16_t n;
+
+    // display elapsed time (mm:ss)
+    lcd.setFlags(FLAG_PAD_ZERO);
+    lcd.setFont(FONT_SIZE_SMALL);
+    lcd.setCursor(98, 0);
+    lcd.printInt(n = elapsed / 60, 2);
+    elapsed -= n * 60;
+    lcd.setCursor(116, 0);
+    lcd.printInt(elapsed, 2);
+    lcd.setFlags(0);
+
+    if (sat < 3) return;
+
     // display speed
     lcd.setFont(FONT_SIZE_XLARGE);
-    uint16_t n = speed / 1000;
+    n = speed / 1000;
     if (n >= 100) {
         lcd.setCursor(0, 0);
         lcd.printInt(n, 3);
@@ -357,27 +376,39 @@ void displaySpeedDistance()
     lcd.printInt(n / 100);
 
     // display average speed
-    uint16_t elapsed = (millis() - start) / 1000;
-    byte avgSpeed = distance * 36 / elapsed / 10;
-    lcd.setFont(FONT_SIZE_SMALL);
-    lcd.setCursor(92, 1);
-    lcd.printInt(avgSpeed, 3);
-
-    // display elapsed time (mm:ss)
-    lcd.setFlags(FLAG_PAD_ZERO);
-    lcd.setCursor(98, 0);
-    lcd.printInt(n = elapsed / 60, 2);
-    elapsed -= n * 60;
-    lcd.setCursor(116, 0);
-    lcd.printInt(elapsed, 2);
-
-    lcd.setFlags(0);
+    if (elapsed) {
+        byte avgSpeed = distance * 36 / elapsed / 10;
+        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setCursor(102, 1);
+        lcd.printInt(avgSpeed, 3);
+    }
 }
 
 void displayTimeSpeedDistance()
 {
     uint32_t elapsed = millis() - start;
     uint16_t n;
+
+    // display elapsed time (mm:ss:mm)
+    n = elapsed / 60000;
+    if (n >= 100) {
+        lcd.setCursor(0, 0);
+        lcd.printInt(n, 3);
+    } else {
+        lcd.setCursor(16, 0);
+        lcd.printInt(n, 2);
+    }
+    elapsed -= n * 60000;
+    lcd.setFlags(FLAG_PAD_ZERO);
+    lcd.setCursor(56, 0);
+    lcd.printInt(n = elapsed / 1000, 2);
+    elapsed -= n * 1000;
+    lcd.setCursor(96, 1);
+    lcd.setFont(FONT_SIZE_SMALL);
+    lcd.printInt(n = elapsed / 10, 2);
+    lcd.setFlags(0);
+
+    if (sat < 3) return;
 
     // display speed
     lcd.setFont(FONT_SIZE_LARGE);
@@ -399,36 +430,16 @@ void displayTimeSpeedDistance()
     lcd.setCursor(56, 6);
     n = distance - n * 1000;
     lcd.printInt(n / 100);
-
-    // display elapsed time (mm:ss:mm)
-    n = elapsed / 60000;
-    if (n >= 100) {
-        lcd.setCursor(0, 0);
-        lcd.printInt(n, 3);
-    } else {
-        lcd.setCursor(16, 0);
-        lcd.printInt(n, 2);
-    }
-    elapsed -= n * 60000;
-    lcd.setFlags(FLAG_PAD_ZERO);
-    lcd.setCursor(56, 0);
-    lcd.printInt(n = elapsed / 1000, 2);
-    elapsed -= n * 1000;
-    lcd.setCursor(96, 1);
-    lcd.setFont(FONT_SIZE_SMALL);
-    lcd.printInt(n = elapsed / 10, 2);
-
-    lcd.setFlags(0);
 }
 
 void displayMinorInfo()
 {
+    lcd.setFont(FONT_SIZE_SMALL);
     lcd.setCursor(0, 0);
     lcd.write(heading[0]);
     lcd.write(heading[1]);
 
     lcd.setFlags(0);
-    lcd.setFont(FONT_SIZE_SMALL);
     lcd.setCursor(98, 7);
     lcd.printInt(records, 5);
     if (sat < 100) {
