@@ -12,7 +12,7 @@
 #include <TinyGPS.h>
 #include <MPU6050.h>
 #include <SoftwareSerial.h>
-#include "MultiLCD.h"
+#include "MicroLCD.h"
 #include "images.h"
 #include "datalogger.h"
 
