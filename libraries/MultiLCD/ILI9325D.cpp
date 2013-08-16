@@ -142,12 +142,13 @@ void LCD_ILI9325D::begin()
     for(int a=0;a < 8;a++)
     {
         pinMode(a,OUTPUT);
+        digitalWrite(a, LOW);
     }
 
     digitalWrite(RST,HIGH);
-    delay(1);
+    delay(5);
     digitalWrite(RST,LOW);
-    delay(1);
+    delay(5);
 
     digitalWrite(RST,HIGH);
     digitalWrite(CS,HIGH);

@@ -13,6 +13,9 @@ typedef enum {
 } FONT_SIZE;
 
 #define FLAG_PAD_ZERO 1
+#define FLAG_PIXEL_DOUBLE_H 2
+#define FLAG_PIXEL_DOUBLE_V 4
+#define FLAG_PIXEL_DOUBLE (FLAG_PIXEL_DOUBLE_H | FLAG_PIXEL_DOUBLE_V)
 
 extern const PROGMEM unsigned char font5x8[][5];
 extern const PROGMEM unsigned char digits8x8[][8] ;
