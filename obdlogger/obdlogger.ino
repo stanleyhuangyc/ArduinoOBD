@@ -9,7 +9,6 @@
 #include <Wire.h>
 #include <OBD.h>
 #include <SD.h>
-#include <TinyGPS.h>
 #include <MPU6050.h>
 #include <SoftwareSerial.h>
 #include "MicroLCD.h"
@@ -69,6 +68,8 @@ LCD_SSD1306 lcd;
 #endif
 
 #ifdef GPSUART
+
+#include <TinyGPS.h>
 
 #define PMTK_SET_NMEA_UPDATE_1HZ "$PMTK220,1000*1F"
 #define PMTK_SET_NMEA_UPDATE_5HZ "$PMTK220,200*2C"
@@ -131,16 +132,22 @@ public:
         if (state & STATE_ACC_READY) flags |= FLAG_ACC;
         uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
         lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setFlags(FLAG_PAD_ZERO);
         lcd.setCursor(86, 0);
-        lcd.write('[');
-        lcd.printInt(index, 5);
-        lcd.write(']');
-        lcd.setFlags(0);
+        if (index) {
+            lcd.write('[');
+            lcd.setFlags(FLAG_PAD_ZERO);
+            lcd.printInt(index, 5);
+            lcd.setFlags(0);
+            lcd.write(']');
+        } else {
+            lcd.print("NO LOG");
+        }
         delay(1000);
 
+#ifndef MEMORY_SAVING
         showECUCap();
         delay(3000);
+#endif
 
         readSensor(PID_DISTANCE, startDistance);
 

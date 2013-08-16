@@ -38,7 +38,6 @@
 					<Add option="-mmcu=$(MCU)" />
 					<Add option="-DF_CPU=16000000L" />
 					<Add option="-D__AVR_ATmega328P__" />
-					<Add option="-DMEMORY_SAVING" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
 					<Add directory="$(ARDUINO_DIR)/libraries" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/standard" />
@@ -583,12 +582,9 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
-		<Unit filename="MultiLCD.cpp" />
-		<Unit filename="MultiLCD.h" />
+		<Unit filename="MicroLCD.cpp" />
 		<Unit filename="SSD1306.cpp" />
-		<Unit filename="SSD1306.h" />
 		<Unit filename="datalogger.h" />
-		<Unit filename="fonts.cpp" />
 		<Unit filename="images.h" />
 		<Unit filename="obdlogger.ino">
 			<Option compile="1" />
