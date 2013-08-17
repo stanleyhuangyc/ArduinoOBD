@@ -7,22 +7,21 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <MultiLCD.h>
 #include <SD.h>
 #include <TinyGPS.h>
-#include <MPU6050.h>
 #include <SoftwareSerial.h>
+#include "MicroLCD.h"
 #include "datalogger.h"
 #include "images.h"
 
 #define DISPLAY_MODES 2
+#define USE_MPU6050 0
 
-//#define SD_CS_PIN 4 // ethernet shield
-#define SD_CS_PIN 7 // microduino
-//#define SD_CS_PIN 10 // SD breakout
+#define SD_CS_PIN SS
+//#define SD_CS_PIN 7 // for microduino
+//#define SD_CS_PIN 4 // for ethernet shield
 
 LCD_SSD1306 lcd;
-//LCD_ZTOLED lcd;
 
 uint32_t start;
 uint32_t distance = 0;
@@ -30,10 +29,16 @@ uint16_t speed = 0;
 byte sat = 0;
 uint16_t records = 0;
 char heading[2];
-bool acc;
+bool acc = false;
 byte displayMode = 0;
 
-#if defined(__AVR_ATmega644P__)
+#if USE_MPU6050
+#include <MPU6050.h>
+#endif
+
+#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
+#define GPSUART Serial2
+#elif defined(__AVR_ATmega644P__)
 #define GPSUART Serial1
 #else
 #define GPSUART Serial
@@ -53,6 +58,7 @@ CDataLogger logger;
 
 void initScreen();
 
+#if USE_MPU6050
 bool initACC()
 {
     if (MPU6050_init() != 0)
@@ -70,6 +76,7 @@ void processACC()
     // log x/y/z of gyro meter
     logger.logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
 }
+#endif
 
 void processGPS()
 {
@@ -233,6 +240,7 @@ void initScreen()
     lcd.print("S:");
 }
 
+#if USE_MPU6050
 void displayMPU6050()
 {
     accel_t_gyro_union data;
@@ -265,6 +273,7 @@ void displayMPU6050()
     lcd.setCursor(64, 5);
     lcd.print(buf);
 }
+#endif
 
 void setup()
 {
@@ -285,11 +294,12 @@ void setup()
     lcd.print("GPS");
     lcd.draw(cross, 32, 32, 16, 16);
 
-    Serial.begin(57600);
     GPSUART.begin(GPS_BAUDRATE);
     logger.initSender();
 
+#if USE_MPU6050
     acc = initACC();
+#endif
 
     byte n = 0xff;
     uint32_t tm = 0;
@@ -315,24 +325,24 @@ void setup()
 
         if (!gps.encode(c)) continue;
 
+#if USE_MPU6050
         if (acc) {
             displayMPU6050();
         }
+#endif
 
         sat = gps.satellites();
         if (sat < 100) {
             lcd.setCursor(32, 6);
             lcd.printInt(sat);
         }
-    } while (sat < 3 && millis() - start < 10000);
+    } while (sat < 3 && millis() - start < 30000);
 
     GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 
     logger.openFile(LOG_TYPE_ROUTE, FLAG_CYCLING | FLAG_GPS | (acc ? FLAG_ACC : 0));
 
     initScreen();
-
-	Serial.begin(9600);
 
 	start = millis();
 }
@@ -376,8 +386,8 @@ void displaySpeedDistance()
     lcd.printInt(n / 100);
 
     // display average speed
-    if (elapsed) {
-        byte avgSpeed = distance * 36 / elapsed / 10;
+    if (elapsed > 60) {
+        uint16_t avgSpeed = distance * 36 / elapsed / 10;
         lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.setCursor(102, 1);
         lcd.printInt(avgSpeed, 3);
@@ -459,7 +469,9 @@ void loop()
         }
     }
 
+#if USE_MPU6050
     processACC();
+#endif
 
     switch (displayMode) {
     case 0:
