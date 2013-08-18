@@ -6,7 +6,7 @@
 *************************************************************************/
 
 #if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__)
-#define MEMORY_SAVING
+//#define MEMORY_SAVING
 #endif
 
 typedef enum {

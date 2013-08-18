@@ -14,7 +14,12 @@
 #include "datalogger.h"
 #include "images.h"
 
+#if defined(__AVR_ATmega644P__)
 #define DISPLAY_MODES 2
+#else
+#define DISPLAY_MODES 1
+#endif
+
 #define USE_MPU6050 0
 
 #define SD_CS_PIN SS
@@ -50,8 +55,6 @@ byte displayMode = 0;
 TinyGPS gps;
 
 // SD card
-Sd2Card card;
-SdVolume volume;
 File sdfile;
 
 CDataLogger logger;
@@ -147,9 +150,13 @@ void processGPS()
 
 bool CheckSD()
 {
+    Sd2Card card;
+    SdVolume volume;
+
     lcd.setCursor(0, 0);
     lcd.setFont(FONT_SIZE_MEDIUM);
     pinMode(SS, OUTPUT);
+
     if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
         const char* type;
         char buf[20];
@@ -338,7 +345,7 @@ void setup()
         }
     } while (sat < 3 && millis() - start < 30000);
 
-    GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
+    //GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 
     logger.openFile(LOG_TYPE_ROUTE, FLAG_CYCLING | FLAG_GPS | (acc ? FLAG_ACC : 0));
 
@@ -394,6 +401,7 @@ void displaySpeedDistance()
     }
 }
 
+#if DISPLAY_MODES > 1
 void displayTimeSpeedDistance()
 {
     uint32_t elapsed = millis() - start;
@@ -441,6 +449,7 @@ void displayTimeSpeedDistance()
     n = distance - n * 1000;
     lcd.printInt(n / 100);
 }
+#endif
 
 void displayMinorInfo()
 {
@@ -473,6 +482,7 @@ void loop()
     processACC();
 #endif
 
+#if DISPLAY_MODES > 1
     switch (displayMode) {
     case 0:
         displaySpeedDistance();
@@ -480,8 +490,6 @@ void loop()
     default:
         displayTimeSpeedDistance();
     }
-
-    displayMinorInfo();
 
     if (digitalRead(8) == 0) {
         delay(50);
@@ -491,4 +499,9 @@ void loop()
             initScreen();
         }
     }
+#else
+    displaySpeedDistance();
+#endif
+
+    displayMinorInfo();
 }

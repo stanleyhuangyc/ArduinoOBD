@@ -652,6 +652,7 @@
 			<Add directory="." />
 		</Compiler>
 		<Unit filename="MicroLCD.cpp" />
+		<Unit filename="MicroLCD.h" />
 		<Unit filename="SSD1306.cpp" />
 		<Unit filename="datalogger.h" />
 		<Unit filename="gpslogger.ino">
