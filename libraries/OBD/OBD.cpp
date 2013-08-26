@@ -91,8 +91,8 @@ bool COBD::available()
 
 char COBD::read()
 {
-    char c = OBDUART.read();
-    return c;
+	char c = OBDUART.read();
+	return c;
 }
 
 void COBD::write(const char* s)
@@ -147,7 +147,7 @@ int COBD::normalizeData(byte pid, char* data)
 char* COBD::getResponse(byte& pid, char* buffer)
 {
 	unsigned long startTime = millis();
-    static const char responseSign[3] = {'4', '1', ' '};
+	static const char responseSign[3] = {'4', '1', ' '};
 	byte i = 0;
 
 	for (;;) {
@@ -180,20 +180,20 @@ char* COBD::getResponse(byte& pid, char* buffer)
 	}
 	buffer[i] = 0;
 
-    if (i > 6) {
-        char *p = buffer;
-        while ((p = strstr(p, responseSign))) {
-            p += 3;
-            byte curpid = hex2uint8(p);
-            if (pid == 0) pid = curpid;
-            if (curpid == pid) {
-                errors = 0;
-                p += 2;
-                if (*p == ' ')
-                    return p + 1;
-            }
-        };
-    }
+	if (i > 6) {
+		char *p = buffer;
+		while ((p = strstr(p, responseSign))) {
+		    p += 3;
+		    byte curpid = hex2uint8(p);
+		    if (pid == 0) pid = curpid;
+		    if (curpid == pid) {
+		        errors = 0;
+		        p += 2;
+		        if (*p == ' ')
+		            return p + 1;
+		    }
+		};
+	}
 	return 0;
 }
 
