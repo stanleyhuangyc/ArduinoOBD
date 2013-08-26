@@ -11,12 +11,11 @@
 
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"\rATZ\r","ATE0\r","ATL1\r","ATI\r"};
+const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r"};
 const char PROGMEM s_searching[] = "SEARCHING";
 const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
 const char PROGMEM s_cmd_sleep[] = "atlp\r";
 const char PROGMEM s_cmd_vin[] = "0902\r";
-const char PROGMEM s_response_begin[] = "41 ";
 
 unsigned int hex2uint16(const char *p)
 {
@@ -92,7 +91,8 @@ bool COBD::available()
 
 char COBD::read()
 {
-	return OBDUART.read();
+    char c = OBDUART.read();
+    return c;
 }
 
 void COBD::write(const char* s)
@@ -147,6 +147,7 @@ int COBD::normalizeData(byte pid, char* data)
 char* COBD::getResponse(byte& pid, char* buffer)
 {
 	unsigned long startTime = millis();
+    static const char responseSign[3] = {'4', '1', ' '};
 	byte i = 0;
 
 	for (;;) {
@@ -179,18 +180,20 @@ char* COBD::getResponse(byte& pid, char* buffer)
 	}
 	buffer[i] = 0;
 
-	char *p = buffer;
-	while ((p = strstr_P(p, s_response_begin))) {
-		p += 3;
-		byte curpid = hex2uint8(p);
-		if (pid == 0) pid = curpid;
-		if (curpid == pid) {
-			errors = 0;
-			p += 2;
-			if (*p == ' ')
-			    return p + 1;
-		}
-	}
+    if (i > 6) {
+        char *p = buffer;
+        while ((p = strstr(p, responseSign))) {
+            p += 3;
+            byte curpid = hex2uint8(p);
+            if (pid == 0) pid = curpid;
+            if (curpid == pid) {
+                errors = 0;
+                p += 2;
+                if (*p == ' ')
+                    return p + 1;
+            }
+        };
+    }
 	return 0;
 }
 
@@ -252,7 +255,7 @@ bool COBD::init(bool passive)
 		for (;;) {
 			if (available()) {
 				char c = read();
-				if (c == '>') {
+				if (n > 2 && c == '>') {
 				    buffer[n] = 0;
 				    prompted++;
 				} else if (n < OBD_RECV_BUF_SIZE - 1) {
@@ -271,21 +274,24 @@ bool COBD::init(bool passive)
 			}
 		}
 	}
+	while (available()) read();
 
 	// load pid map
 	memset(pidmap, 0, sizeof(pidmap));
 	for (byte i = 0; i < 4; i++) {
-	byte pid = i * 0x20;
-	sendQuery(pid);
-	char* data = getResponse(pid, buffer);
-	if (!data) break;
-	data--;
-	for (byte n = 0; n < 4; n++) {
-	    if (data[n * 3] != ' ')
-	        break;
-	    pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
+        byte pid = i * 0x20;
+        sendQuery(pid);
+        char* data = getResponse(pid, buffer);
+        if (!data) break;
+        data--;
+        for (byte n = 0; n < 4; n++) {
+            if (data[n * 3] != ' ')
+                break;
+            pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
+        }
 	}
-	}
+	while (available()) read();
+
 	errors = 0;
 	return true;
 }
