@@ -374,10 +374,10 @@ private:
 
             lcd.setFont(FONT_SIZE_MEDIUM);
             char buf[16];
-            sprintf(buf, "%d.%ld", (int)(lat / 100000), lat % 100000);
+            sprintf(buf, "%d.%ld", (int)(lat / 100000), abs(lat) % 100000);
             lcd.setCursor(50, 18);
             lcd.print(buf);
-            sprintf(buf, "%d.%ld", (int)(lon / 100000), lon % 100000);
+            sprintf(buf, "%d.%ld", (int)(lon / 100000), abs(lon) % 100000);
             lcd.setCursor(50, 21);
             lcd.print(buf);
             int32_t alt = gps.altitude();
