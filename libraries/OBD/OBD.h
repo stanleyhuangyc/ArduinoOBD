@@ -12,7 +12,7 @@
 #define OBD_RECV_BUF_SIZE 64
 
 #ifndef OBDUART
-#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
+#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644P__)
 #define OBDUART Serial1
 #else
 #define OBDUART Serial
@@ -55,6 +55,8 @@ public:
 	bool getResponseParsed(byte& pid, int& result);
 	byte dataMode;
 	byte errors;
+	byte pidmap[4 * 4];
+	byte vin[17];
 	//char recvBuf[OBD_RECV_BUF_SIZE];
 protected:
 	static int normalizeData(byte pid, char* data);
@@ -62,7 +64,7 @@ protected:
 	{
 		return (int)hex2uint8(data) * 100 / 255;
 	}
-	static int getLargeValue(char* data)
+	static unsigned int getLargeValue(char* data)
 	{
 		return hex2uint16(data);
 	}
@@ -80,6 +82,4 @@ protected:
 	virtual void write(const char c);
 	virtual void initIdleLoop() {}
 	virtual void dataIdleLoop() {}
-	byte pidmap[4 * 4];
-	byte vin[17];
 };
