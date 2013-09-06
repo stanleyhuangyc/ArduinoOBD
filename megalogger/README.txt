@@ -2,6 +2,6 @@ This is the source code for the Arduino OBD-II data logger, which displays (on a
 
 To compile the code with Arduino IDE, please copy all library files from the libraries directory to Arduino's libraries directory.
 
-To open the project file (obdlogger.cbp), please download CodeBlocks Arduino Edition (http://www.arduinodev.com/codeblocks).
+To use the project file (megalogger.cbp) to compile and upload, please download CodeBlocks Arduino Edition (http://www.arduinodev.com/codeblocks).
 
 The source code is distributed under GPL license.
