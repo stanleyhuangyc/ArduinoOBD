@@ -7,8 +7,9 @@
 
 #define OBD_TIMEOUT_SHORT 2000 /* ms */
 #define OBD_TIMEOUT_LONG 7000 /* ms */
+#define OBD_TIMEOUT_INIT 3000 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
-#define OBD_RECV_BUF_SIZE 128
+#define OBD_RECV_BUF_SIZE 64
 
 #ifndef OBDUART
 #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644P__)
@@ -36,18 +37,13 @@
 #define PID_RUNTIME 0x1F
 #define PID_DISTANCE 0x31
 
-// states
-#define STATE_DISCONNECTED 0
-#define STATE_CONNECTING 1
-#define STATE_CONNECTED 2
-
 unsigned int hex2uint16(const char *p);
 unsigned char hex2uint8(const char *p);
 
 class COBD
 {
 public:
-	COBD():dataMode(1),errors(0),state(STATE_DISCONNECTED) {}
+	COBD():dataMode(1),errors(0) {}
 	void begin();
 	bool init(bool passive = false);
 	bool readSensor(byte pid, int& result, bool passive = false);
@@ -61,11 +57,8 @@ public:
 	byte errors;
 	byte pidmap[4 * 4];
 	byte vin[17];
-	byte state;
 	//char recvBuf[OBD_RECV_BUF_SIZE];
 protected:
-    byte receive(char* buffer);
-	void debugOutput(const char* s);
 	static int normalizeData(byte pid, char* data);
 	static int getPercentageValue(char* data)
 	{
@@ -87,5 +80,6 @@ protected:
 	virtual char read();
 	virtual void write(const char* s);
 	virtual void write(const char c);
+	virtual void initIdleLoop() {}
 	virtual void dataIdleLoop() {}
 };

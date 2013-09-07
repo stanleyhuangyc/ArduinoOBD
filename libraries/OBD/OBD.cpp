@@ -9,15 +9,13 @@
 #include <avr/pgmspace.h>
 #include "OBD.h"
 
-//#define DEBUG
-#define DEBUG_SERIAL Serial
-
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0902\r"};
+const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r"};
+const char PROGMEM s_searching[] = "SEARCHING";
 const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
 const char PROGMEM s_cmd_sleep[] = "atlp\r";
-#define STR_SEARCHING "SEARCHING..."
+const char PROGMEM s_cmd_vin[] = "0902\r";
 
 unsigned int hex2uint16(const char *p)
 {
@@ -64,9 +62,6 @@ void COBD::sendQuery(unsigned char pid)
 {
 	char cmd[8];
 	sprintf_P(cmd, s_cmd_fmt, dataMode, pid);
-#ifdef DEBUG
-	debugOutput(cmd);
-#endif
 	write(cmd);
 }
 
@@ -81,6 +76,7 @@ bool COBD::readSensor(byte pid, int& result, bool passive)
 		dataIdleLoop();
 	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
 	if (!hasData) {
+        write('\r');
 		errors++;
 		return false;
 	}
@@ -96,9 +92,6 @@ bool COBD::available()
 char COBD::read()
 {
 	char c = OBDUART.read();
-#ifdef DEBUG
-    DEBUG_SERIAL.print(c);
-#endif
 	return c;
 }
 
@@ -153,10 +146,43 @@ int COBD::normalizeData(byte pid, char* data)
 
 char* COBD::getResponse(byte& pid, char* buffer)
 {
-    byte n = receive(buffer);
-	if (n > 6) {
+	unsigned long startTime = millis();
+	static const char responseSign[3] = {'4', '1', ' '};
+	byte i = 0;
+
+	for (;;) {
+		if (available()) {
+			char c = read();
+			buffer[i] = c;
+			if (++i == OBD_RECV_BUF_SIZE - 1) {
+			    // buffer overflow
+			    break;
+			}
+			if (c == '>' && i > 6) {
+				// prompt char reached
+				break;
+			}
+		} else {
+			buffer[i] = 0;
+			unsigned int timeout;
+			if (dataMode != 1 || strstr_P(buffer, s_searching)) {
+				timeout = OBD_TIMEOUT_LONG;
+			} else {
+				timeout = OBD_TIMEOUT_SHORT;
+			}
+			if (millis() - startTime > timeout) {
+				// timeout
+				errors++;
+				break;
+			}
+			dataIdleLoop();
+		}
+	}
+	buffer[i] = 0;
+
+	if (i > 6) {
 		char *p = buffer;
-		while ((p = strstr(p, "41 "))) {
+		while ((p = strstr(p, responseSign))) {
 		    p += 3;
 		    byte curpid = hex2uint8(p);
 		    if (pid == 0) pid = curpid;
@@ -210,62 +236,42 @@ void COBD::begin()
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 }
 
-byte COBD::receive(char* buffer)
-{
-    unsigned long startTime = millis();
-	unsigned char n = 0;
-    int timeout = OBD_TIMEOUT_SHORT;
-
-    buffer[0] = 0;
-    for (;;) {
-        if (available()) {
-            char c = read();
-            if (n > 2 && c == '>') {
-                // prompt char received
-                break;
-            } else if (n < OBD_RECV_BUF_SIZE - 1) {
-                buffer[n++] = c;
-                buffer[n] = 0;
-            }
-            if (strstr(buffer, STR_SEARCHING)) {
-                strcpy(buffer, buffer + sizeof(STR_SEARCHING));
-                n -= sizeof(STR_SEARCHING);
-                timeout = OBD_TIMEOUT_LONG;
-            }
-        } else {
-            if (millis() - startTime > timeout) {
-                // timeout
-                return 0;
-            }
-            dataIdleLoop();
-        }
-    }
-
-    return n;
-}
-
 bool COBD::init(bool passive)
 {
 	unsigned long currentMillis;
+	unsigned char n;
+	char prompted;
 	char buffer[OBD_RECV_BUF_SIZE];
-
-    state = STATE_CONNECTING;
-
-    write('\r');
-    delay(100);
-    while (available()) read();
 
 	for (unsigned char i = 0; i < sizeof(s_initcmd) / sizeof(s_initcmd[0]); i++) {
 		if (!passive) {
 			char cmd[MAX_CMD_LEN];
 			strcpy_P(cmd, s_initcmd[i]);
-#ifdef DEBUG
-			debugOutput(cmd);
-#endif
 			write(cmd);
 		}
-		if (receive(buffer) == 0) {
-            return false;
+		n = 0;
+		prompted = 0;
+		currentMillis = millis();
+		for (;;) {
+			if (available()) {
+				char c = read();
+				if (n > 2 && c == '>') {
+				    buffer[n] = 0;
+				    prompted++;
+				} else if (n < OBD_RECV_BUF_SIZE - 1) {
+				    buffer[n++] = c;
+				}
+			} else if (prompted) {
+				break;
+			} else {
+				unsigned long elapsed = millis() - currentMillis;
+				if (elapsed > OBD_TIMEOUT_INIT) {
+					// init timeout
+					//WriteData("\r");
+					return false;
+				}
+				initIdleLoop();
+			}
 		}
 	}
 	while (available()) read();
@@ -286,17 +292,6 @@ bool COBD::init(bool passive)
 	}
 	while (available()) read();
 
-    state = STATE_CONNECTED;
 	errors = 0;
 	return true;
 }
-
-#ifdef DEBUG
-void COBD::debugOutput(const char *s)
-{
-    DEBUG_SERIAL.print('[');
-    DEBUG_SERIAL.print(millis());
-    DEBUG_SERIAL.print(']');
-    DEBUG_SERIAL.print(s);
-}
-#endif
