@@ -298,9 +298,15 @@ public:
         return true;
     }
 private:
-    void initIdleLoop()
+    void dataIdleLoop()
     {
-        // called while initializing
+        if (getState() == OBD_CONNECTED) {
+            if (lastDataTime && GPSUART.available())
+                processGPS();
+            return;
+        }
+
+        // display while initializing
         char buf[10];
         unsigned int t = (millis() - startTime) / 1000;
         sprintf(buf, "%02u:%02u", t / 60, t % 60);
@@ -332,11 +338,6 @@ private:
 #endif
     }
 #ifdef GPSUART
-    void dataIdleLoop()
-    {
-        if (lastDataTime && GPSUART.available())
-            processGPS();
-    }
     void processGPS()
     {
         // process GPS data
