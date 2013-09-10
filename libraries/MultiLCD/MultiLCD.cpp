@@ -199,7 +199,7 @@ size_t LCD_SSD1306::write(uint8_t c)
         if (c > 0x20 && c < 0x7f) {
             c -= 0x21;
             for (byte i = 0; i < 5; i++) {
-                byte d = pgm_read_byte_near(&font5x8[c][i]);
+                byte d = pgm_read_byte(&font5x8[c][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -227,7 +227,7 @@ size_t LCD_SSD1306::write(uint8_t c)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (byte i = 0; i <= 14; i += 2) {
-                byte d = pgm_read_byte_near(&font8x16_terminal[c][i]);
+                byte d = pgm_read_byte(&font8x16_terminal[c][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -240,7 +240,7 @@ size_t LCD_SSD1306::write(uint8_t c)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (byte i = 1; i <= 15; i += 2) {
-                byte d = pgm_read_byte_near(&font8x16_terminal[c][i]);
+                byte d = pgm_read_byte(&font8x16_terminal[c][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -288,7 +288,7 @@ void LCD_SSD1306::writeDigit(byte n)
         if (n <= 9) {
             n += '0' - 0x21;
             for (byte i = 0; i < 5; i++) {
-                Wire.write(pgm_read_byte_near(&font5x8[n][i]));
+                Wire.write(pgm_read_byte(&font5x8[n][i]));
             }
             Wire.write(0);
         } else {
@@ -309,7 +309,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (byte i = 0; i <= 14; i += 2) {
-                byte d = pgm_read_byte_near(&font8x16_terminal[n][i]);
+                byte d = pgm_read_byte(&font8x16_terminal[n][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -322,7 +322,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (byte i = 1; i <= 15; i += 2) {
-                byte d = pgm_read_byte_near(&font8x16_terminal[n][i]);
+                byte d = pgm_read_byte(&font8x16_terminal[n][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -356,7 +356,7 @@ void LCD_SSD1306::writeDigit(byte n)
         Wire.write(0x40);
         if (n <= 9) {
             for (byte i = 0; i < 8; i++) {
-                Wire.write(pgm_read_byte_near(&digits8x8[n][i]));
+                Wire.write(pgm_read_byte(&digits8x8[n][i]));
             }
         } else {
             for (byte i = 0; i < 8; i++) {
@@ -376,7 +376,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (i = 0; i < 16; i ++) {
-                byte d = pgm_read_byte_near(&digits16x16[n][i]);
+                byte d = pgm_read_byte(&digits16x16[n][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -389,7 +389,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (; i < 32; i ++) {
-                byte d = pgm_read_byte_near(&digits16x16[n][i]);
+                byte d = pgm_read_byte(&digits16x16[n][i]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -428,7 +428,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (i = 0; i < 16; i ++) {
-                byte d = pgm_read_byte_near(&digits16x24[n][i * 3]);
+                byte d = pgm_read_byte(&digits16x24[n][i * 3]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -441,7 +441,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (i = 0; i < 16; i ++) {
-                byte d = pgm_read_byte_near(&digits16x24[n][i * 3 + 1]);
+                byte d = pgm_read_byte(&digits16x24[n][i * 3 + 1]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -454,7 +454,7 @@ void LCD_SSD1306::writeDigit(byte n)
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (i = 0; i < 16; i ++) {
-                byte d = pgm_read_byte_near(&digits16x24[n][i * 3 + 2]);
+                byte d = pgm_read_byte(&digits16x24[n][i * 3 + 2]);
                 Wire.write(d);
                 if (m_flags & FLAG_PIXEL_DOUBLE_H) Wire.write(d);
             }
@@ -522,7 +522,7 @@ void LCD_SSD1306::draw(const PROGMEM byte* buffer, byte x, byte y, byte width, b
             Wire.beginTransmission(_i2caddr);
             Wire.write(0x40);
             for (byte k = 0; k < width; k++, p++) {
-                Wire.write(pgm_read_byte_near(p));
+                Wire.write(pgm_read_byte(p));
             }
             Wire.endTransmission();
         }
