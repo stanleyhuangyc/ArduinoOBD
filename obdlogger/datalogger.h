@@ -1,5 +1,5 @@
 // configurations
-#define ENABLE_DATA_OUT 1
+#define ENABLE_DATA_OUT 0
 #define ENABLE_DATA_LOG 1
 
 typedef enum {
@@ -81,6 +81,7 @@ typedef struct {
 #define PID_GYRO 0xF021
 
 #define PID_MESSAGE 0xFE00
+#define PID_HEART_BEAT 0xFFEE
 
 #define MSG_FILE_LIST_BEGIN 0x1
 #define MSG_FILE_LIST_END 0x2

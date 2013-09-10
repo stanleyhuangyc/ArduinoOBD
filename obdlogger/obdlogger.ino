@@ -18,15 +18,15 @@
 /**************************************
 * Choose SD pin here
 **************************************/
-//#define SD_CS_PIN SS // generic
+#define SD_CS_PIN SS // generic
 //#define SD_CS_PIN 4 // ethernet shield
 //#define SD_CS_PIN 7 // microduino
-#define SD_CS_PIN 10 // SD breakout
+//#define SD_CS_PIN 10 // SD breakout
 
 /**************************************
 * Config GPS here
 **************************************/
-#define USE_GPS
+//#define USE_GPS
 #define GPS_BAUDRATE 38400 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
@@ -42,6 +42,7 @@ LCD_SSD1306 lcd;
 #define USE_MPU6050 0
 #define OBD_MIN_INTERVAL 50 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
+//#define DEBUG Serial
 
 // logger states
 #define STATE_SD_READY 0x1
@@ -51,20 +52,12 @@ LCD_SSD1306 lcd;
 #define STATE_ACC_READY 0x10
 #define STATE_SLEEPING 0x20
 
-// additional PIDs (non-OBD)
-#define PID_GPS_DATETIME 0xF0
-#define PID_GPS_SPEED 0xF01
-#define PID_GPS_COORDINATE 0xF2
-#define PID_GPS_ALTITUDE 0xF3
-#define PID_ACC 0xF8
-#define PID_GYRO 0xF9
-
 #ifdef USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
 #define GPSUART Serial2
 #elif defined(__AVR_ATmega644P__)
-#define GPSUART Serial1
+#define GPSUART Serial
 #endif
 
 #ifdef GPSUART
@@ -86,6 +79,7 @@ static uint32_t lastFileSize = 0;
 //static uint32_t lastDataTime;
 static uint32_t lastGPSDataTime = 0;
 static uint16_t lastSpeed = -1;
+static uint16_t speed = 0;
 static int startDistance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
@@ -93,6 +87,18 @@ static uint32_t startTime = 0;
 // cached data to be displayed
 static byte lastPID = 0;
 static int lastData;
+
+static byte pollPattern[]= {
+    PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE, PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE,
+};
+
+static byte pollPattern2[] = {
+    PID_DISTANCE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL,
+};
+
+#define PATTERN_NUM sizeof(pollPattern)
+#define PATTERN_NUM2 sizeof(pollPattern2)
+#define POLL_INTERVAL 10000 /* ms */
 
 class COBDLogger : public COBD, public CDataLogger
 {
@@ -130,6 +136,7 @@ public:
         uint16_t flags = FLAG_CAR | FLAG_OBD;
         if (state & STATE_GPS_CONNECTED) flags |= FLAG_GPS;
         if (state & STATE_ACC_READY) flags |= FLAG_ACC;
+#if ENABLE_DATA_LOG
         uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
         lcd.setFont(FONT_SIZE_SMALL);
         lcd.setCursor(86, 0);
@@ -143,6 +150,7 @@ public:
             lcd.print("NO LOG");
         }
         delay(1000);
+#endif
 
 #ifndef MEMORY_SAVING
         showECUCap();
@@ -151,6 +159,7 @@ public:
 
         readSensor(PID_DISTANCE, startDistance);
 
+#if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
             if (checkSD()) {
@@ -158,13 +167,15 @@ public:
                 showStates();
             }
         }
+#endif
 
-
-        initScreen();
+        initLoggerScreen();
     }
     void loop()
     {
-        static byte count = 0;
+        static byte index = 0;
+        static byte index2 = 0;
+        static uint32_t lastTime = 0;
 
 #ifdef GPSUART
         if (millis() - lastGPSDataTime > GPS_DATA_TIMEOUT || gps.satellites() < 3) {
@@ -176,8 +187,24 @@ public:
         }
 #endif
 
-        logOBDData(PID_RPM);
-        logOBDData(PID_SPEED);
+        logOBDData(pollPattern[index]);
+        index = (index + 1) % PATTERN_NUM;
+
+        if (index == 0) {
+            if (isValidPID(PID_INTAKE_MAP))
+                logOBDData(PID_INTAKE_MAP);
+            else if (isValidPID(PID_MAF_FLOW))
+                logOBDData(PID_MAF_FLOW);
+        }
+
+        if (millis() - lastTime > POLL_INTERVAL) {
+            byte pid = pollPattern2[index2];
+            if (isValidPID(pid)) {
+                lastTime = millis();
+                logOBDData(pid);
+                index2 = (index2 + 1) % PATTERN_NUM2;
+            }
+        }
 
 #if USE_MPU6050
         if (state & STATE_ACC_READY) {
@@ -185,43 +212,11 @@ public:
         }
 #endif
 
-        switch (count++) {
-        case 0:
-        case 128:
-            logOBDData(PID_DISTANCE);
-            break;
-        case 32:
-            logOBDData(PID_COOLANT_TEMP);
-            break;
-        case 64:
-            logOBDData(PID_INTAKE_TEMP);
-            break;
-        case 160:
-            if (isValidPID(PID_AMBIENT_TEMP))
-                logOBDData(PID_AMBIENT_TEMP);
-            break;
-        case 192:
-            if (isValidPID(PID_BAROMETRIC))
-                logOBDData(PID_BAROMETRIC);
-            break;
-        default:
-            logOBDData(PID_THROTTLE);
-        }
-
-        if ((count & 1) == 0) {
-            logOBDData(PID_ENGINE_LOAD);
-        } else {
-            if (isValidPID(PID_INTAKE_MAP))
-                logOBDData(PID_INTAKE_MAP);
-            else if (isValidPID(PID_MAF_FLOW))
-                logOBDData(PID_MAF_FLOW);
-        }
-
-        if (errors >= 3) {
+        if (errors >= 2) {
             reconnect();
-            count = 0;
         }
     }
+#if ENABLE_DATA_LOG
     bool checkSD()
     {
         Sd2Card card;
@@ -279,18 +274,12 @@ public:
         state |= STATE_SD_READY;
         return true;
     }
+#endif
 private:
-    void initIdleLoop()
+    void dataIdleLoop()
     {
         if (state & STATE_SLEEPING) return;
 
-        // called while initializing
-        char buf[10];
-        unsigned int t = (millis() - startTime) / 1000;
-        sprintf(buf, "%02u:%02u", t / 60, t % 60);
-        lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setCursor(97, 7);
-        lcd.print(buf);
 #ifdef GPSUART
         // detect GPS signal
         if (GPSUART.available())
@@ -300,6 +289,17 @@ private:
             state |= STATE_GPS_READY;
         }
 #endif
+
+        if (getState() == OBD_CONNECTED)
+            return;
+
+        // called while initializing
+        char buf[10];
+        unsigned int t = (millis() - startTime) / 1000;
+        sprintf(buf, "%02u:%02u", t / 60, t % 60);
+        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setCursor(97, 7);
+        lcd.print(buf);
 #if USE_MPU6050
         if (state & STATE_ACC_READY) {
             accel_t_gyro_union data;
@@ -335,11 +335,6 @@ private:
 #endif
     }
 #ifdef GPSUART
-    void dataIdleLoop()
-    {
-        if (GPSUART.available())
-            processGPS();
-    }
     void processGPS()
     {
         // process GPS data
@@ -419,6 +414,10 @@ private:
 
         // send a query to OBD adapter for specified OBD-II pid
         sendQuery(pid);
+
+        // display data while waiting for OBD response
+        showSensorData(lastPID, lastData);
+
         // wait for reponse
         bool hasData;
         do {
@@ -429,9 +428,6 @@ private:
             errors++;
             return;
         }
-
-        // display data while waiting for OBD response
-        showSensorData(lastPID, lastData);
 
         // get response from OBD adapter
         pid = 0;
@@ -453,6 +449,7 @@ private:
         lastPID = pid;
         lastData = value;
 
+#if ENABLE_DATA_LOG
         // flush SD data every 1KB
         if (dataSize - lastFileSize >= 1024) {
             flushFile();
@@ -464,6 +461,7 @@ private:
             lcd.print(buf);
             lastFileSize = dataSize;
         }
+#endif
 
         // if OBD response is very fast, go on processing other data for a while
 #ifdef OBD_MIN_INTERVAL
@@ -472,6 +470,7 @@ private:
         }
 #endif
     }
+#ifndef MEMORY_SAVING
     void showECUCap()
     {
         char buffer[24];
@@ -491,9 +490,12 @@ private:
             lcd.print(buffer);
         }
     }
+#endif
     void reconnect()
     {
+#if ENABLE_DATA_LOG
         closeFile();
+#endif
         lcd.clear();
         lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting");
@@ -593,7 +595,7 @@ private:
             }
         }
     }
-    virtual void initScreen()
+    virtual void initLoggerScreen()
     {
         lcd.clear();
         lcd.backlight(true);
@@ -613,6 +615,10 @@ static COBDLogger logger;
 
 void setup()
 {
+#ifdef DEBUG
+    DEBUG.begin(38400);
+#endif
+
     lcd.begin();
     lcd.backlight(true);
     lcd.setFont(FONT_SIZE_MEDIUM);
@@ -637,9 +643,11 @@ void setup()
 
     delay(500);
 
-    //lcd.setColor(0x7FF);
-    lcd.setCursor(0, 2);
+#if ENABLE_DATA_LOG
     logger.checkSD();
+#else
+    lcd.clear();
+#endif
     logger.setup();
 }
 
