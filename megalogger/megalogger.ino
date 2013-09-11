@@ -45,14 +45,6 @@
 #define STATE_ACC_READY 0x10
 #define STATE_DATE_SAVED 0x20
 
-// additional PIDs (non-OBD)
-#define PID_GPS_DATETIME 0xF0
-#define PID_GPS_SPEED 0xF01
-#define PID_GPS_COORDINATE 0xF2
-#define PID_GPS_ALTITUDE 0xF3
-#define PID_ACC 0xF8
-#define PID_GYRO 0xF9
-
 #ifdef USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
