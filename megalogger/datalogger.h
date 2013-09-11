@@ -2,6 +2,12 @@
 #define ENABLE_DATA_OUT 1
 #define ENABLE_DATA_LOG 1
 
+#define FORMAT_BIN 0
+#define FORMAT_CSV 1
+
+//this defines the format of log file
+#define LOG_FORMAT FORMAT_CSV
+
 typedef enum {
     LOG_TYPE_DEFAULT = 0,
     LOG_TYPE_0_60,
@@ -81,13 +87,18 @@ typedef struct {
 #define PID_GYRO 0xF021
 
 #define PID_MESSAGE 0xFE00
+#define PID_HEART_BEAT 0xFFEE
 
 #define MSG_FILE_LIST_BEGIN 0x1
 #define MSG_FILE_LIST_END 0x2
 #define MSG_FILE_INFO 0x3
 #define MSG_FILE_REQUEST 0x4
 
+#if LOG_FORMAT == FORMAT_BIN
 #define FILE_NAME_FORMAT "/DAT%05d.LOG"
+#else
+#define FILE_NAME_FORMAT "/DAT%05d.CSV"
+#endif
 
 #if ENABLE_DATA_OUT
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
@@ -105,6 +116,9 @@ public:
     {
 #if ENABLE_DATA_OUT
         mySerial.begin(9600);
+#endif
+#if ENABLE_DATA_LOG && LOG_FORMAT == FORMAT_CSV
+        m_lastDataTime = 0;
 #endif
     }
 #if ENABLE_DATA_OUT
@@ -159,9 +173,19 @@ public:
         mySerial.write((uint8_t*)&ld, 12);
 #endif
 #if ENABLE_DATA_LOG
+#if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 12);
-#endif
         dataSize += 12;
+#else
+        dataSize += sdfile.print(dataTime - m_lastDataTime);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(pid, HEX);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print((int)value);
+        dataSize += sdfile.write('\n');
+        m_lastDataTime = dataTime;
+#endif
+#endif
     }
     void logData(uint16_t pid, float value1, float value2)
     {
@@ -171,9 +195,21 @@ public:
         mySerial.write((uint8_t*)&ld, 16);
 #endif
 #if ENABLE_DATA_LOG
+#if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 16);
-#endif
         dataSize += 16;
+#else
+        dataSize += sdfile.print(dataTime - m_lastDataTime);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(pid, HEX);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(value1, 6);
+        dataSize += sdfile.write(' ');
+        dataSize += sdfile.print(value2, 6);
+        dataSize += sdfile.write('\n');
+        m_lastDataTime = dataTime;
+#endif
+#endif
     }
     void logData(uint16_t pid, float value1, float value2, float value3)
     {
@@ -183,9 +219,23 @@ public:
         mySerial.write((uint8_t*)&ld, 20);
 #endif
 #if ENABLE_DATA_LOG
+#if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 20);
-#endif
         dataSize += 20;
+#else
+        dataSize += sdfile.print(dataTime - m_lastDataTime);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(pid, HEX);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print((int)value1);
+        dataSize += sdfile.write(' ');
+        dataSize += sdfile.print((int)value2);
+        dataSize += sdfile.write(' ');
+        dataSize += sdfile.print((int)value3);
+        dataSize += sdfile.write('\n');
+        m_lastDataTime = dataTime;
+#endif
+#endif
     }
 #if ENABLE_DATA_LOG
     uint16_t openFile(LOG_TYPES logType, uint16_t logFlags = 0, uint32_t dateTime = 0)
@@ -213,11 +263,13 @@ public:
             return 0;
         }
 
+#if LOG_FORMAT == FORMAT_BIN
         HEADER hdr = {'UDUS', HEADER_LEN, 1, logType, logFlags, dateTime};
         sdfile.write((uint8_t*)&hdr, sizeof(hdr));
         for (byte i = 0; i < HEADER_LEN - sizeof(hdr); i++)
             sdfile.write((uint8_t)0);
         dataSize = HEADER_LEN;
+#endif
         return fileIndex;
     }
     void closeFile()
@@ -242,5 +294,8 @@ private:
     }
 #if ENABLE_DATA_LOG
     File sdfile;
+#if LOG_FORMAT == FORMAT_CSV
+    uint32_t m_lastDataTime;
+#endif
 #endif
 };
