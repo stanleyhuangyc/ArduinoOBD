@@ -160,69 +160,66 @@ void LCD_ILI9325D::begin()
     PORTH = 0;
     lastData = 0;
 
-    WriteCommandData(0x0001,0x0100);
-    WriteCommandData(0x0002,0x0700);
-    WriteCommandData(0x0003,0x1030);
-    WriteCommandData(0x0004,0x0000);
-    WriteCommandData(0x0008,0x0207);
-    WriteCommandData(0x0009,0x0000);
-    WriteCommandData(0x000A,0x0000);
-    WriteCommandData(0x000C,0x0000);
-    WriteCommandData(0x000D,0x0000);
-    WriteCommandData(0x000F,0x0000);
-    //power on sequence VGHVGL
-    WriteCommandData(0x0010,0x0000);
-    WriteCommandData(0x0011,0x0007);
-    WriteCommandData(0x0012,0x0000);
-    WriteCommandData(0x0013,0x0000);
-    //vgh
-    WriteCommandData(0x0010,0x1290);
-    WriteCommandData(0x0011,0x0227);
-    //delays(100);
-    //vregiout
-    WriteCommandData(0x0012,0x001d); //0x001b
-    //delays(100);
-    //vom amplitude
-    WriteCommandData(0x0013,0x1500);
-    //delays(100);
-    //vom H
-    WriteCommandData(0x0029,0x0018);
-    WriteCommandData(0x002B,0x000D);
+	WriteCommandData(0x00E5, 0x78F0); // set SRAM internal timing
+	WriteCommandData(0x0001, 0x0100); // set Driver Output Control
+	WriteCommandData(0x0002, 0x0200); // set 1 line inversion
+	WriteCommandData(0x0003, 0x1030); // set GRAM write direction and BGR=1.
+	WriteCommandData(0x0004, 0x0000); // Resize register
+	WriteCommandData(0x0008, 0x0207); // set the back porch and front porch
+	WriteCommandData(0x0009, 0x0000); // set non-display area refresh cycle ISC[3:0]
+	WriteCommandData(0x000A, 0x0000); // FMARK function
+	WriteCommandData(0x000C, 0x0000); // RGB interface setting
+	WriteCommandData(0x000D, 0x0000); // Frame marker Position
+	WriteCommandData(0x000F, 0x0000); // RGB interface polarity
+	//*************Power 00On sequence ****************//
+	WriteCommandData(0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB
+	WriteCommandData(0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0]
+	WriteCommandData(0x0012, 0x0000); // VREG1OUT voltage
+	WriteCommandData(0x0013, 0x0000); // VDV[4:0] for VCOM amplitude
+	WriteCommandData(0x0007, 0x0001);
+	delay(200); // Dis-ch00arge capacitor power voltage
+	WriteCommandData(0x0010, 0x1690); // SAP, BT[3:0], AP, DSTB, SLP, STB
+	WriteCommandData(0x0011, 0x0227); // Set DC1[2:0], DC0[2:0], VC[2:0]
+	delay(50); // Delay 50ms
+	WriteCommandData(0x0012, 0x000D); // 0012
+	delay(50); // Delay 50ms
+	WriteCommandData(0x0013, 0x1200); // VDV[4:0] for VCOM amplitude
+	WriteCommandData(0x0029, 0x000A); // 04  VCM[5:0] for VCOMH
+	WriteCommandData(0x002B, 0x000D); // Set Frame Rate
+	delay(50); // Delay 50ms
+	WriteCommandData(0x0020, 0x0000); // GRAM horizontal Address
+	WriteCommandData(0x0021, 0x0000); // GRAM Vertical Address
+	// ----------- Adjust00 the Gamma Curve ----------//
+	WriteCommandData(0x0030, 0x0000);
+	WriteCommandData(0x0031, 0x0404);
+	WriteCommandData(0x0032, 0x0003);
+	WriteCommandData(0x0035, 0x0405);
+	WriteCommandData(0x0036, 0x0808);
+	WriteCommandData(0x0037, 0x0407);
+	WriteCommandData(0x0038, 0x0303);
+	WriteCommandData(0x0039, 0x0707);
+	WriteCommandData(0x003C, 0x0504);
+	WriteCommandData(0x003D, 0x0808);
+	//------------------ 00Set GRAM area ---------------//
+	WriteCommandData(0x0050, 0x0000); // Horizontal GRAM Start Address
+	WriteCommandData(0x0051, 0x00EF); // Horizontal GRAM End Address
+	WriteCommandData(0x0052, 0x0000); // Vertical GRAM Start Address
+	WriteCommandData(0x0053, 0x013F); // Vertical GRAM Start Address
+	WriteCommandData(0x0060, 0xA700); // Gate Scan Line
+	WriteCommandData(0x0061, 0x0001); // NDL,VLE, REV
+	WriteCommandData(0x006A, 0x0000); // set scrolling line
+	//-------------- Part00ial Display Control ---------//
+	WriteCommandData(0x0080, 0x0000);
+	WriteCommandData(0x0081, 0x0000);
+	WriteCommandData(0x0082, 0x0000);
+	WriteCommandData(0x0083, 0x0000);
+	WriteCommandData(0x0084, 0x0000);
+	WriteCommandData(0x0085, 0x0000);
+	//-------------- Pane00l Control -------------------//
+	WriteCommandData(0x0090, 0x0010);
+	WriteCommandData(0x0092, 0x0000);
+	WriteCommandData(0x0007, 0x0133);
 
-    //gamma
-    WriteCommandData(0x0030,0x0004);
-    WriteCommandData(0x0031,0x0307);
-    WriteCommandData(0x0032,0x0002);// 0006
-    WriteCommandData(0x0035,0x0206);
-    WriteCommandData(0x0036,0x0408);
-    WriteCommandData(0x0037,0x0507);
-    WriteCommandData(0x0038,0x0204);//0200
-    WriteCommandData(0x0039,0x0707);
-    WriteCommandData(0x003C,0x0405);// 0504
-    WriteCommandData(0x003D,0x0F02);
-    //ram
-    WriteCommandData(0x0050,0x0000);
-    WriteCommandData(0x0051,0x00EF);
-    WriteCommandData(0x0052,0x0000);
-    WriteCommandData(0x0053,0x013F);
-    WriteCommandData(0x0060,0xA700);
-    WriteCommandData(0x0061,0x0001);
-    WriteCommandData(0x006A,0x0000);
-    //
-    WriteCommandData(0x0080,0x0000);
-    WriteCommandData(0x0081,0x0000);
-    WriteCommandData(0x0082,0x0000);
-    WriteCommandData(0x0083,0x0000);
-    WriteCommandData(0x0084,0x0000);
-    WriteCommandData(0x0085,0x0000);
-    //
-    WriteCommandData(0x0090,0x0010);
-    WriteCommandData(0x0092,0x0600);
-    WriteCommandData(0x0093,0x0003);
-    WriteCommandData(0x0095,0x0110);
-    WriteCommandData(0x0097,0x0000);
-    WriteCommandData(0x0098,0x0000);
-    WriteCommandData(0x0007,0x0133);
     Disable();
 
     m_color[0] = 0;
@@ -230,8 +227,11 @@ void LCD_ILI9325D::begin()
     clear();
 }
 
-void LCD_ILI9325D::SetXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1)
+void LCD_ILI9325D::SetXY(uint16_t x0,uint16_t x1,uint16_t y1,uint16_t y0)
 {
+    y1 = 319 - y1;
+    y0 = 319 - y0;
+
     WriteCommandData(WINDOW_XADDR_START,x0);
     WriteCommandData(WINDOW_XADDR_END,x1);
     WriteCommandData(WINDOW_YADDR_START,y0);
@@ -242,23 +242,6 @@ void LCD_ILI9325D::SetXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1)
     WriteData(0x0022);//LCD_WriteCMD(GRAMWR);
     SetDataMode();
 }
-
-/*
-void Pant(uint16_t color)
-{
-	int i,j;
-	SetXY(0,239,0,319);
-
-    for(i=0;i<320;i++)
-	 {
-	  for (j=0;j<240;j++)
-	   	{
-         WriteData(color);
-	    }
-
-	  }
-}
-*/
 
 void LCD_ILI9325D::clearPixels(uint16_t pixels)
 {
@@ -327,12 +310,13 @@ size_t LCD_ILI9325D::write(uint8_t c)
         if (c > 0x20 && c < 0x7f) {
             byte pgm_buffer[5];
             memcpy_P(pgm_buffer, &font5x8[c - 0x21], 5);
-            for (byte i = 0; i < 5; i++) {
+            byte i = 4;
+            do {
                 unsigned char d = pgm_buffer[i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     WriteData(m_color[d & 1]);
                 }
-            }
+            } while (i--);
         } else {
             clearPixels(5 * 8);
         }
@@ -349,11 +333,14 @@ size_t LCD_ILI9325D::write(uint8_t c)
         if (c > 0x20 && c < 0x7f) {
             byte pgm_buffer[16];
             memcpy_P(pgm_buffer, &font8x16_terminal[c - 0x21], 16);
-            for (byte i = 0; i < 16; i++) {
-                unsigned char d = pgm_buffer[i];
-                for (byte j = 0; j < 8; j++) {
+            for (byte i = 0; i < 16; i += 2) {
+                unsigned char d = pgm_buffer[14 - i];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
                     WriteData(m_color[d & 1]);
-                    d >>= 1;
+                }
+                d = pgm_buffer[15 - i];
+                for (byte j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
                 }
             }
         } else {
@@ -370,31 +357,19 @@ void LCD_ILI9325D::writeDigit(byte n)
         if (n <= 9) {
             byte pgm_buffer[8];
             memcpy_P(pgm_buffer, &digits8x8[n], 8);
-            for (byte i = 0; i < 8; i++) {
+            byte i = 7;
+            do {
                 unsigned char d = pgm_buffer[i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     WriteData(m_color[d & 1]);
                 }
-            }
+            } while (i--);
 
         } else {
             clearPixels(8 * 8);
         }
     } else if (m_font == FONT_SIZE_MEDIUM) {
-        SetXY(m_x, m_x + 15, m_y, m_y + 7);
-        m_y += 9;
-        if (n <= 9) {
-            byte pgm_buffer[16];
-            memcpy_P(pgm_buffer, &font8x16_terminal[n + '0' - 0x21], 16);
-            for (byte i = 0; i < 16; i++) {
-                unsigned char d = pgm_buffer[i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    WriteData(m_color[d & 1]);
-                }
-            }
-        } else {
-            clearPixels(8 * 16);
-        }
+        write(n <= 9 ? ('0' + n) : ' ');
     } else if (m_font == FONT_SIZE_LARGE) {
         SetXY(m_x, m_x + 15, m_y, m_y + 15);
         m_y += 16;
@@ -402,11 +377,11 @@ void LCD_ILI9325D::writeDigit(byte n)
             byte pgm_buffer[32];
             memcpy_P(pgm_buffer, &digits16x16[n], sizeof(pgm_buffer));
             for (byte i = 0; i < 16; i++) {
-                unsigned char d = pgm_buffer[i];
+                unsigned char d = pgm_buffer[15 - i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     WriteData(m_color[d & 1]);
                 }
-                d = pgm_buffer[i + 16];
+                d = pgm_buffer[31 - i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     WriteData(m_color[d & 1]);
                 }
@@ -420,8 +395,16 @@ void LCD_ILI9325D::writeDigit(byte n)
         if (n <= 9) {
             byte pgm_buffer[48];
             memcpy_P(pgm_buffer, &digits16x24[n], sizeof(pgm_buffer));
-            for (int i = 0; i < 48; i++) {
-                unsigned char d = pgm_buffer[i];
+            for (int i = 0; i < 48; i += 3) {
+                unsigned char d = pgm_buffer[45 - i];
+                for (int j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
+                d = pgm_buffer[46 - i];
+                for (int j = 0; j < 8; j++, d >>= 1) {
+                    WriteData(m_color[d & 1]);
+                }
+                d = pgm_buffer[47 - i];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     WriteData(m_color[d & 1]);
                 }
@@ -436,14 +419,15 @@ void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint
 {
     byte rows = height >> 3;
     SetXY(y, y + height - 1, x, x + width - 1);
-    for (uint16_t i = 0; i < width; i++) {
+    uint16_t i = width - 1;
+    do {
         for (uint8_t h = 0; h < rows; h++) {
-            byte d = pgm_read_byte_near(buffer + i + width * h);
+            byte d = pgm_read_byte_far(buffer + i + width * h);
             for (byte j = 0; j < 8; j++, d >>= 1) {
                 WriteData(m_color[d & 1]);
             }
         }
-    }
+    } while (i--);
 }
 
 void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, byte width, byte height)
@@ -451,7 +435,8 @@ void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, by
     char buf[240];
     uint16_t pixels = (uint16_t)width * height;
     SetXY(y, y + height * 2 - 1, x, x + width * 2- 1);
-    for (byte i = 0; i < width; i++) {
+    uint16_t i = width - 1;
+    do {
         memcpy_P(buf, buffer + (uint16_t)i * height * 2, height * 2);
         for (byte j = 0; j < height * 2; j += 2) {
             WriteData(buf[j], buf[j + 1]);
@@ -461,15 +446,15 @@ void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, by
             WriteData(buf[j], buf[j + 1]);
             WriteData(buf[j], buf[j + 1]);
         }
-    }
+    } while (i--);
 }
 
 void LCD_ILI9325D::draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
-    uint16_t count = (uint16_t)width * height / 2;
     SetXY(y, y + height - 1, x, x + width - 1);
+    uint16_t i = (uint16_t)width * height / 2 - 1;
     do {
-        byte d = pgm_read_byte_near(buffer++);
+        byte d = pgm_read_byte_far(buffer + i);
         byte dl = d & 0xf;
         byte rg = (dl << 3) | (dl > 1) | 0x8;
         byte gb = (dl << 7) | (dl << 1) | 0x61;
@@ -478,7 +463,7 @@ void LCD_ILI9325D::draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, 
         rg = (dl << 3) | (dl > 1) | 0x8;
         gb = (dl << 7) | (dl << 1) | 0x61;
         WriteData(rg, gb);
-    } while (--count);
+    } while (i--);
 }
 
 #endif
