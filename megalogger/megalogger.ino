@@ -85,10 +85,6 @@ static int startDistance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
 
-// cached data to be displayed
-static byte lastPID = 0;
-static int lastData;
-
 class COBDLogger : public COBD, public CDataLogger
 {
 public:
@@ -231,9 +227,6 @@ public:
             state |= STATE_GPS_READY;
         }
 #endif
-        if (state & STATE_ACC_READY) {
-            processAccelerometer();
-        }
     }
     bool checkSD()
     {
@@ -293,8 +286,12 @@ private:
     void dataIdleLoop()
     {
         if (getState() == OBD_CONNECTED) {
+            if (state & STATE_ACC_READY)
+                processAccelerometer();
+
             if (lastDataTime && GPSUART.available())
                 processGPS();
+
             return;
         }
 
@@ -302,6 +299,7 @@ private:
         char buf[10];
         unsigned int t = (millis() - startTime) / 1000;
         sprintf(buf, "%02u:%02u", t / 60, t % 60);
+        lcd.setFont(FONT_SIZE_SMALL);
         lcd.setCursor(0, 28);
         lcd.print(buf);
 #ifdef GPSUART
@@ -426,41 +424,15 @@ private:
         int value;
         uint32_t start = millis();
 
-        // send a query to OBD adapter for specified OBD-II pid
-        sendQuery(pid);
-        // wait for reponse
-        bool hasData;
-        do {
-            dataIdleLoop();
-        } while (!(hasData = available()) && millis() - start < OBD_TIMEOUT_SHORT);
-        // no need to continue if no data available
-        if (!hasData) {
-            errors++;
+        if (!readSensor(pid, value))
             return;
-        }
 
-        // display data while waiting for OBD response
-        showSensorData(lastPID, lastData);
-
-        // get response from OBD adapter
-        pid = 0;
-        char* data = getResponse(pid, buffer);
-        if (!data) {
-            // try recover next time
-            write('\r');
-            return;
-        }
-        // keep data timestamp of returned data as soon as possible
         dataTime = millis();
-
-        // convert raw data to normal value
-        value = normalizeData(pid, data);
+        // display data
+        showSensorData(pid, value);
 
         // log data to SD card
         logData(0x100 | pid, value);
-
-        lastPID = pid;
-        lastData = value;
 
         // flush SD data every 1KB
         if (dataSize - lastFileSize >= 1024) {
