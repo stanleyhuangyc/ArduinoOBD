@@ -35,6 +35,7 @@
 * Other options
 **************************************/
 //#define OBD_MIN_INTERVAL 200 /* ms */
+#define ACC_DATA_INTERVAL 100 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 
 // logger states
@@ -79,6 +80,7 @@ LCD_ILI9325D lcd; /* for 2.8" TFT shield */
 static uint32_t lastFileSize = 0;
 static uint32_t lastDataTime = 0;
 static uint32_t lastGPSDataTime = 0;
+static uint32_t lastACCDataTime = 0;
 static uint16_t lastRefreshTime = 0;
 static uint16_t lastSpeed = -1;
 static int startDistance = 0;
@@ -135,11 +137,14 @@ public:
         uint16_t flags = FLAG_CAR | FLAG_OBD;
         if (state & STATE_GPS_CONNECTED) flags |= FLAG_GPS;
         if (state & STATE_ACC_READY) flags |= FLAG_ACC;
+
+#if ENABLE_DATA_LOG
         uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
         lcd.setCursor(0, 6);
         lcd.print("File ID:");
         lcd.printInt(index);
-        delay(5000);
+        delay(1000);
+#endif
 
         initScreen();
 
@@ -236,6 +241,7 @@ public:
         pinMode(SS, OUTPUT);
         lcd.setCursor(0, 4);
 
+        lcd.setFont(FONT_SIZE_MEDIUM);
         if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
             const char* type;
             char buf[20];
@@ -285,13 +291,10 @@ public:
 private:
     void dataIdleLoop()
     {
+        // callback while waiting OBD data
         if (getState() == OBD_CONNECTED) {
-            if (state & STATE_ACC_READY)
-                processAccelerometer();
-
             if (lastDataTime && GPSUART.available())
                 processGPS();
-
             return;
         }
 
@@ -424,8 +427,13 @@ private:
         int value;
         uint32_t start = millis();
 
-        if (!readSensor(pid, value))
+        sendQuery(pid);
+
+        pid = 0;
+        if (!getResponseParsed(pid, value)) {
+            errors++;
             return;
+        }
 
         dataTime = millis();
         // display data
@@ -434,6 +442,7 @@ private:
         // log data to SD card
         logData(0x100 | pid, value);
 
+#if ENABLE_DATA_LOG
         // flush SD data every 1KB
         if (dataSize - lastFileSize >= 1024) {
             flushFile();
@@ -444,6 +453,15 @@ private:
             lcd.setFont(FONT_SIZE_SMALL);
             lcd.print(" KB");
             lastFileSize = dataSize;
+        }
+#endif
+
+        if (state & STATE_ACC_READY) {
+            uint32_t t = millis();
+            if (t - lastACCDataTime > ACC_DATA_INTERVAL) {
+                processAccelerometer();
+                lastACCDataTime = t;
+            }
         }
 
         // if OBD response is very fast, go on processing other data for a while
@@ -472,7 +490,9 @@ private:
     }
     void reconnect()
     {
+#if ENABLE_DATA_LOG
         closeFile();
+#endif
         lcd.clear();
         lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting...");
@@ -482,7 +502,6 @@ private:
             if (i == 10) lcd.clear();
         }
         fileIndex++;
-        write('\r');
         setup();
     }
     byte state;
