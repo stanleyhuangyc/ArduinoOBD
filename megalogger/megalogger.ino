@@ -16,6 +16,10 @@
 #include "images.h"
 #include "datalogger.h"
 
+#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__)
+#error This sketch requires Arduino MEGA to work
+#endif
+
 /**************************************
 * Choose SD pin here
 **************************************/
@@ -68,8 +72,6 @@ TinyGPS gps;
 #endif
 
 LCD_ILI9325D lcd; /* for 2.8" TFT shield */
-#define LCD_LINES 24
-#define CHAR_WIDTH 9
 
 #define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 2))
 #define RGB16_RED 0xF800
@@ -83,11 +85,11 @@ static uint32_t lastGPSDataTime = 0;
 static uint32_t lastACCDataTime = 0;
 static uint16_t lastRefreshTime = 0;
 static uint16_t lastSpeed = -1;
-static int startDistance = 0;
+static uint16_t startDistance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
 
-class COBDLogger : public COBD, public CDataLogger
+class COBDLogger : public COBDI2C, public CDataLogger
 {
 public:
     COBDLogger():state(0) {}
@@ -122,10 +124,6 @@ public:
         //lcd.setCursor(0, 14);
         //lcd.print("VIN: XXXXXXXX");
 
-        showECUCap();
-
-        readSensor(PID_DISTANCE, startDistance);
-
         // open file for logging
         if (!(state & STATE_SD_READY)) {
             if (checkSD()) {
@@ -143,8 +141,12 @@ public:
         lcd.setCursor(0, 6);
         lcd.print("File ID:");
         lcd.printInt(index);
-        delay(1000);
 #endif
+
+        showECUCap();
+        delay(1000);
+
+        readSensor(PID_DISTANCE, (int&)startDistance);
 
         initScreen();
 
@@ -293,9 +295,11 @@ private:
     {
         // callback while waiting OBD data
         if (getState() == OBD_CONNECTED) {
+#ifdef GPSUART
             if (lastDataTime && GPSUART.available())
                 processGPS();
             return;
+#endif
         }
 
         // display while initializing
@@ -389,10 +393,15 @@ private:
 #endif
     void processAccelerometer()
     {
+        dataTime = millis();
+
+        if (dataTime - lastACCDataTime < ACC_DATA_INTERVAL) {
+            return;
+        }
+
         char buf[20];
         accel_t_gyro_union data;
         MPU6050_readout(&data);
-        dataTime = millis();
 
         lcd.setFont(FONT_SIZE_SMALL);
 
@@ -420,6 +429,8 @@ private:
         logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
         // log x/y/z of gyro meter
         logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+
+        lastACCDataTime = dataTime;
     }
     void logOBDData(byte pid)
     {
@@ -428,6 +439,10 @@ private:
         uint32_t start = millis();
 
         sendQuery(pid);
+
+        if (state & STATE_ACC_READY) {
+            processAccelerometer();
+        }
 
         pid = 0;
         if (!getResponseParsed(pid, value)) {
@@ -455,14 +470,6 @@ private:
             lastFileSize = dataSize;
         }
 #endif
-
-        if (state & STATE_ACC_READY) {
-            uint32_t t = millis();
-            if (t - lastACCDataTime > ACC_DATA_INTERVAL) {
-                processAccelerometer();
-                lastACCDataTime = t;
-            }
-        }
 
         // if OBD response is very fast, go on processing other data for a while
 #ifdef OBD_MIN_INTERVAL
