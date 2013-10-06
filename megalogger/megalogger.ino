@@ -444,7 +444,7 @@ private:
             processAccelerometer();
         }
 
-        pid = 0;
+        //pid = 0;
         if (!getResponseParsed(pid, value)) {
             errors++;
             return;
