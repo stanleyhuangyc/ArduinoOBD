@@ -6,9 +6,14 @@
 *************************************************************************/
 
 #include <Arduino.h>
-#include "OBD.h"
+#include <Wire.h>
+#include <OBD.h>
 
+// OBD-II UART Adapter
 COBD obd;
+
+// OBD-II I2C Adapter
+//COBDI2C obd;
 
 void setup()
 {

@@ -9,8 +9,8 @@
 #include <avr/pgmspace.h>
 #include "OBD.h"
 
-//#define DEBUG
-#define DEBUG_SERIAL Serial
+//#define DEBUG Serial
+//#define REDIRECT Serial
 
 #define MAX_CMD_LEN 6
 
@@ -60,6 +60,11 @@ unsigned char hex2uint8(const char *p)
 	return c1 << 4 | (c2 & 0xf);
 }
 
+/*************************************************************************
+* OBD-II UART Adapter
+*************************************************************************/
+#include <Wire.h>
+
 void COBD::sendQuery(unsigned char pid)
 {
 	char cmd[8];
@@ -96,18 +101,18 @@ bool COBD::available()
 char COBD::read()
 {
 	char c = OBDUART.read();
-#ifdef DEBUG
-    DEBUG_SERIAL.print(c);
+#ifdef REDIRECT
+    REDIRECT.write(c);
 #endif
 	return c;
 }
 
-void COBD::write(const char* s)
+void COBD::write(char* s)
 {
 	OBDUART.write(s);
 }
 
-void COBD::write(const char c)
+void COBD::write(char c)
 {
 	OBDUART.write(c);
 }
@@ -177,7 +182,7 @@ bool COBD::getResponseParsed(byte& pid, int& result)
 	char* data = getResponse(pid, buffer);
 	if (!data) {
 		// try recover next time
-		write('\r');
+		//write('\r');
 		return false;
 	}
 	result = normalizeData(pid, data);
@@ -297,9 +302,116 @@ bool COBD::init(bool passive)
 #ifdef DEBUG
 void COBD::debugOutput(const char *s)
 {
-    DEBUG_SERIAL.print('[');
-    DEBUG_SERIAL.print(millis());
-    DEBUG_SERIAL.print(']');
-    DEBUG_SERIAL.print(s);
+    DEBUG.print('[');
+    DEBUG.print(millis());
+    DEBUG.print(']');
+    DEBUG.print(s);
 }
 #endif
+
+/*************************************************************************
+* OBD-II I2C Adapter
+*************************************************************************/
+
+void COBDI2C::begin(byte addr)
+{
+    m_addr = addr;
+    Wire.begin();
+}
+
+bool COBDI2C::init()
+{
+    m_state = OBD_CONNECTING;
+    sendCommand(CMD_QUERY_STATUS);
+
+    char recvbuf[MAX_PAYLOAD_SIZE];
+    for (byte n = 0; n < 3; n++) {
+        memset(recvbuf, 0, sizeof(recvbuf));
+        receive(recvbuf);
+        if (!memcmp(recvbuf, "OBD ", 4))
+            break;
+    }
+    if (recvbuf[4] == 'Y') {
+        memcpy(pidmap, recvbuf + 16, sizeof(pidmap));
+        m_state = OBD_CONNECTED;
+        return true;
+    } else {
+        m_state = OBD_DISCONNECTED;
+        return false;
+    }
+}
+
+bool COBDI2C::readSensor(byte pid, int& result, bool passive)
+{
+    uint32_t t = millis();
+    sendQuery(pid);
+    dataIdleLoop();
+    return getResponseParsed(pid, result);
+}
+
+void COBDI2C::write(char* s)
+{
+    COMMAND_BLOCK cmdblock = {millis(), CMD_SEND_COMMAND};
+    Wire.beginTransmission(m_addr);
+    Wire.write((byte*)&cmdblock, sizeof(cmdblock));
+    Wire.write(s);
+    Wire.endTransmission();
+}
+
+bool COBDI2C::sendCommand(byte cmd, uint8_t data, byte* payload, byte payloadBytes)
+{
+    COMMAND_BLOCK cmdblock = {millis(), cmd, data};
+    Wire.beginTransmission(m_addr);
+    bool success = Wire.write((byte*)&cmdblock, sizeof(COMMAND_BLOCK)) == sizeof(COMMAND_BLOCK);
+    if (payload) Wire.write(payload, payloadBytes);
+    Wire.endTransmission();
+    return success;
+}
+
+byte COBDI2C::receive(char* buffer)
+{
+    uint32_t start = millis();
+    byte offset = 0;
+    do {
+        Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
+
+        bool hasEnd = false;
+        for (byte i = 0; i < MAX_PAYLOAD_SIZE; i++) {
+            if ((buffer[offset + i] = Wire.read()) == 0)
+                hasEnd = true;
+        }
+
+        if (buffer[0] == 0) {
+            // data not ready
+            dataIdleLoop();
+            continue;
+        }
+
+        offset += MAX_PAYLOAD_SIZE;
+        if (!hasEnd) {
+            continue;
+        }
+
+        return offset;
+    } while(millis() - start < OBD_TIMEOUT_LONG);
+    return 0;
+}
+
+bool COBDI2C::btInit(uint16_t baudrate)
+{
+    return sendCommand(CMD_UART_BEGIN, baudrate / 1200);
+}
+
+bool COBDI2C::btSend(byte* data, byte length)
+{
+    return sendCommand(CMD_UART_SEND, 0, data, length);
+}
+
+bool COBDI2C::btReceive(byte* buffer, byte bufsize)
+{
+    if (!sendCommand(CMD_UART_RECV, bufsize)) return false;
+    memset(buffer, 0, MAX_PAYLOAD_SIZE);
+    Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
+    Wire.readBytes((char*)buffer, MAX_PAYLOAD_SIZE);
+    return true;
+}
