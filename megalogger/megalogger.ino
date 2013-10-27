@@ -13,34 +13,13 @@
 #include <TinyGPS.h>
 #include <MPU6050.h>
 #include <SoftwareSerial.h>
+#include "config.h"
 #include "images.h"
 #include "datalogger.h"
 
 #if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__)
 #error This sketch requires Arduino MEGA to work
 #endif
-
-/**************************************
-* Choose SD pin here
-**************************************/
-//#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 7 // microduino
-//#define SD_CS_PIN 10 // SD breakout
-#define SD_CS_PIN SS
-
-/**************************************
-* Config GPS here
-**************************************/
-#define USE_GPS
-#define GPS_BAUDRATE 38400 /* bps */
-//#define GPS_OPEN_BAUDRATE 4800 /* bps */
-
-/**************************************
-* Other options
-**************************************/
-//#define OBD_MIN_INTERVAL 200 /* ms */
-#define ACC_DATA_INTERVAL 100 /* ms */
-#define GPS_DATA_TIMEOUT 2000 /* ms */
 
 // logger states
 #define STATE_SD_READY 0x1
@@ -213,14 +192,13 @@ public:
             lcd.print(buf);
             lcd.setCursor(250, 11);
             lcd.printInt((uint16_t)(dataTime - t) / dataCount);
-            lcd.setFont(FONT_SIZE_SMALL);
-            lcd.print(" ms");
+            lcd.print("ms ");
 
             dataCount = 0;
             lastRefreshTime = dataTime >> 10;
         }
 
-        if (errors >= 3) {
+        if (errors >= 10) {
             reconnect();
             count = 0;
         }
@@ -295,11 +273,18 @@ private:
     {
         // callback while waiting OBD data
         if (getState() == OBD_CONNECTED) {
+            if (lastDataTime) {
+                if (state & STATE_ACC_READY) {
+                    processAccelerometer();
+                }
 #ifdef GPSUART
-            if (lastDataTime && GPSUART.available())
-                processGPS();
-            return;
+                uint32_t t = millis();
+                while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
+                    processGPS();
+                }
 #endif
+            }
+            return;
         }
 
         // display while initializing
@@ -440,14 +425,12 @@ private:
 
         sendQuery(pid);
 
-        if (state & STATE_ACC_READY) {
-            processAccelerometer();
-        }
-
         pid = 0;
         if (!getResponseParsed(pid, value)) {
             errors++;
             return;
+        } else {
+            errors = 0;
         }
 
         dataTime = millis();
@@ -575,8 +558,7 @@ private:
                 lcd.setFont(FONT_SIZE_MEDIUM);
                 lcd.setCursor(250, 5);
                 lcd.printInt(((unsigned int)value - startDistance) % 1000);
-                lcd.setFont(FONT_SIZE_SMALL);
-                lcd.print(" km");
+                lcd.print("km");
             }
             break;
         }
@@ -643,6 +625,18 @@ private:
 };
 
 static COBDLogger logger;
+
+#if ENABLE_DATA_OUT && USE_OBD_BT
+void btInit(int baudrate)
+{
+    logger.btInit(baudrate);
+}
+
+void btSend(byte* data, byte length)
+{
+    logger.btSend(data, length);
+}
+#endif
 
 void setup()
 {
