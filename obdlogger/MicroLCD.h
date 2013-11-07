@@ -21,6 +21,13 @@ typedef enum {
 #define FLAG_PIXEL_DOUBLE_V 4
 #define FLAG_PIXEL_DOUBLE (FLAG_PIXEL_DOUBLE_H | FLAG_PIXEL_DOUBLE_V)
 
+extern const PROGMEM unsigned char font5x8[][5];
+extern const PROGMEM unsigned char digits8x8[][8] ;
+extern const PROGMEM unsigned char digits16x16[][32];
+extern const PROGMEM unsigned char digits16x24[][48];
+extern const PROGMEM unsigned char font8x16_doslike[][16];
+extern const PROGMEM unsigned char font8x16_terminal[][16];
+
 class LCD_Common
 {
 public:
