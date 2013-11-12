@@ -47,24 +47,23 @@
 
 TinyGPS gps;
 
-#endif // GPSUART
-#endif
-
-static uint32_t lastFileSize = 0;
-//static uint32_t lastDataTime;
-static uint32_t lastGPSDataTime = 0;
-static uint16_t lastSpeed = -1;
-static uint32_t lastSpeedTime = 0;
-static uint16_t speed = 0;
-static uint16_t speedGPS = 0;
-static int startDistance = 0;
-static uint16_t fileIndex = 0;
-static uint32_t startTime = 0;
 static long lastLat = 0;
 static long lastLon = 0;
 static long curLat = 0;
 static long curLon = 0;
-static uint16_t distance = 0;
+static uint32_t lastGPSDataTime = 0;
+static uint16_t speedGPS = 0;
+
+#endif // GPSUART
+#endif
+
+static uint32_t lastFileSize = 0;
+static uint16_t lastSpeed = -1;
+static uint32_t lastSpeedTime = 0;
+static uint16_t speed = 0;
+static uint32_t distance = 0;
+static uint16_t fileIndex = 0;
+static uint32_t startTime = 0;
 
 #define STAGE_IDLE 0
 #define STAGE_WAIT_START 1
@@ -81,11 +80,11 @@ static byte stage = STAGE_IDLE;
 static uint16_t times[4] = {0};
 
 static byte pollPattern[]= {
-    PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE, PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE,
+    PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE
 };
 
 static byte pollPattern2[] = {
-    PID_DISTANCE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL,
+    PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL,
 };
 
 #define PATTERN_NUM sizeof(pollPattern)
@@ -98,8 +97,9 @@ public:
     COBDLogger():state(0) {}
     void setup()
     {
+#if USE_GPS
         lastGPSDataTime = 0;
-
+#endif
         showStates();
 
 #if USE_MPU6050
@@ -152,8 +152,6 @@ public:
         //delay(1000);
 #endif
 
-        readSensor(PID_DISTANCE, startDistance);
-
 #if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
@@ -204,6 +202,12 @@ public:
                     index2 = (index2 + 1) % PATTERN_NUM2;
                 }
             }
+
+            char buf[10];
+            sprintf(buf, "%4ukm", (uint16_t)(distance / 1000));
+            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setCursor(92, 6);
+            lcd.print(buf);
 
 #if USE_MPU6050
             if (state & STATE_ACC_READY) {
@@ -496,8 +500,10 @@ private:
                 dataTime = t;
                 logData(0x100 | PID_SPEED, speed);
 
+#if USE_GPS
                 lastLat = curLat;
                 lastLon = curLon;
+#endif
                 lastSpeed = 0;
                 distance = 0;
 
@@ -517,7 +523,10 @@ private:
                 lcd.write('.');
                 lcd.write('0' + n);
             }
-            if (times[2] == 0 && (speedGPS >= SPEED_THRESHOLD_3 || speed >= SPEED_THRESHOLD_3)) {
+#if USE_GPS
+            if (speedGPS > speed) speed = speedGPS;
+#endif
+            if (times[2] == 0 && speed >= SPEED_THRESHOLD_3) {
                 times[2] = elapsed / 100;
                 stage = STAGE_IDLE;
                 lcd.clearLine(0);
@@ -527,10 +536,10 @@ private:
                 lcd.setFont(FONT_SIZE_MEDIUM);
                 lcd.setCursor(0, 0);
                 lcd.print("DONE!");
-            } else if (times[1] == 0 && (speedGPS >= SPEED_THRESHOLD_2 || speed >= SPEED_THRESHOLD_2)) {
+            } else if (times[1] == 0 && speed >= SPEED_THRESHOLD_2) {
                 times[1] = elapsed / 100;
                 showTimerResults();
-            } else if (times[0] == 0 && (speedGPS >= SPEED_THRESHOLD_1 || speed >= SPEED_THRESHOLD_1)) {
+            } else if (times[0] == 0 && speed >= SPEED_THRESHOLD_1) {
                 times[0] = elapsed / 100;
                 showTimerResults();
             } else if (speed == 0) {
@@ -656,14 +665,6 @@ private:
                 lcd.setCursor(102, 5);
                 lcd.setFont(FONT_SIZE_SMALL);
                 lcd.printInt(value, 3);
-            }
-            break;
-        case PID_DISTANCE:
-            if ((unsigned int)value >= startDistance) {
-                sprintf(buf, "%4ukm", ((unsigned int)value - startDistance) % 1000);
-                lcd.setFont(FONT_SIZE_SMALL);
-                lcd.setCursor(92, 6);
-                lcd.print(buf);
             }
             break;
         }
