@@ -12,13 +12,16 @@
 #include <MultiLCD.h>
 #include <TinyGPS.h>
 #include <MPU6050.h>
-#include <SoftwareSerial.h>
+#include <SPI.h>
 #include "config.h"
 #include "images.h"
 #include "datalogger.h"
+#if ENABLE_DATA_OUT
+#include <SoftwareSerial.h>
+#endif
 
-#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__)
-#error This sketch requires Arduino MEGA to work
+#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
+#error This sketch requires Arduino MEGA or DUE to work
 #endif
 
 // logger states
@@ -50,13 +53,8 @@ TinyGPS gps;
 #endif // GPSUART
 #endif
 
-LCD_ILI9325D lcd; /* for 2.8" TFT shield */
-
-#define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 2))
-#define RGB16_RED 0xF800
-#define RGB16_GREEN 0x7E0
-#define RGB16_BLUE 0x1F
-#define RGB16_WHITE 0xFFFF
+//LCD_ILI9325D lcd; /* for ILI9325 based TFT shield */
+LCD_ILI9341 lcd; /* for ILI9341 based SPI TFT */
 
 static uint32_t lastFileSize = 0;
 static uint32_t lastDataTime = 0;
@@ -125,7 +123,7 @@ public:
         showECUCap();
         delay(1000);
 
-        readSensor(PID_DISTANCE, (int&)startDistance);
+        read(PID_DISTANCE, (int&)startDistance);
 
         initScreen();
 
@@ -473,10 +471,10 @@ private:
         }
         for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
             bool valid = isValidPID(pidlist[i]);
-            lcd.setColor(valid ? RGB16_GREEN : RGB16_RED);
+            lcd.setTextColor(valid ? RGB16_GREEN : RGB16_RED);
             lcd.draw(valid ? tick : cross, 304, i * 16 + 32, 16, 16);
         }
-        lcd.setColor(RGB16_WHITE);
+        lcd.setTextColor(RGB16_WHITE);
     }
     void reconnect()
     {
@@ -503,28 +501,28 @@ private:
 
         lcd.setCursor(0, 8);
         lcd.print("OBD");
-        lcd.setColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
+        lcd.setTextColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
         lcd.draw((state & STATE_OBD_READY) ? tick : cross, 36, 64, 16, 16);
-        lcd.setColor(RGB16_WHITE);
+        lcd.setTextColor(RGB16_WHITE);
 
         lcd.setCursor(0, 10);
         lcd.print("ACC");
-        lcd.setColor((state & STATE_ACC_READY) ? RGB16_GREEN : RGB16_RED);
+        lcd.setTextColor((state & STATE_ACC_READY) ? RGB16_GREEN : RGB16_RED);
         lcd.draw((state & STATE_ACC_READY) ? tick : cross, 36, 80, 16, 16);
-        lcd.setColor(RGB16_WHITE);
+        lcd.setTextColor(RGB16_WHITE);
 
         lcd.setCursor(0, 12);
         lcd.print("GPS");
         if (state & STATE_GPS_READY) {
-            lcd.setColor(RGB16_GREEN);
+            lcd.setTextColor(RGB16_GREEN);
             lcd.draw(tick, 36, 96, 16, 16);
         } else if (state & STATE_GPS_CONNECTED)
             lcd.print(" --");
         else {
-            lcd.setColor(RGB16_RED);
+            lcd.setTextColor(RGB16_RED);
             lcd.draw(cross, 36, 96, 16, 16);
         }
-        lcd.setColor(RGB16_WHITE);
+        lcd.setTextColor(RGB16_WHITE);
     }
     void showSensorData(byte pid, int value)
     {
@@ -640,6 +638,13 @@ void btSend(byte* data, byte length)
 
 void setup()
 {
+    lcd.begin();
+    lcd.setFont(FONT_SIZE_MEDIUM);
+    lcd.backlight(true);
+    lcd.setTextColor(0xFFE0);
+    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
+    lcd.setTextColor(RGB16_WHITE);
+
 #ifdef GPSUART
 #ifdef GPS_OPEN_BAUDRATE
     GPSUART.begin(GPS_OPEN_BAUDRATE);
@@ -654,19 +659,9 @@ void setup()
 #endif
     Wire.begin();
 
-    delay(200);
-    lcd.begin();
-
     logger.begin();
     logger.initSender();
 
-    //lcd.clear();
-    lcd.setLineHeight(8);
-    lcd.setFont(FONT_SIZE_MEDIUM);
-    lcd.backlight(true);
-    lcd.setColor(0xFFE0);
-    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
-    lcd.setColor(0xFFFF);
     logger.checkSD();
     logger.setup();
 }
