@@ -451,7 +451,7 @@ private:
 #endif
 
         // send a query to OBD adapter for specified OBD-II pid
-        if (readSensor(pid, value)) {
+        if (read(pid, value)) {
             dataTime = millis();
             showLoggerData(pid, value);
             // log data to SD card
@@ -471,7 +471,7 @@ private:
         uint16_t n;
 
         int speed;
-        if (!readSensor(PID_SPEED, speed))
+        if (!read(PID_SPEED, speed))
             return;
 
         dataTime = millis();
@@ -563,7 +563,7 @@ private:
             logData(0x100 | PID_SPEED, speed);
             // log additional data
             int rpm;
-            if (readSensor(PID_RPM, rpm)) {
+            if (read(PID_RPM, rpm)) {
                 dataTime = millis();
                 logData(0x100 | PID_RPM, rpm);
             }
