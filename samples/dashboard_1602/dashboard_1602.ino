@@ -73,7 +73,7 @@ bool showData(int index)
 	uint8_t mode = modes[index];
 	uint8_t pid = modePids[mode];
 	digitalWrite(13, HIGH);   // set the LED on
-	if (!obd.readSensor(pid, value)) {
+	if (!obd.read(pid, value)) {
                 // display received data on error
 		lcd.cursorTo(index + 1, 0);
 		lcd.printIn("Error");
