@@ -5,15 +5,9 @@
 * All rights reserved.
 *************************************************************************/
 
-#include <Arduino.h>
-#include <Wire.h>
 #include <OBD.h>
 
-// OBD-II UART Adapter
 COBD obd;
-
-// OBD-II I2C Adapter
-//COBDI2C obd;
 
 void setup()
 {
@@ -28,9 +22,9 @@ void setup()
 void loop()
 {
   int value;
-  if (obd.readSensor(PID_RPM, value)) {
-    // RPM is read and stored in 'value'
-    // light on LED when RPM exceeds 5000
-    digitalWrite(13, value > 5000 ? HIGH : LOW);
+  if (obd.read(PID_RPM, value)) {
+    // RPM is successfully read and its value stored in variable 'value'
+    // light on LED when RPM exceeds 3000
+    digitalWrite(13, value > 3000 ? HIGH : LOW);
   }
 }

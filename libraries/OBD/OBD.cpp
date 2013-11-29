@@ -75,7 +75,7 @@ void COBD::sendQuery(unsigned char pid)
 	write(cmd);
 }
 
-bool COBD::readSensor(byte pid, int& result, bool passive)
+bool COBD::read(byte pid, int& result, bool passive)
 {
 	// send a query command
 	sendQuery(pid);
@@ -341,7 +341,7 @@ bool COBDI2C::init()
     }
 }
 
-bool COBDI2C::readSensor(byte pid, int& result, bool passive)
+bool COBDI2C::read(byte pid, int& result, bool passive)
 {
     uint32_t t = millis();
     sendQuery(pid);

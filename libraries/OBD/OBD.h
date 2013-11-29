@@ -50,7 +50,7 @@ public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	virtual void begin();
 	virtual bool init(bool passive = false);
-	virtual bool readSensor(byte pid, int& result, bool passive = false);
+	virtual bool read(byte pid, int& result, bool passive = false);
 	virtual void sleep(int seconds);
 	// Query and GetResponse for advanced usage only
 	virtual void sendQuery(byte pid);
@@ -118,7 +118,7 @@ class COBDI2C : public COBD {
 public:
     void begin(byte addr = I2C_ADDR);
     bool init();
-    bool readSensor(byte pid, int& result, bool passive = false);
+    bool read(byte pid, int& result, bool passive = false);
     void write(char* s);
     // Bluetooth communication API
     bool btInit(uint16_t baudrate = 9600);
