@@ -1,11 +1,4 @@
-#if ARDUINO >= 100
- #include "Arduino.h"
-#else
- #include "WProgram.h"
-#endif
-
-#define BLACK 0
-#define WHITE 1
+#include "Arduino.h"
 
 #define SSD1306_I2C_ADDRESS   0x3C	// 011110+SA0+RW - 0x3C or 0x3D
 // Address for 128x32 is 0x3C

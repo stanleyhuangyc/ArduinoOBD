@@ -227,7 +227,7 @@ void LCD_ILI9325D::begin()
     clear();
 }
 
-void LCD_ILI9325D::SetXY(uint16_t x0,uint16_t x1,uint16_t y1,uint16_t y0)
+void LCD_ILI9325D::setXY(uint16_t x0,uint16_t x1,uint16_t y1,uint16_t y0)
 {
     y1 = 319 - y1;
     y0 = 319 - y0;
@@ -263,7 +263,7 @@ void LCD_ILI9325D::clearPixels(uint16_t pixels)
 void LCD_ILI9325D::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
 	unsigned long count = (unsigned long)width * height;
-	SetXY(y, y + height - 1, x, x + width - 1);
+	setXY(y, y + height - 1, x, x + width - 1);
 
     digitalWrite(RS,HIGH);//LCD_RS=0;
     digitalWrite(CS,LOW);//LCD_CS =0;
@@ -288,17 +288,14 @@ size_t LCD_ILI9325D::write(uint8_t c)
         m_x += (m_font + 1) << 3;
         return 0;
     } else if (c == '\r') {
-        SetXY(m_x, m_x + 7, m_y, 319);
-        uint16_t count = (320 - m_y) * 8;
-        for (uint16_t i=0; i < count; i++) {
-             WriteData(0, 0);
-        }
+        setXY(m_x, m_x + 7, m_y, 319);
+        clearPixels((320 - m_y) * 8);
         m_y = 0;
         return 0;
     }
 
     if (m_font == FONT_SIZE_SMALL) {
-        SetXY(m_x, m_x + 7, m_y, m_y + 4);
+        setXY(m_x, m_x + 7, m_y, m_y + 4);
         m_y += 6;
         if (m_y >= 320) {
             m_x += (m_font + 1) << 3;
@@ -321,7 +318,7 @@ size_t LCD_ILI9325D::write(uint8_t c)
             clearPixels(5 * 8);
         }
     } else {
-        SetXY(m_x, m_x + 15, m_y, m_y + 7);
+        setXY(m_x, m_x + 15, m_y, m_y + 7);
         m_y += 9;
         if (m_y >= 320) {
             m_x += (m_font + 1) << 3;
@@ -352,7 +349,7 @@ size_t LCD_ILI9325D::write(uint8_t c)
 void LCD_ILI9325D::writeDigit(byte n)
 {
     if (m_font == FONT_SIZE_SMALL) {
-        SetXY(m_x, m_x + 7, m_y, m_y + 7);
+        setXY(m_x, m_x + 7, m_y, m_y + 7);
         m_y += 8;
         if (n <= 9) {
             byte pgm_buffer[8];
@@ -371,7 +368,7 @@ void LCD_ILI9325D::writeDigit(byte n)
     } else if (m_font == FONT_SIZE_MEDIUM) {
         write(n <= 9 ? ('0' + n) : ' ');
     } else if (m_font == FONT_SIZE_LARGE) {
-        SetXY(m_x, m_x + 15, m_y, m_y + 15);
+        setXY(m_x, m_x + 15, m_y, m_y + 15);
         m_y += 16;
         if (n <= 9) {
             byte pgm_buffer[32];
@@ -390,7 +387,7 @@ void LCD_ILI9325D::writeDigit(byte n)
             clearPixels(16 * 16);
         }
     } else if (m_font == FONT_SIZE_XLARGE) {
-        SetXY(m_x, m_x + 23, m_y, m_y + 15);
+        setXY(m_x, m_x + 23, m_y, m_y + 15);
         m_y += 18;
         if (n <= 9) {
             byte pgm_buffer[48];
@@ -418,7 +415,7 @@ void LCD_ILI9325D::writeDigit(byte n)
 void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
     byte rows = height >> 3;
-    SetXY(y, y + height - 1, x, x + width - 1);
+    setXY(y, y + height - 1, x, x + width - 1);
     uint16_t i = width - 1;
     do {
         for (uint8_t h = 0; h < rows; h++) {
@@ -434,7 +431,7 @@ void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, by
 {
     char buf[240];
     uint16_t pixels = (uint16_t)width * height;
-    SetXY(y, y + height * 2 - 1, x, x + width * 2- 1);
+    setXY(y, y + height * 2 - 1, x, x + width * 2- 1);
     uint16_t i = width - 1;
     do {
         memcpy_P(buf, buffer + (uint16_t)i * height * 2, height * 2);
@@ -451,7 +448,7 @@ void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, by
 
 void LCD_ILI9325D::draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
-    SetXY(y, y + height - 1, x, x + width - 1);
+    setXY(y, y + height - 1, x, x + width - 1);
     uint16_t i = (uint16_t)width * height / 2 - 1;
     do {
         byte d = pgm_read_byte_far(buffer + i);

@@ -33,8 +33,8 @@ public:
     void setFlags(byte flags) { m_flags = flags; }
     virtual void backlight(bool on) {}
     virtual void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height) {}
-    void printInt(uint16_t value, char padding = -1);
-    void printLong(unsigned long value, char padding = -1);
+    void printInt(uint16_t value, int8_t padding = -1);
+    void printLong(uint32_t value, int8_t padding = -1);
 protected:
     virtual void writeDigit(byte n) {}
     byte m_font;
@@ -73,32 +73,6 @@ private:
     void writeDigit(byte n);
 };
 
-#include "ZtLib.h"
-
-#define OLED_ADDRESS 0x27
-
-class LCD_ZTOLED : public LCD_Common, public ZtLib, public Print
-{
-public:
-    byte getLines() { return 4; }
-    byte getCols() { return 16; }
-    void setCursor(byte column, byte line);
-    size_t write(uint8_t c);
-    //void print(const char* s);
-    void writeDigit(byte n);
-    void clear();
-    void begin();
-    void backlight(bool on) {}
-    void clearLine(byte line)
-    {
-        setCursor(0, line);
-        for (byte i = 16; i > 0; i--) write(' ');
-    }
-private:
-    unsigned char m_column;
-    unsigned char m_page;
-};
-
 #include "LCD4Bit_mod.h"
 class LCD_1602 : public LCD_Common, public LCD4Bit_mod
 {
@@ -134,19 +108,24 @@ private:
     byte m_row;
 };
 
+#define TFT_LINE_HEIGHT 10
+
 class LCD_ILI9325D : public LCD_Common, public Print
 {
 public:
-    LCD_ILI9325D():m_lineHeight(10) { m_font = FONT_SIZE_MEDIUM; }
+    LCD_ILI9325D() { m_font = FONT_SIZE_MEDIUM; }
     void setCursor(uint16_t column, uint16_t line)
     {
         m_y = column;
-        m_x = line * m_lineHeight;
+        m_x = line * TFT_LINE_HEIGHT;
     }
-    void setColor(uint16_t textColor, uint16_t bgColor = 0)
+    void setTextColor(uint8_t R, uint8_t G, uint8_t B)
     {
-        m_color[0] = bgColor;
-        m_color[1] = textColor;
+        m_color[1] = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
+    }
+    void SetBGColor(uint8_t R, uint8_t G, uint8_t B)
+    {
+        m_color[0] = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
     }
     void begin();
     void clear(uint16_t x = 0, uint16_t y = 0, uint16_t width = 320, uint16_t height = 240);
@@ -156,15 +135,14 @@ public:
     size_t write(uint8_t);
     void clearLine(byte line)
     {
-        clear(0, line * m_lineHeight, 320, 8);
+        clear(0, line * TFT_LINE_HEIGHT, 320, 8);
     }
-    void setLineHeight(byte lineHeight) { m_lineHeight = lineHeight; }
     byte getLines() { return 53; }
     byte getCols() { return 30; }
 private:
     void writeDigit(byte n);
     void clearPixels(uint16_t pixels);
-    void SetXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1);
+    void setXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1);
     void WriteData(uint16_t c);
     void WriteData(byte l, byte h);
     void WriteCommandData(uint16_t cmd,uint16_t dat);
@@ -172,9 +150,58 @@ private:
     void Disable();
     void SetCommandMode();
     void SetDataMode();
-    int m_x;
-    int m_y;
+    uint16_t m_x;
+    uint16_t m_y;
     uint16_t m_color[2];
-    byte m_lineHeight;
     byte lastData;
+};
+
+class LCD_ILI9341 : public LCD_Common, public Print
+{
+public:
+    LCD_ILI9341() { m_font = FONT_SIZE_MEDIUM; }
+    void setCursor(uint16_t column, uint16_t line)
+    {
+        m_y = column;
+        m_x = line * TFT_LINE_HEIGHT;
+    }
+    void setTextColor(uint8_t R, uint8_t G, uint8_t B)
+    {
+        uint16_t color = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
+        m_color[1][0] = color & 0xff;
+        m_color[1][1] = color >> 8;
+    }
+    void SetBGColor(uint8_t R, uint8_t G, uint8_t B)
+    {
+        uint16_t color = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
+        m_color[0][0] = color & 0xff;
+        m_color[0][1] = color >> 8;
+    }
+    void clearLine(byte line)
+    {
+        clear(0, line * TFT_LINE_HEIGHT, 320, 8);
+    }
+	void begin (void);
+	void setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
+	void setPixel(uint16_t poX, uint16_t poY,uint16_t color);
+	void clear(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
+    void clear(void);
+    size_t write(uint8_t);
+    void backlight(bool on);
+    void draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+    void draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, byte width, byte height);
+private:
+    void writeDigit(byte n);
+    void clearPixels(uint16_t pixels);
+	void setCol(uint16_t StartCol,uint16_t EndCol);
+	void setPage(uint16_t StartPage,uint16_t EndPage);
+	void sendCMD(uint8_t index);
+	void WRITE_Package(uint16_t *data,uint8_t howmany);
+	void WRITE_DATA(uint8_t data);
+	void sendData(uint16_t data);
+	uint8_t Read_Register(uint8_t Addr,uint8_t xParameter);
+	uint8_t readID(void);
+	uint8_t m_color[2][2];
+    uint16_t m_x;
+    uint16_t m_y;
 };
