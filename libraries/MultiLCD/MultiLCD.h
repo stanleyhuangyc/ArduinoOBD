@@ -17,6 +17,13 @@ typedef enum {
 #define FLAG_PIXEL_DOUBLE_V 4
 #define FLAG_PIXEL_DOUBLE (FLAG_PIXEL_DOUBLE_H | FLAG_PIXEL_DOUBLE_V)
 
+#define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 2))
+#define RGB16_RED 0xF800
+#define RGB16_GREEN 0x7E0
+#define RGB16_BLUE 0x1F
+#define RGB16_YELLOW 0xFFE0
+#define RGB16_WHITE 0xFFFF
+
 extern const PROGMEM unsigned char font5x8[][5];
 extern const PROGMEM unsigned char digits8x8[][8] ;
 extern const PROGMEM unsigned char digits16x16[][32];
@@ -108,7 +115,7 @@ private:
     byte m_row;
 };
 
-#define TFT_LINE_HEIGHT 10
+#define TFT_LINE_HEIGHT 8
 
 class LCD_ILI9325D : public LCD_Common, public Print
 {
@@ -119,9 +126,17 @@ public:
         m_y = column;
         m_x = line * TFT_LINE_HEIGHT;
     }
+    void setTextColor(uint16_t color)
+    {
+        m_color[1] = color;
+    }
     void setTextColor(uint8_t R, uint8_t G, uint8_t B)
     {
         m_color[1] = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
+    }
+    void SetBGColor(uint16_t color)
+    {
+        m_color[0] = color;
     }
     void SetBGColor(uint8_t R, uint8_t G, uint8_t B)
     {
@@ -165,11 +180,21 @@ public:
         m_y = column;
         m_x = line * TFT_LINE_HEIGHT;
     }
+    void setTextColor(uint16_t color)
+    {
+        m_color[1][0] = color & 0xff;
+        m_color[1][1] = color >> 8;
+    }
     void setTextColor(uint8_t R, uint8_t G, uint8_t B)
     {
         uint16_t color = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
         m_color[1][0] = color & 0xff;
         m_color[1][1] = color >> 8;
+    }
+    void SetBGColor(uint16_t color)
+    {
+        m_color[0][0] = color & 0xff;
+        m_color[0][1] = color >> 8;
     }
     void SetBGColor(uint8_t R, uint8_t G, uint8_t B)
     {
@@ -181,10 +206,10 @@ public:
     {
         clear(0, line * TFT_LINE_HEIGHT, 320, 8);
     }
-	void begin (void);
-	void setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
-	void setPixel(uint16_t poX, uint16_t poY,uint16_t color);
-	void clear(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
+    void begin (void);
+    void setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
+    void setPixel(uint16_t poX, uint16_t poY,uint16_t color);
+    void clear(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
     void clear(void);
     size_t write(uint8_t);
     void backlight(bool on);
@@ -193,15 +218,15 @@ public:
 private:
     void writeDigit(byte n);
     void clearPixels(uint16_t pixels);
-	void setCol(uint16_t StartCol,uint16_t EndCol);
-	void setPage(uint16_t StartPage,uint16_t EndPage);
-	void sendCMD(uint8_t index);
-	void WRITE_Package(uint16_t *data,uint8_t howmany);
-	void WRITE_DATA(uint8_t data);
-	void sendData(uint16_t data);
-	uint8_t Read_Register(uint8_t Addr,uint8_t xParameter);
-	uint8_t readID(void);
-	uint8_t m_color[2][2];
+    void setCol(uint16_t StartCol,uint16_t EndCol);
+    void setPage(uint16_t StartPage,uint16_t EndPage);
+    void sendCMD(uint8_t index);
+    void WRITE_Package(uint16_t *data,uint8_t howmany);
+    void WRITE_DATA(uint8_t data);
+    void sendData(uint16_t data);
+    uint8_t Read_Register(uint8_t Addr,uint8_t xParameter);
+    uint8_t readID(void);
+    uint8_t m_color[2][2];
     uint16_t m_x;
     uint16_t m_y;
 };
