@@ -175,6 +175,32 @@ public:
         return true;
     }
 #endif
+    void logData(uint16_t pid, int value)
+    {
+        LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
+        ld.checksum = getChecksum((char*)&ld, 12);
+#if ENABLE_DATA_OUT
+#if USE_OBD_BT
+        btSend((uint8_t*)&ld, 12);
+#else
+        mySerial.write((uint8_t*)&ld, 12);
+#endif
+#endif
+#if ENABLE_DATA_LOG
+#if LOG_FORMAT == FORMAT_BIN
+        sdfile.write((uint8_t*)&ld, 12);
+        dataSize += 12;
+#else
+        dataSize += sdfile.print(dataTime - m_lastDataTime);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(pid, HEX);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(value);
+        dataSize += sdfile.write('\n');
+        m_lastDataTime = dataTime;
+#endif
+#endif
+    }
     void logData(uint16_t pid, float value)
     {
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
@@ -195,7 +221,7 @@ public:
         dataSize += sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
         dataSize += sdfile.write(',');
-        dataSize += sdfile.print((int)value);
+        dataSize += sdfile.print(value);
         dataSize += sdfile.write('\n');
         m_lastDataTime = dataTime;
 #endif
@@ -229,7 +255,35 @@ public:
 #endif
 #endif
     }
-    void logData(uint16_t pid, float value1, float value2, float value3)
+    void logData(uint16_t pid, uint32_t value1, uint32_t value2)
+    {
+        LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
+        ld.checksum = getChecksum((char*)&ld, 16);
+#if ENABLE_DATA_OUT
+#if USE_OBD_BT
+        btSend((uint8_t*)&ld, 16);
+#else
+        mySerial.write((uint8_t*)&ld, 16);
+#endif
+#endif
+#if ENABLE_DATA_LOG
+#if LOG_FORMAT == FORMAT_BIN
+        sdfile.write((uint8_t*)&ld, 16);
+        dataSize += 16;
+#else
+        dataSize += sdfile.print(dataTime - m_lastDataTime);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(pid, HEX);
+        dataSize += sdfile.write(',');
+        dataSize += sdfile.print(value1, 6);
+        dataSize += sdfile.write(' ');
+        dataSize += sdfile.print(value2, 6);
+        dataSize += sdfile.write('\n');
+        m_lastDataTime = dataTime;
+#endif
+#endif
+    }
+    void logData(uint16_t pid, int value1, int value2, int value3)
     {
         LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
         ld.checksum = getChecksum((char*)&ld, 20);
@@ -249,11 +303,11 @@ public:
         dataSize += sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
         dataSize += sdfile.write(',');
-        dataSize += sdfile.print((int)value1);
+        dataSize += sdfile.print(value1);
         dataSize += sdfile.write(' ');
-        dataSize += sdfile.print((int)value2);
+        dataSize += sdfile.print(value2);
         dataSize += sdfile.write(' ');
-        dataSize += sdfile.print((int)value3);
+        dataSize += sdfile.print(value3);
         dataSize += sdfile.write('\n');
         m_lastDataTime = dataTime;
 #endif

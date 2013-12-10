@@ -28,9 +28,15 @@
 /**************************************
 * Data logging/streaming options
 **************************************/
-#define ENABLE_DATA_OUT 0
+#define ENABLE_DATA_OUT 1
 #define ENABLE_DATA_LOG 1
-#define USE_OBD_BT 1
+#define USE_OBD_BT 0
 #define LOG_FORMAT FORMAT_CSV /* options: FORMAT_CSV, FORMAT_BIN */
+
+/**************************************
+* LCD module
+**************************************/
+LCD_ILI9325D lcd; /* for ILI9325 based TFT shield */
+//LCD_ILI9341 lcd; /* for ILI9341 based SPI TFT */
 
 #endif

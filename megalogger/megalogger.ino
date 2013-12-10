@@ -15,10 +15,10 @@
 #include <SPI.h>
 #include "config.h"
 #include "images.h"
-#include "datalogger.h"
 #if ENABLE_DATA_OUT
 #include <SoftwareSerial.h>
 #endif
+#include "datalogger.h"
 
 #if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
 #error This sketch requires Arduino MEGA or DUE to work
@@ -52,9 +52,6 @@ TinyGPS gps;
 
 #endif // GPSUART
 #endif
-
-//LCD_ILI9325D lcd; /* for ILI9325 based TFT shield */
-LCD_ILI9341 lcd; /* for ILI9341 based SPI TFT */
 
 static uint32_t lastFileSize = 0;
 static uint32_t lastDataTime = 0;
@@ -335,7 +332,7 @@ private:
         gps.get_datetime(&date, &time, 0);
         logData(PID_GPS_TIME, time, date);
 
-        uint32_t speed = gps.speed() * 1852 / 100;
+        int speed = gps.speed() * 1852 / 100 / 1000;
         logData(PID_GPS_SPEED, speed);
 
         // no need to log GPS data when vehicle has not been moving
@@ -418,17 +415,12 @@ private:
     void logOBDData(byte pid)
     {
         char buffer[OBD_RECV_BUF_SIZE];
-        int value;
         uint32_t start = millis();
 
-        sendQuery(pid);
-
-        pid = 0;
-        if (!getResponseParsed(pid, value)) {
-            errors++;
+        // read OBD-II data
+        int value;
+        if (!read(pid, value)) {
             return;
-        } else {
-            errors = 0;
         }
 
         dataTime = millis();
