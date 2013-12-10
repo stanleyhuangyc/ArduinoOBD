@@ -1,11 +1,11 @@
-Arduino OBD-II UART Adapter Library & Examples
-==============================================
+Arduino OBD-II Adapter Library & Examples
+=========================================
 
 (C)2012-2013 Stanley Huang
 
-The Arduino OBD-II UART Adapter is a  product works as an OBD-II to serial UART data bridge with open-source Arduino library provided. Besides providing OBD-II data access, it also provides power supply (converted and regulated from OBD-II port) for Arduino and its attached devices. The adapter can also be used in other embedded systems with serial UART interface.
+The Arduino OBD-II Adapter is a product that works as a vehicle OBD-II data bridge for Arduino with open-source Arduino library provided. Besides providing OBD-II data access, it also provides power supply (converted and regulated from OBD-II port) for Arduino and its attached devices.
 
-Product page: http://www.arduinodev.com/hardware/obd-kit/
+Product page: http://arduinodev.com/hardware/obd-kit/
 
 ![Image](http://www.arduinodev.com/wp-content/uploads/2012/03/obdkit1-150x150.jpg)
 
