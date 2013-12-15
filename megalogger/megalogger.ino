@@ -332,7 +332,7 @@ private:
         gps.get_datetime(&date, &time, 0);
         logData(PID_GPS_TIME, time, date);
 
-        int speed = gps.speed() * 1852 / 100 / 1000;
+        float speed = gps.speed() * 1852 / 100000;
         logData(PID_GPS_SPEED, speed);
 
         // no need to log GPS data when vehicle has not been moving
