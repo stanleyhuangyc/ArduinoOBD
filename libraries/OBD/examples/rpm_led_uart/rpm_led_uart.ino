@@ -5,6 +5,7 @@
 * All rights reserved.
 *************************************************************************/
 
+#include <Arduino.h>
 #include <OBD.h>
 
 COBD obd;

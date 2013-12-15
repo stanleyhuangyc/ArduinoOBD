@@ -5,6 +5,7 @@
 * All rights reserved.
 *************************************************************************/
 
+#include <Arduino.h>
 #include <Wire.h>
 #include <OBD.h>
 
