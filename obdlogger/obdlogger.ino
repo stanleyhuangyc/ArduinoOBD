@@ -14,6 +14,9 @@
 #include "MicroLCD.h"
 #include "images.h"
 #include "config.h"
+#if USE_SOFTSERIAL
+#include <SoftwareSerial.h>
+#endif
 #include "datalogger.h"
 
 // logger states
@@ -103,8 +106,11 @@ public:
         showStates();
 
 #if USE_MPU6050
-        if (MPU6050_init() == 0) state |= STATE_ACC_READY;
-        showStates();
+        Wire.begin();
+        if (MPU6050_init() == 0) {
+            state |= STATE_ACC_READY;
+            showStates();
+        }
 #endif
 
 #ifdef GPSUART
@@ -357,7 +363,7 @@ private:
             sprintf(buf, "GZ%3d", data.value.z_gyro / 256);
             lcd.setCursor(64, 5);
             lcd.print(buf);
-            delay(50);
+            //delay(50);
         }
 #endif
     }
@@ -441,6 +447,16 @@ private:
         //showGForce(data.value.y_accel);
         // log x/y/z of gyro meter
         logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+
+#ifdef DEBUG
+        DEBUG.print(dataTime);
+        DEBUG.print(" X:");
+        DEBUG.print(data.value.x_accel);
+        DEBUG.print(" Y:");
+        DEBUG.print(data.value.y_accel);
+        DEBUG.print(" Z:");
+        DEBUG.println(data.value.z_accel);
+#endif
     }
 #endif
     void logOBDData(byte pid)
@@ -625,6 +641,15 @@ private:
     // screen layout related stuff
     void showStates()
     {
+#ifdef DEBUG
+        DEBUG.print(millis());
+        DEBUG.print(" OBD:");
+        DEBUG.print((state & STATE_OBD_READY) ? 'Y' : 'N');
+        DEBUG.print(" ACC:");
+        DEBUG.print((state & STATE_ACC_READY) ? 'Y' : 'N');
+        DEBUG.print(" GPS:");
+        DEBUG.println((state & STATE_GPS_FOUND) ? 'Y' : 'N');
+#endif // DEBUG
         lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.setCursor(0, 2);
         lcd.print("OBD");
@@ -640,6 +665,13 @@ private:
     }
     void showLoggerData(byte pid, int value)
     {
+#ifdef DEBUG
+        DEBUG.print(millis());
+        DEBUG.print(" PID[");
+        DEBUG.print(pid, HEX);
+        DEBUG.print("]=");
+        DEBUG.println(value);
+#endif
         char buf[8];
         switch (pid) {
         case PID_RPM:
@@ -763,7 +795,8 @@ static COBDLogger logger;
 void setup()
 {
 #ifdef DEBUG
-    DEBUG.begin(38400);
+    DEBUG.begin(DEBUG_BAUDRATE);
+    DEBUG.println("OBD logger debug console");
 #endif
 
     lcd.begin();

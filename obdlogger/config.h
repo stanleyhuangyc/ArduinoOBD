@@ -6,13 +6,14 @@
 **************************************/
 #define ENABLE_DATA_OUT 0
 #define ENABLE_DATA_LOG 1
+#define USE_SOFTSERIAL 0
 //this defines the format of log file
 #define LOG_FORMAT FORMAT_CSV
 
 /**************************************
 * Default working mode
 **************************************/
-#define MODE_DEFAULT MODE_TIMER /* MODE_LOGGER */
+#define MODE_DEFAULT MODE_LOGGER /* MODE_LOGGER/MODE_TIMER */
 //#define MODE_SWITCH_PIN 8
 
 /**************************************
@@ -33,15 +34,16 @@
 /**************************************
 * Choose LCD model here
 **************************************/
-LCD_SSD1306 lcd;
-//LCD_ZTOLED lcd;
+//LCD_SSD1306 lcd;
+LCD_Null lcd;
 
 /**************************************
 * Other options
 **************************************/
-#define USE_MPU6050 0
+#define USE_MPU6050 1
 //#define OBD_MIN_INTERVAL 50 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 //#define DEBUG Serial
+#define DEBUG_BAUDRATE 9600
 
 #endif // CONFIG_H_INCLUDED
