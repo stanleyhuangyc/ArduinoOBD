@@ -20,10 +20,6 @@
 #endif
 #include "datalogger.h"
 
-#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
-#error This sketch requires Arduino MEGA or DUE to work
-#endif
-
 // logger states
 #define STATE_SD_READY 0x1
 #define STATE_OBD_READY 0x2
@@ -34,7 +30,7 @@
 
 #ifdef USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
-#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
+#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__SAM3X8E__)
 #define GPSUART Serial2
 #elif defined(__AVR_ATmega644P__)
 #define GPSUART Serial1
@@ -53,11 +49,11 @@ TinyGPS gps;
 #endif // GPSUART
 #endif
 
-static uint32_t lastFileSize = 0;
+static uint8_t lastFileSize = 0;
 static uint32_t lastDataTime = 0;
 static uint32_t lastGPSDataTime = 0;
 static uint32_t lastACCDataTime = 0;
-static uint16_t lastRefreshTime = 0;
+static uint8_t lastRefreshTime = 0;
 static uint16_t lastSpeed = -1;
 static uint16_t startDistance = 0;
 static uint16_t fileIndex = 0;
@@ -117,8 +113,10 @@ public:
         lcd.printInt(index);
 #endif
 
+#ifndef MEMORY_SAVING
         showECUCap();
         delay(1000);
+#endif
 
         read(PID_DISTANCE, (int&)startDistance);
 
@@ -432,7 +430,7 @@ private:
 
 #if ENABLE_DATA_LOG
         // flush SD data every 1KB
-        if (dataSize - lastFileSize >= 1024) {
+        if ((dataSize >> 10) != lastFileSize) {
             flushFile();
             // display logged data size
             lcd.setFont(FONT_SIZE_MEDIUM);
@@ -440,7 +438,7 @@ private:
             lcd.printInt((unsigned int)(dataSize >> 10));
             lcd.setFont(FONT_SIZE_SMALL);
             lcd.print(" KB");
-            lastFileSize = dataSize;
+            lastFileSize = dataSize >> 10;
         }
 #endif
 
@@ -556,10 +554,12 @@ private:
     void initScreen()
     {
         lcd.clear();
+#ifndef MEMORY_SAVING
         lcd.draw2x(frame0[0], 0, 0, 78, 58);
         lcd.draw2x(frame0[0], 164, 0, 78, 58);
         lcd.draw2x(frame0[0], 0, 124, 78, 58);
         lcd.draw2x(frame0[0], 164, 124, 78, 58);
+#endif
 
         //lcd.setColor(RGB16(0x7f, 0x7f, 0x7f));
         lcd.setFont(FONT_SIZE_SMALL);

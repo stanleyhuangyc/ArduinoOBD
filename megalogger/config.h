@@ -28,7 +28,7 @@
 /**************************************
 * Data logging/streaming options
 **************************************/
-#define ENABLE_DATA_OUT 1
+#define ENABLE_DATA_OUT 0
 #define ENABLE_DATA_LOG 1
 #define USE_OBD_BT 0
 #define LOG_FORMAT FORMAT_CSV /* options: FORMAT_CSV, FORMAT_BIN */
