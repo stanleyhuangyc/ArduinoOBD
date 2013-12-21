@@ -61,9 +61,9 @@ static uint16_t speedGPS = 0;
 #endif
 
 static uint32_t lastFileSize = 0;
-static uint16_t lastSpeed = -1;
+static int lastSpeed = -1;
 static uint32_t lastSpeedTime = 0;
-static uint16_t speed = 0;
+static int speed = 0;
 static uint32_t distance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
