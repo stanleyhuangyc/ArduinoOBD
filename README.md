@@ -46,4 +46,12 @@ samples/dashboard_oled - a sketch providing extensive display of vehicle data wi
 
 samples/obdtest - a testing sketch for OBD-II adapter
 
-obdlogger - a complete OBD-II and GPS data logger (http://obd.arduinodev.com)
+obdlogger - a complete OBD-II and GPS data logger and timer based on 128x64 OLED display
+
+megalogger - a complete OBD-II and GPS data logger based on Arduino MEGA and TFT LCD shield
+
+How to view logged data
+-----------------------
+Data2KML (http://arduinodev.com/data2kml-utility/) is an open-source command line utility which converts data logged by obdlogger or megalogger to KML file loading in Google Earth.
+
+A web service (http://freematics.com/chart/) is provided to view data logged by obdlogger or megalogger.
