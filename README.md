@@ -34,9 +34,7 @@ Additional defines can be added to access all OBD-II PIDs which the car's ECU pr
 Directory Descriptions
 ----------------------
 
-libraries/OBD - Arduino library for OBD-II adapter
-
-samples/rpm_led - a simplest example sketch implementing a RPM indicator with the pin 13 LED on Arduino board
+libraries - all Arduino libraries needed for OBD-II adapter and kits
 
 samples/dashboard_1602 - an example sketch showing a set of vehicle data with a LCD1602 shield
 
