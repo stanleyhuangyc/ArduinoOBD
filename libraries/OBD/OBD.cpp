@@ -130,10 +130,13 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_COOLANT_TEMP:
 	case PID_INTAKE_TEMP:
 	case PID_AMBIENT_TEMP:
+	case PID_ENGINE_OIL_TEMP:
 		result = getTemperatureValue(data);
 		break;
-	case PID_ABS_ENGINE_LOAD:
-		result = getLargeValue(data) * 100 / 255;
+	case PID_ABSOLUTE_ENGINE_LOAD:
+	case PID_ETHANOL_PERCENTAGE:
+	case PID_HYBRID_BATTERY_PERCENTAGE:
+		result = getLargeValue(data) * 100 / 255; // %
 		break;
 	case PID_MAF_FLOW:
 		result = getLargeValue(data) / 100;
@@ -146,9 +149,20 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_TIMING_ADVANCE:
 		result = (getSmallValue(data) - 128) >> 1;
 		break;
-	case PID_DISTANCE:
-	case PID_RUNTIME:
+	case PID_DISTANCE: // km
+	case PID_RUNTIME: // second
+	case PID_FUEL_RAIL_PRESSURE: // kPa
+	case PID_ENGINE_REF_TORQUE: // Nm
 		result = getLargeValue(data);
+		break;
+	case PID_CONTROL_MODULE_VOLTAGE: // V
+		result = getLargeValue(data) / 1000;
+		break;
+	case PID_ENGINE_FUEL_RATE: // L/min
+		result = getLargeValue(data) * 3;
+		break;
+	case PID_ENGINE_TORQUE_PERCENTAGE: // %
+		result = (int)getSmallValue(data) - 125;
 		break;
 	default:
 		result = getSmallValue(data);
