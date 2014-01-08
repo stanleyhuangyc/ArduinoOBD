@@ -7,7 +7,8 @@
 *************************************************************************/
 
 #include <arduino.h>
-#include "OBD.h"
+#include <Wire.h>
+#include <OBD.h>
 #include "LCD4Bit_mod.h"
 
 //create object to control an LCD.
@@ -26,13 +27,13 @@ uint8_t modes[2] = {0, 2};
 
 const char modePids[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD,
 	PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_MAF_FLOW,
-	PID_ABS_ENGINE_LOAD, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_BAROMETRIC,
+	PID_CONTROL_MODULE_VOLTAGE, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_BAROMETRIC,
 	PID_TIMING_ADVANCE, PID_FUEL_LEVEL, PID_RUNTIME, PID_DISTANCE};
 
 const char* modeLabels[] = {
 	"Engine       rpm", "Speed       km/h", "Throttle       %", "Engine Load    %",
 	"Coolant        C", "Intake Air     C", "Env. Temp      C", "MAF Flow     kpa",
-	"Abs. Load      %", "Fuel         kpa", "Intake       kpa", "Barometer    kpa",
+	"Ctrl Voltage   V", "Fuel         kpa", "Intake       kpa", "Barometer    kpa",
 	"Timing Adv.     ", "Fuel Level     %", "Run Time", "Distance      km"};
 
 const char modePos[] = {8, 8, 11, 12,

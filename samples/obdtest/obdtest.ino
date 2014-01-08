@@ -1,9 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "MultiLCD.h"
-#include "TinyGPS.h"
-#include "OBD.h"
-#include "MPU6050.h"
+#include <SPI.h>
+#include <MultiLCD.h>
+#include <TinyGPS.h>
+#include <OBD.h>
+#include <MPU6050.h>
 
 #define INIT_CMD_COUNT 4
 #define MAX_CMD_LEN 6
@@ -23,7 +24,7 @@ TinyGPS gps;
 
 int MPU6050_read(int start, uint8_t *buffer, int size);
 
-const char initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0902\r"};
+char initcmd[INIT_CMD_COUNT][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0902\r"};
 
 //SoftwareSerial softSerial(2, 3); // RX, TX
 
@@ -40,10 +41,9 @@ bool hasMPU6050 = false;
 
 //create object to control an LCD.
 //LCD_SSD1306 lcd;
-//LCD_ZTOLED lcd;
-LCD_PCD8544 lcd;
-//LCD_1602 lcd;
+//LCD_PCD8544 lcd;
 //LCD_ILI9325D lcd;
+LCD_ILI9341 lcd;
 
 #ifdef GPSUART
 void ShowGPSData()
@@ -52,26 +52,21 @@ void ShowGPSData()
     char buf[32];
     unsigned long fix_age;
 
-    lcd.setFont(FONT_SIZE_SMALL);
-    if (lcd.getLines() > 2) {
-        unsigned long date, time;
-        gps.get_datetime(&date, &time, &fix_age);
-        sprintf(buf, "TIME: %08ld", time);
-        lcd.setCursor(0, 6);
-        lcd.print(buf);
-    }
+    unsigned long date, time;
+    gps.get_datetime(&date, &time, &fix_age);
+    sprintf(buf, "TIME: %08ld", time);
+    lcd.setCursor(0, 6);
+    lcd.print(buf);
 
-    if (lcd.getLines() > 3) {
-        long lat, lon;
-        gps.get_position(&lat, &lon, &fix_age);
-        // display LAT/LON if screen is big enough
-        lcd.setCursor(0, 7);
-        if (((unsigned int)millis() / 1000) & 1)
-            sprintf(buf, "LAT: %d.%5ld  ", (int)(lat / 100000), lat % 100000);
-        else
-            sprintf(buf, "LON: %d.%5ld  ", (int)(lon / 100000), lon % 100000);
-        lcd.print(buf);
-    }
+    long lat, lon;
+    gps.get_position(&lat, &lon, &fix_age);
+    // display LAT/LON if screen is big enough
+    lcd.setCursor(0, 7);
+    if (((unsigned int)millis() / 1000) & 1)
+        sprintf(buf, "LAT: %d.%5ld  ", (int)(lat / 100000), lat % 100000);
+    else
+        sprintf(buf, "LON: %d.%5ld  ", (int)(lon / 100000), lon % 100000);
+    lcd.print(buf);
 }
 #endif
 
@@ -86,9 +81,6 @@ public:
         char buffer[128];
 
         for (unsigned char i = 0; i < INIT_CMD_COUNT; i++) {
-            lcd.clear();
-            lcd.print(initcmd[i]);
-            lcd.setCursor(0, 1);
             write(initcmd[i]);
             n = 0;
             prompted = 0;
@@ -101,21 +93,16 @@ public:
                         prompted++;
                     } else if (n < sizeof(buffer) - 1) {
                         buffer[n++] = c;
-
-                        if (c == '\n')
-                            lcd.changeLine();
-                        else if (c >= ' ') {
-                            lcd.write(c);
-                        }
+                        lcd.write(c);
                     }
                 } else if (prompted) {
                     break;
                 } else {
                     unsigned long elapsed = millis() - currentMillis;
-                    if (elapsed > OBD_TIMEOUT_INIT) {
+                    if (elapsed > OBD_TIMEOUT_SHORT) {
                         // init timeout
                         //WriteData("\r");
-                        lcd.print("Timeout!");
+                        lcd.println("Timeout!");
                         if (i == 0) return false;
                         i--;
                         break;
@@ -124,20 +111,44 @@ public:
             }
             delay(500);
         }
-        delay(1500);
+
+        //while (digitalRead(8) != 0);
+        lcd.clear();
+        lcd.println("VIN:");
+
+        // parse VIN
+        char *p;
+        lcd.println(buffer);
+        if (p = strchr(buffer, ':')) {;
+            byte *q = vin;
+            p += 10;
+            memset(vin, '-', sizeof(vin));
+            while (*p == ' ') {
+                p++;
+                if (*(p + 1) == ':') {
+                    p += 2;
+                    continue;
+                }
+                *(q++) = hex2uint8(p);
+                p += 2;
+            }
+        }
+        for (byte i = 0; i < sizeof(vin); i++) {
+            lcd.write(vin[i]);
+        }
+        delay(5000);
 
         char* data;
         memset(pidmap, 0, sizeof(pidmap));
+        lcd.clear();
         for (byte i = 0; i < 4; i++) {
-            lcd.clear();
             sprintf(buffer, "PIDs [%02x-%02x]", i * 0x20 + 1, i * 0x20 + 0x20);
-            lcd.print(buffer);
+            lcd.println(buffer);
             byte pid = i * 0x20;
             sendQuery(pid);
             data = getResponse(pid, buffer);
             if (!data) break;
-            lcd.setCursor(0, 1);
-            lcd.print(data);
+            lcd.println(buffer);
             delay(500);
             data--;
             for (byte n = 0; n < 4; n++) {
@@ -145,12 +156,6 @@ public:
                     break;
                 pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
             }
-        }
-        // display pid map
-        lcd.clear();
-        for (byte i = 0; i < sizeof(pidmap); i++) {
-            sprintf(buffer, "%02X ", pidmap[i]);
-            lcd.print(buffer);
         }
         delay(2000);
 
@@ -306,11 +311,10 @@ void testMPU6050()
 void ShowECUCap()
 {
     char buffer[24];
-    byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_ABS_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
-    const char* namelist[] = {"RPM", "SPEED", "THROTTLE", "ENG.LOAD1", "ENG.LOAD2", "MAF", "MAP", "FUEL LV.", "FUEL PRE.", "COOLANT", "INTAKE","AMBIENT", "IGNITION", "BARO"};
+    byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
+    const char* namelist[] = {"RPM", "SPEED", "THROTTLE", "ENG.LOAD", "MAF", "MAP", "FUEL LV.", "FUEL PRE.", "COOLANT", "INTAKE","AMBIENT", "IGNITION", "BARO"};
     byte i = 0;
     lcd.clear();
-    lcd.setFont(FONT_SIZE_SMALL);
     for (; i < sizeof(pidlist) / sizeof(pidlist[0]) / 2; i++) {
         lcd.setCursor(0, i);
         sprintf(buffer, "%s:%c", namelist[i], obd.isValidPID(pidlist[i]) ? 'Y' : 'N');
@@ -327,16 +331,17 @@ void setup()
 {
     Wire.begin();
     lcd.begin();
-    lcd.print("OBD TESTER 1.2");
-    OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef GPSUART
     GPSUART.begin(GPS_BAUDRATE);
 #endif
 
+    obd.begin();
+
+    pinMode(8, INPUT);
+
     do {
-        lcd.clear();
-        lcd.print("Init MPU6050...");
-        lcd.setCursor(0, 1);
+        lcd.setCursor(0, 0);
+        lcd.println("Init MPU6050...");
 
         hasMPU6050 = MPU6050_init() == 0;
         if (hasMPU6050) {
@@ -350,13 +355,11 @@ void setup()
 
 #ifdef GPSUART
         if (GPSUART.available()) {
-            lcd.clear();
-            lcd.print("Init GPS...");
+            lcd.println("Init GPS...    ");
             delay(1000);
         }
 #endif
-        lcd.clear();
-        lcd.print("Init OBD...");
+        lcd.println("Init OBD...    ");
         if (hasMPU6050) {
             testMPU6050();
         }
@@ -366,7 +369,6 @@ void setup()
     ShowECUCap();
     delay(3000);
     lcd.clear();
-    //query();
 }
 
 void loop()
@@ -377,66 +379,4 @@ void loop()
     if (hasMPU6050) {
         testMPU6050();
     }
-#if 0
-	adc_key_in = analogRead(0);    // read the value from the sensor
-	key = get_key(adc_key_in);		        // convert into key press
-	if (key != oldkey) {
-		delay(50);		// wait for debounce time
-		adc_key_in = analogRead(0);    // read the value from the sensor
-		key = get_key(adc_key_in);		        // convert into key press
-		if (key != oldkey)
-		{
-			oldkey = key;
-			if (key >=0){
-				switch (key) {
-				case 2: // down key
-					switch (index) {
-					case 0:
-					    pid--;
-					    break;
-					case 1:
-					    pid = (pid & 0xfff0) | (((pid & 0xf) - 1) & 0xf);
-					    break;
-					case 2:
-					    pid = (pid & 0xff0f) | (((pid & 0xf0) - 0x10) & 0xf0);
-					    break;
-					case 3:
-					    pid = (pid & 0xf0ff) | (((pid & 0xf00) - 0x100) & 0xf00);
-					    break;
-					case 4:
-					    pid = (pid & 0x0fff) | (((pid & 0xf000) - 0x1000) & 0xf000);
-					    break;
-					}
-					break;
-				case 1: // up key
-					switch (index) {
-					case 0:
-					    pid++;
-					    break;
-					case 1:
-					    pid = (pid & 0xfff0) | (((pid & 0xf) + 1) & 0xf);
-					    break;
-					case 2:
-					    pid = (pid & 0xff0f) | (((pid & 0xf0) + 0x10) & 0xf0);
-					    break;
-					case 3:
-					    pid = (pid & 0xf0ff) | (((pid & 0xf00) + 0x100) & 0xf00);
-					    break;
-					case 4:
-					    pid = (pid & 0x0fff) | (((pid & 0xf000) + 0x1000) & 0xf000);
-					}
-					break;
-				case 0: // right key
-					if (index > 0) index--;
-					break;
-				case 3: // left key
-					if (index < 4) index++;
-					break;
-				}
-				lcd.clear();
-				query();
-			}
-		}
-	}
-#endif
 }

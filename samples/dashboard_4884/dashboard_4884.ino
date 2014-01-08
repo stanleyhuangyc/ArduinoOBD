@@ -7,7 +7,8 @@
 *************************************************************************/
 
 #include <Arduino.h>
-#include "OBD.h"
+#include <Wire.h>
+#include <OBD.h>
 #include "LCD4884.h"
 
 //keypad debounce parameter
@@ -179,7 +180,7 @@ public:
                 lcd.LCD_write_string(0, 3, "Wait ignition ", MENU_NORMAL);
                 do {
                   delay(100);
-                } while (!readSensor(PID_RPM, value) || value == 0);                         
+                } while (!read(PID_RPM, value) || value == 0);                         
                 lcd.LCD_write_string(0, 4, "Engine started", MENU_NORMAL);
                 delay(1000);                
         }
@@ -263,49 +264,49 @@ public:
 private:
 	void DisplayData1()
 	{
-            if (readSensor(PID_RPM, value)) {
+            if (read(PID_RPM, value)) {
 		ShowRPM(value);
             }
-            if (readSensor(PID_SPEED, value)) {
+            if (read(PID_SPEED, value)) {
 		ShowSpeed(value);
             }
-            if (readSensor(PID_ENGINE_LOAD, value)) {
+            if (read(PID_ENGINE_LOAD, value)) {
 		ShowEngineLoad(value);
             }
 	}
 	void DisplayData2()
 	{
-            if (readSensor(PID_RPM, value)) {
+            if (read(PID_RPM, value)) {
 		ShowRPM(value);
             }
-            if (readSensor(PID_SPEED, value)) {
+            if (read(PID_SPEED, value)) {
 		ShowSpeed2(value);
             }
 	}
 	void DisplayData21()
 	{
-            if (readSensor(PID_COOLANT_TEMP, value)) {
+            if (read(PID_COOLANT_TEMP, value)) {
 		ShowTemperature(value, 42, 3);
             }
 	}
 	void DisplayData22()
 	{
-            if (readSensor(PID_INTAKE_TEMP, value)) {
+            if (read(PID_INTAKE_TEMP, value)) {
 		ShowTemperature(value, 42, 4);
             }
 	}
 	void DisplayData23()
 	{
-            if (readSensor(PID_AMBIENT_TEMP, value)) {
+            if (read(PID_AMBIENT_TEMP, value)) {
 		ShowTemperature(value, 42, 5);
             }
 	}
 	void DisplayData3()
 	{
-            if (readSensor(PID_SPEED, value)) {
+            if (read(PID_SPEED, value)) {
 		ShowSpeed2(value);
             }
-            if (readSensor(PID_INTAKE_MAP, value)) {
+            if (read(PID_INTAKE_MAP, value)) {
               char buf[8];
               sprintf(buf, "%3u", value);
   	      lcd.LCD_write_string(24, 4, buf, MENU_NORMAL);
@@ -314,7 +315,7 @@ private:
               sprintf(buf, "%d.%02d", boost / 100, boost % 100);
 	      lcd.LCD_write_string_big(0, 0, buf, MENU_NORMAL);
             }
-            if (readSensor(PID_FUEL_PRESSURE, value)) {
+            if (read(PID_FUEL_PRESSURE, value)) {
               char buf[8];
               sprintf(buf, "%3u", value);
               lcd.LCD_write_string(24, 5, buf, MENU_NORMAL);

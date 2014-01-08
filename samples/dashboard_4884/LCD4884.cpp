@@ -29,7 +29,6 @@ Date       : Feb. 11, 2012
 extern "C" 
 {
 #include <avr/pgmspace.h>
-#include <avr/io.h>
 }
 
 #define NUM_COL 14
