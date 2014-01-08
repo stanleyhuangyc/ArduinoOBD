@@ -1,5 +1,5 @@
 /*************************************************************************
-* Arduino Library for OBD-II UART/I2C Adapter
+* Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
 * Visit http://arduinodev.com for more information
 * (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
