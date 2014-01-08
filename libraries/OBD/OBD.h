@@ -1,8 +1,8 @@
 /*************************************************************************
-* Arduino Library for OBD-II UART Adapter
+* Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
-* Copyright (c) 2012~2013 Stanley Huang <stanleyhuangyc@gmail.com>
-* All rights reserved.
+* Visit http://arduinodev.com for more information
+* (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #define OBD_TIMEOUT_SHORT 2000 /* ms */
@@ -18,7 +18,7 @@
 #endif
 #endif
 
-// mode 0 pids
+// Mode 1 PIDs
 #define PID_ENGINE_LOAD 0x04
 #define PID_COOLANT_TEMP 0x05
 #define PID_FUEL_PRESSURE 0x0A
@@ -109,6 +109,9 @@ private:
 #define CMD_UART_BEGIN 0x13
 #define CMD_UART_SEND 0x14
 #define CMD_UART_RECV 0x15
+#define CMD_GPS_START 0x20
+#define CMD_GPS_STOP 0x21
+#define CMD_GPS_QUERY 0x22
 
 typedef struct {
     uint32_t time;
@@ -122,6 +125,19 @@ typedef struct {
     uint8_t data;
 } COMMAND_BLOCK;
 
+typedef struct {
+    uint32_t time;
+    uint32_t date;
+    float lat;
+    float lon;
+    float speed;
+    float alt;
+    uint8_t sat;
+    uint8_t state;
+    uint16_t age;
+    uint8_t reserved[4];
+} GPS_DATA;
+
 class COBDI2C : public COBD {
 public:
     void begin(byte addr = I2C_ADDR);
@@ -132,6 +148,10 @@ public:
     bool btInit(uint16_t baudrate = 9600);
     bool btSend(byte* data, byte length);
     bool btReceive(byte* buffer, byte bufsize);
+    // GPS API
+    bool gpsQuery(GPS_DATA* gpsdata);
+    void gpsStart(uint32_t baudrate = 38400, const char* cmds = 0);
+    void gpsStop();
 private:
     bool sendCommand(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
     byte receive(char* buffer);

@@ -1,8 +1,8 @@
 /*************************************************************************
-* Arduino Library for OBD-II UART Adapter
+* Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
-* Copyright (c) 2012~2013 Stanley Huang <stanleyhuangyc@gmail.com>
-* All rights reserved.
+* Visit http://arduinodev.com for more information
+* (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
@@ -425,7 +425,28 @@ bool COBDI2C::btReceive(byte* buffer, byte bufsize)
 {
     if (!sendCommand(CMD_UART_RECV, bufsize)) return false;
     memset(buffer, 0, MAX_PAYLOAD_SIZE);
+    delay(10);
     Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
     Wire.readBytes((char*)buffer, MAX_PAYLOAD_SIZE);
     return true;
+}
+
+bool COBDI2C::gpsQuery(GPS_DATA* gpsdata)
+{
+    if (!sendCommand(CMD_GPS_QUERY, 0)) return false;
+    delay(1);
+    Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
+    Wire.readBytes((char*)gpsdata, MAX_PAYLOAD_SIZE);
+    return true;
+
+}
+
+void COBDI2C::gpsStart(uint32_t baudrate, const char* cmds)
+{
+    sendCommand(CMD_GPS_START, baudrate / 1200, (byte*)cmds, strlen(cmds));
+}
+
+void COBDI2C::gpsStop()
+{
+    sendCommand(CMD_GPS_STOP);
 }
