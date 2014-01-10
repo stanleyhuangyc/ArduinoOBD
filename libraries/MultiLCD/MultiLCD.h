@@ -5,6 +5,10 @@
 * All rights reserved.
 *************************************************************************/
 
+#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
+//#define MEMORY_SAVING
+#endif
+
 typedef enum {
     FONT_SIZE_SMALL = 0,
     FONT_SIZE_MEDIUM,
@@ -78,23 +82,6 @@ public:
     void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height);
 private:
     void writeDigit(byte n);
-};
-
-#include "LCD4Bit_mod.h"
-class LCD_1602 : public LCD_Common, public LCD4Bit_mod
-{
-public:
-    byte getLines() { return 2; }
-    byte getCols() { return 16; }
-    void writeDigit(byte n)
-    {
-        write(n >= 0 && n <= 9 ? '0' + n : ' ');
-    }
-    void clearLine(byte line)
-    {
-        setCursor(0, line);
-        for (byte i = 16; i > 0; i--) write(' ');
-    }
 };
 
 #include "SSD1306.h"

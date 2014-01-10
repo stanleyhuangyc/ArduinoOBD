@@ -239,6 +239,10 @@ void LCD_ILI9341::begin (void)
 	sendCMD(0x29);    //Display on
 	sendCMD(0x2c);
 	clear();
+
+	backlight(true);
+	setTextColor(0xffff);
+	SetBGColor(0);
 }
 
 uint8_t LCD_ILI9341::readID(void)
@@ -288,6 +292,7 @@ void LCD_ILI9341::clear(uint16_t XL, uint16_t XR, uint16_t YU, uint16_t YD, uint
     unsigned long  XY=0;
     unsigned long i=0;
 
+    backlight(false);
     if(XL > XR)
     {
         XL = XL^XR;
@@ -312,7 +317,6 @@ void LCD_ILI9341::clear(uint16_t XL, uint16_t XR, uint16_t YU, uint16_t YD, uint
     setPage(YU, YD);
     sendCMD(0x2c);                                                  /* start to write to display ra */
                                                                         /* m                            */
-
     TFT_DC_HIGH;
     TFT_CS_LOW;
 
@@ -325,6 +329,8 @@ void LCD_ILI9341::clear(uint16_t XL, uint16_t XR, uint16_t YU, uint16_t YD, uint
     }
 
     TFT_CS_HIGH;
+
+    backlight(true);
 }
 
 void LCD_ILI9341::clear(void)
@@ -394,7 +400,9 @@ size_t LCD_ILI9341::write(uint8_t c)
         return 0;
     }
 
+#ifndef MEMORY_SAVING
     if (m_font == FONT_SIZE_SMALL) {
+#endif
         setXY(m_x, m_x + 7, m_y, m_y + 4);
         m_y += 6;
         if (m_y >= 320) {
@@ -421,6 +429,7 @@ size_t LCD_ILI9341::write(uint8_t c)
         } else {
             clearPixels(5 * 8);
         }
+#ifndef MEMORY_SAVING
     } else {
         setXY(m_x, m_x + 15, m_y, m_y + 7);
         m_y += 9;
@@ -453,6 +462,7 @@ size_t LCD_ILI9341::write(uint8_t c)
             clearPixels(8 * 16);
         }
     }
+#endif
 }
 
 void LCD_ILI9341::writeDigit(byte n)
