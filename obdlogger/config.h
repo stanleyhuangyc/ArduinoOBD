@@ -34,8 +34,8 @@
 /**************************************
 * Choose LCD model here
 **************************************/
-//LCD_SSD1306 lcd;
-LCD_Null lcd;
+LCD_SSD1306 lcd;
+//LCD_Null lcd;
 
 /**************************************
 * Other options
