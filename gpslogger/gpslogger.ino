@@ -7,35 +7,32 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
 #include <SD.h>
 #include <TinyGPS.h>
 #include <SoftwareSerial.h>
-#include "MicroLCD.h"
+#include "MultiLCD.h"
+#include "config.h"
 #include "datalogger.h"
-#include "images.h"
 
-#if defined(__AVR_ATmega644P__)
-#define DISPLAY_MODES 2
-#else
 #define DISPLAY_MODES 1
-#endif
-
-#define USE_MPU6050 0
-
-#define SD_CS_PIN SS
-//#define SD_CS_PIN 7 // for microduino
-//#define SD_CS_PIN 4 // for ethernet shield
-
-LCD_SSD1306 lcd;
 
 uint32_t start;
 uint32_t distance = 0;
-uint16_t speed = 0;
+int speed = 0;
 byte sat = 0;
 uint16_t records = 0;
 char heading[2];
 bool acc = false;
-byte displayMode = 0;
+byte displayMode = 1;
+
+float curLat = 0;
+float curLon = 0;
+long alt = 0;
+long lastLat = 0;
+long lastLon = 0;
+uint32_t time;
+
 
 #if USE_MPU6050
 #include <MPU6050.h>
@@ -53,9 +50,6 @@ byte displayMode = 0;
 #define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
 
 TinyGPS gps;
-
-// SD card
-File sdfile;
 
 CDataLogger logger;
 
@@ -83,10 +77,7 @@ void processACC()
 
 void processGPS()
 {
-    static long lastLat = 0;
-    static long lastLon = 0;
     static uint32_t lastTime = 0;
-    uint32_t time;
 
     // parsed GPS data is ready
     logger.dataTime = millis();
@@ -95,9 +86,9 @@ void processGPS()
     gps.get_datetime(&date, &time, 0);
     logger.logData(PID_GPS_TIME, time, date);
 
-    speed = (uint16_t)(gps.speed() * 1852 / 100);
+    speed = (int)(gps.speed() * 1852 / 100);
     if (speed < 1000) speed = 0;
-    logger.logData(PID_GPS_SPEED, speed, 0);
+    logger.logData(PID_GPS_SPEED, speed);
 
     if (sat >= 3 && gps.satellites() < 3) {
         initScreen();
@@ -106,7 +97,9 @@ void processGPS()
 
     long lat, lon;
     gps.get_position(&lat, &lon, 0);
-    logger.logData(PID_GPS_COORDINATES, (float)lat / 100000, (float)lon / 100000);
+    curLat = (float)lat / 100000;
+    curLon = (float)lon / 100000;
+    logger.logData(PID_GPS_COORDINATES, curLat, curLon);
 
     if (logger.dataTime - lastTime >= 3000 && speed > 0) {
         if (lastLat == 0) lastLat = lat;
@@ -142,7 +135,7 @@ void processGPS()
         logger.flushFile();
     }
 
-    long alt = gps.altitude();
+    alt = gps.altitude();
     logger.logData(PID_GPS_ALTITUDE, (float)alt);
 
     records++;
@@ -193,7 +186,6 @@ bool CheckSD()
     } else {
         lcd.clear();
         lcd.print("SD");
-        lcd.draw(cross, 32, 0, 16, 16);
         return false;
     }
 
@@ -224,8 +216,6 @@ void initScreen()
         lcd.print("km/h");
         lcd.setCursor(76, 7);
         lcd.print("km");
-        lcd.setCursor(104, 6);
-        lcd.print("S:");
         break;
     default:
         lcd.setFont(FONT_SIZE_MEDIUM);
@@ -243,8 +233,19 @@ void initScreen()
         lcd.setCursor(76, 7);
         lcd.print("km");
     }
-    lcd.setCursor(104, 6);
-    lcd.print("S:");
+    //lcd.setCursor(104, 6);
+    //lcd.print("S:");
+
+    lcd.setCursor(172, 0);
+    lcd.println("TIME:");
+    lcd.setCursor(172, 2);
+    lcd.println("LAT:");
+    lcd.setCursor(172, 4);
+    lcd.println("LON:");
+    lcd.setCursor(172, 6);
+    lcd.println("ALT:");
+    lcd.setCursor(172, 8);
+    lcd.println("SAT:");
 }
 
 #if USE_MPU6050
@@ -294,12 +295,11 @@ void setup()
     CheckSD();
 
     lcd.setCursor(0, 2);
-    lcd.print("ACC");
-    lcd.draw(acc ? tick : cross, 32, 16, 16, 16);
+    lcd.print("ACC:");
+    lcd.print(acc ? "YES" : "NO");
 
     lcd.setCursor(0, 4);
-    lcd.print("GPS");
-    lcd.draw(cross, 32, 32, 16, 16);
+    lcd.print("GPS:");
 
     GPSUART.begin(GPS_BAUDRATE);
     logger.initSender();
@@ -315,8 +315,7 @@ void setup()
     do {
         if (!GPSUART.available()) continue;
         if (n == 0xff) {
-            // draw a tick (once)
-            lcd.draw(tick, 32, 32, 16, 16);
+            lcd.print("YES");
             lcd.setCursor(0, 6);
             lcd.print("SAT ");
             n = 0;
@@ -347,7 +346,7 @@ void setup()
 
     //GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 
-    logger.openFile(LOG_TYPE_ROUTE, FLAG_CYCLING | FLAG_GPS | (acc ? FLAG_ACC : 0));
+    logger.openFile(LOG_TYPE_TRIP, FLAG_GPS | (acc ? FLAG_ACC : 0));
 
     initScreen();
 
@@ -451,9 +450,10 @@ void displayTimeSpeedDistance()
 }
 #endif
 
-void displayMinorInfo()
+void displayExtraInfo()
 {
     lcd.setFont(FONT_SIZE_SMALL);
+    lcd.setTextColor(RGB16_CYAN);
     lcd.setCursor(0, 0);
     lcd.write(heading[0]);
     lcd.write(heading[1]);
@@ -461,9 +461,26 @@ void displayMinorInfo()
     lcd.setFlags(0);
     lcd.setCursor(98, 7);
     lcd.printInt(records, 5);
+    /*
     if (sat < 100) {
         lcd.setCursor(116, 6);
         lcd.printInt((uint16_t)sat, 2);
+    }
+    */
+
+    lcd.setCursor(208, 0);
+    lcd.print(time);
+    lcd.setCursor(208, 2);
+    lcd.print(curLat, 5);
+    lcd.setCursor(208, 4);
+    lcd.print(curLon, 5);
+    lcd.setCursor(208, 6);
+    lcd.print((float)alt / 100);
+    lcd.print("m ");
+    if (sat < 100) {
+        lcd.setCursor(208, 8);
+        lcd.print(sat);
+        lcd.print(' ');
     }
 }
 
@@ -483,6 +500,7 @@ void loop()
 #endif
 
 #if DISPLAY_MODES > 1
+    lcd.setTextColor(RGB16_YELLOW);
     switch (displayMode) {
     case 0:
         displaySpeedDistance();
@@ -491,11 +509,11 @@ void loop()
         displayTimeSpeedDistance();
     }
 
-    if (digitalRead(8) == 0) {
-        delay(50);
-        if (digitalRead(8) == 0) {
+    if (digitalRead(MODE_SWITCH_PIN) == 0) {
+        delay(100);
+        if (digitalRead(MODE_SWITCH_PIN) == 0) {
             displayMode = (displayMode + 1) % DISPLAY_MODES;
-            while (digitalRead(8) == 0);
+            while (digitalRead(MODE_SWITCH_PIN) == 0);
             initScreen();
         }
     }
@@ -503,5 +521,5 @@ void loop()
     displaySpeedDistance();
 #endif
 
-    displayMinorInfo();
+    displayExtraInfo();
 }
