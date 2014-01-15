@@ -3,11 +3,11 @@
 #include <OBD.h>
 #include <MPU6050.h>
 #include <SPI.h>
-#include <MultiLCD.h>
+//#include <MultiLCD.h>
 
-LCD_ILI9341 lcd;
+//LCD_ILI9341 lcd;
 
-#define CON lcd
+#define CON Serial
 
 bool hasAAC = false;
 
@@ -48,8 +48,8 @@ void processACC()
 
 void setup()
 {
-    //CON.begin(38400);
-    lcd.begin();
+    CON.begin(115200);
+    //lcd.begin();
 
     CON.println("OBD TESTER");
 
@@ -99,7 +99,7 @@ void loop()
 {
     int value;
 
-    lcd.setCursor(0, 8);
+    //lcd.setCursor(0, 8);
 
     CON.print('[');
     CON.print(millis());
