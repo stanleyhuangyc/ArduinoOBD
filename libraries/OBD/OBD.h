@@ -57,11 +57,12 @@ class COBD
 public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	virtual void begin();
-	virtual bool init(bool passive = false);
-	virtual bool read(byte pid, int& result, bool passive = false);
+	virtual bool init();
+	virtual bool read(byte pid, int& result);
 	virtual void sleep(int seconds);
 	// Query and GetResponse for advanced usage only
 	virtual void sendQuery(byte pid);
+	virtual bool getResult(byte& pid, int& result);
 	bool isValidPID(byte pid);
 	byte getState() { return m_state; }
 	byte dataMode;
@@ -70,13 +71,13 @@ public:
 	byte vin[17];
 protected:
 	virtual char* getResponse(byte& pid, char* buffer);
-	virtual bool getResponseParsed(byte& pid, int& result);
-	virtual byte receive(char* buffer);
+	virtual byte receive(char* buffer, int timeout = OBD_TIMEOUT_SHORT);
 	virtual bool available();
 	virtual char read();
 	virtual void write(char* s);
 	virtual void write(char c);
 	virtual void dataIdleLoop() {}
+    void recover();
 	void debugOutput(const char* s);
 	int normalizeData(byte pid, char* data);
 	byte m_state;
@@ -102,21 +103,21 @@ private:
 #define I2C_ADDR 0x62
 
 #define MAX_PAYLOAD_SIZE 32
+#define MAX_PIDS 8
 
 #define CMD_QUERY_STATUS 0x10
-#define CMD_SEND_COMMAND 0x11
-#define CMD_QUERY_DATA 0x12
-#define CMD_UART_BEGIN 0x13
-#define CMD_UART_SEND 0x14
-#define CMD_UART_RECV 0x15
-#define CMD_GPS_START 0x20
-#define CMD_GPS_STOP 0x21
+#define CMD_SEND_AT_COMMAND 0x11
+#define CMD_APPLY_OBD_PIDS 0x12
+#define CMD_LOAD_OBD_DATA 0x13
+#define CMD_GPS_SETUP 0x20
 #define CMD_GPS_QUERY 0x22
+#define CMD_UART_BEGIN 0x30
+#define CMD_UART_SEND 0x31
+#define CMD_UART_RECV 0x32
 
 typedef struct {
-    uint32_t time;
-    uint16_t pid;
-    float value;
+    uint16_t age;
+    uint16_t value;
 } PID_INFO;
 
 typedef struct {
@@ -142,18 +143,24 @@ class COBDI2C : public COBD {
 public:
     void begin(byte addr = I2C_ADDR);
     bool init();
-    bool read(byte pid, int& result, bool passive = false);
+    bool read(byte pid, int& result);
     void write(char* s);
+    // Asynchronized access API
+    void setPID(byte pid);
+    void applyPIDs();
+    void loadData();
+    uint16_t getData(byte pid, int& result);
     // Bluetooth communication API
     bool btInit(uint16_t baudrate = 9600);
     bool btSend(byte* data, byte length);
     bool btReceive(byte* buffer, byte bufsize);
     // GPS API
     bool gpsQuery(GPS_DATA* gpsdata);
-    void gpsStart(uint32_t baudrate = 38400, const char* cmds = 0);
-    void gpsStop();
+    void gpsSetup(uint32_t baudrate, const char* cmds = 0);
 private:
     bool sendCommand(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
-    byte receive(char* buffer);
+    byte receive(char* buffer, int timeout = OBD_TIMEOUT_SHORT);
     byte m_addr;
+    PID_INFO obdInfo[MAX_PIDS];
+    byte obdPid[MAX_PIDS];
 };
