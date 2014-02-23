@@ -34,13 +34,14 @@
 /**************************************
 * Choose LCD model here
 **************************************/
-LCD_SSD1306 lcd;
+LCD_SH1106 lcd;
+//LCD_SSD1306 lcd;
 //LCD_Null lcd;
 
 /**************************************
 * Other options
 **************************************/
-#define USE_MPU6050 1
+#define USE_MPU6050 0
 //#define OBD_MIN_INTERVAL 50 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 //#define DEBUG Serial

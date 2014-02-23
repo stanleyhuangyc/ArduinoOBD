@@ -292,6 +292,8 @@ void LCD_SSD1306::setCursor(byte column, byte line)
 
 size_t LCD_SSD1306::write(uint8_t c)
 {
+    uint8_t twbrbackup = TWBR;
+    TWBR = 18; // upgrade to 400KHz!
     if (c == '\n') {
         setCursor(0, m_row + ((m_font == FONT_SIZE_SMALL) ? 1 : 2));
         return 1;
@@ -383,6 +385,7 @@ size_t LCD_SSD1306::write(uint8_t c)
         }
     }
 #endif
+    TWBR = twbrbackup;
     return 1;
 }
 

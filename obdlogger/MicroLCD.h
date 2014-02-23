@@ -6,7 +6,7 @@
 *************************************************************************/
 
 #if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__)
-#define MEMORY_SAVING
+//#define MEMORY_SAVING
 #endif
 
 typedef enum {
@@ -69,6 +69,25 @@ public:
     byte getLines() { return 21; }
     byte getCols() { return 8; }
 private:
+    void writeDigit(byte n);
+    byte m_col;
+    byte m_row;
+};
+
+class LCD_SH1106 : public LCD_Common, public Print
+{
+public:
+    void begin();
+    void setCursor(byte column, byte line);
+    void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height);
+    size_t write(uint8_t c);
+    void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
+    void clearLine(byte line);
+    byte getLines() { return 21; }
+    byte getCols() { return 8; }
+private:
+    void WriteCommand(unsigned char ins);
+    void WriteData(unsigned char dat);
     void writeDigit(byte n);
     byte m_col;
     byte m_row;

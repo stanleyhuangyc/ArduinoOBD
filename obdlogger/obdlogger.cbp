@@ -584,7 +584,7 @@
 		</Compiler>
 		<Unit filename="MicroLCD.cpp" />
 		<Unit filename="MicroLCD.h" />
-		<Unit filename="SSD1306.cpp" />
+		<Unit filename="SH1106.cpp" />
 		<Unit filename="config.h" />
 		<Unit filename="datalogger.h" />
 		<Unit filename="images.h" />
