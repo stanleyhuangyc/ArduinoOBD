@@ -5,6 +5,8 @@
 * (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
+#include <Arduino.h>
+
 #define OBD_TIMEOUT_SHORT 2000 /* ms */
 #define OBD_TIMEOUT_LONG 7000 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
@@ -59,7 +61,9 @@ public:
 	virtual void begin();
 	virtual bool init();
 	virtual bool read(byte pid, int& result);
-	virtual void sleep(int seconds);
+	virtual void sleep();
+	virtual void wakeup();
+	virtual void setProtocol(byte h = -1);
 	// Query and GetResponse for advanced usage only
 	virtual void sendQuery(byte pid);
 	virtual bool getResult(byte& pid, int& result);
@@ -111,9 +115,6 @@ private:
 #define CMD_LOAD_OBD_DATA 0x13
 #define CMD_GPS_SETUP 0x20
 #define CMD_GPS_QUERY 0x22
-#define CMD_UART_BEGIN 0x30
-#define CMD_UART_SEND 0x31
-#define CMD_UART_RECV 0x32
 
 typedef struct {
     uint16_t age;
@@ -145,15 +146,12 @@ public:
     bool init();
     bool read(byte pid, int& result);
     void write(char* s);
+    void setProtocol(bool auto, byte h);
     // Asynchronized access API
     void setPID(byte pid);
     void applyPIDs();
     void loadData();
     uint16_t getData(byte pid, int& result);
-    // Bluetooth communication API
-    bool btInit(uint16_t baudrate = 9600);
-    bool btSend(byte* data, byte length);
-    bool btReceive(byte* buffer, byte bufsize);
     // GPS API
     bool gpsQuery(GPS_DATA* gpsdata);
     void gpsSetup(uint32_t baudrate, const char* cmds = 0);

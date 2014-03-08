@@ -14,9 +14,8 @@
 
 #define MAX_CMD_LEN 6
 
-const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r","0902\r"};
-const char PROGMEM s_cmd_fmt[] = "%02X%02X 1\r";
-const char PROGMEM s_cmd_sleep[] = "atlp\r";
+const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r"};
+#define STR_CMD_FMT "%02X%02X 1\r"
 #define STR_SEARCHING "SEARCHING..."
 
 unsigned int hex2uint16(const char *p)
@@ -65,10 +64,10 @@ unsigned char hex2uint8(const char *p)
 *************************************************************************/
 #include <Wire.h>
 
-void COBD::sendQuery(unsigned char pid)
+void COBD::sendQuery(byte pid)
 {
 	char cmd[8];
-	sprintf_P(cmd, s_cmd_fmt, dataMode, pid);
+	sprintf(cmd, STR_CMD_FMT, dataMode, pid);
 #ifdef DEBUG
 	debugOutput(cmd);
 #endif
@@ -201,15 +200,25 @@ bool COBD::getResult(byte& pid, int& result)
 	return true;
 }
 
-void COBD::sleep(int seconds)
+void COBD::setProtocol(byte h)
 {
-	char cmd[MAX_CMD_LEN];
-	strcpy_P(cmd, s_cmd_sleep);
-	write(cmd);
-	if (seconds) {
-		delay((unsigned long)seconds << 10);
-		write('\r');
-	}
+    if (h == -1) {
+        write("ATSP00\r");
+    } else {
+        char cmd[8];
+        sprintf(cmd, "ATSP%d\r", h);
+        write(cmd);
+    }
+}
+
+void COBD::sleep()
+{
+	write("ATLP\r");
+}
+
+void COBD::wakeup()
+{
+    write('\r');
 }
 
 bool COBD::isValidPID(byte pid)
@@ -407,26 +416,6 @@ byte COBDI2C::receive(char* buffer, int timeout)
 		return offset;
 	} while(millis() - start < OBD_TIMEOUT_LONG);
 	return 0;
-}
-
-bool COBDI2C::btInit(uint16_t baudrate)
-{
-	return sendCommand(CMD_UART_BEGIN, baudrate / 1200);
-}
-
-bool COBDI2C::btSend(byte* data, byte length)
-{
-	return sendCommand(CMD_UART_SEND, 0, data, length);
-}
-
-bool COBDI2C::btReceive(byte* buffer, byte bufsize)
-{
-	if (!sendCommand(CMD_UART_RECV, bufsize)) return false;
-	memset(buffer, 0, MAX_PAYLOAD_SIZE);
-	delay(10);
-	Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
-	Wire.readBytes((char*)buffer, MAX_PAYLOAD_SIZE);
-	return true;
 }
 
 bool COBDI2C::gpsQuery(GPS_DATA* gpsdata)
