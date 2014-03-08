@@ -6,7 +6,9 @@
 *************************************************************************/
 
 #include <Arduino.h>
+#if OBD_MODEL == OBD_MODEL_I2C
 #include <Wire.h>
+#endif
 #include <OBD.h>
 #include <SD.h>
 #include <MultiLCD.h>
@@ -49,8 +51,11 @@ TinyGPS gps;
 #endif // GPSUART
 #endif
 
+#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
+#define MEMORY_SAVING
+#endif
+
 static uint8_t lastFileSize = 0;
-static uint32_t lastDataTime = 0;
 static uint32_t lastGPSDataTime = 0;
 static uint32_t lastACCDataTime = 0;
 static uint8_t lastRefreshTime = 0;
@@ -59,7 +64,19 @@ static uint16_t startDistance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
 
+static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
+static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
+static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL};
+
+#define TIER_NUM1 sizeof(pidTier1)
+#define TIER_NUM2 sizeof(pidTier2)
+#define TIER_NUM3 sizeof(pidTier3)
+
+#if OBD_MODEL == OBD_MODEL_I2C
 class COBDLogger : public COBDI2C, public CDataLogger
+#else
+class COBDLogger : public COBD, public CDataLogger
+#endif
 {
 public:
     COBDLogger():state(0) {}
@@ -69,8 +86,10 @@ public:
 
         showStates();
 
+#if USE_MPU6050
         if (MPU6050_init() == 0) state |= STATE_ACC_READY;
         showStates();
+#endif
 
 #ifdef GPSUART
         unsigned long t = millis();
@@ -122,57 +141,26 @@ public:
 
         initScreen();
 
-        lastDataTime = millis();
-        lastRefreshTime = lastDataTime >> 10;
+        lastRefreshTime = millis() >> 10;
     }
     void loop()
     {
-        static byte count = 0;
-        byte dataCount;
+        static byte index = 0;
+        static byte index2 = 0;
+        static byte index3 = 0;
         uint32_t t = millis();
 
-        logOBDData(PID_RPM);
-        logOBDData(PID_SPEED);
-        logOBDData(PID_THROTTLE);
-        dataCount = 3;
+        logOBDData(pidTier1[index++]);
+        t = millis() - t;
 
-        switch (count++) {
-        case 0:
-        case 128:
-            logOBDData(PID_DISTANCE);
-            dataCount++;
-            break;
-        case 32:
-            logOBDData(PID_COOLANT_TEMP);
-            dataCount++;
-            break;
-        case 64:
-            logOBDData(PID_INTAKE_TEMP);
-            dataCount++;
-            break;
-        case 160:
-            if (isValidPID(PID_AMBIENT_TEMP)) {
-                logOBDData(PID_AMBIENT_TEMP);
-                dataCount++;
-            }
-            break;
-        case 192:
-            if (isValidPID(PID_BAROMETRIC)) {
-                logOBDData(PID_BAROMETRIC);
-                dataCount++;
-            }
-            break;
-        }
-        if ((count & 1) == 0) {
-            logOBDData(PID_ENGINE_LOAD);
-            dataCount++;
-        } else {
-            if (isValidPID(PID_INTAKE_MAP)) {
-                logOBDData(PID_INTAKE_MAP);
-                dataCount++;
-            } else if (isValidPID(PID_MAF_FLOW)) {
-                logOBDData(PID_MAF_FLOW);
-                dataCount++;
+        if (index == TIER_NUM1) {
+            index = 0;
+            if (index2 == TIER_NUM2) {
+                index2 = 0;
+                logOBDData(pidTier3[index3]);
+                index3 = (index3 + 1) % TIER_NUM3;
+            } else {
+                logOBDData(pidTier2[index2++]);
             }
         }
 
@@ -184,16 +172,14 @@ public:
             lcd.setCursor(250, 2);
             lcd.print(buf);
             lcd.setCursor(250, 11);
-            lcd.printInt((uint16_t)(dataTime - t) / dataCount);
+            lcd.printInt((uint16_t)t);
             lcd.print("ms ");
 
-            dataCount = 0;
             lastRefreshTime = dataTime >> 10;
         }
 
         if (errors >= 10) {
             reconnect();
-            count = 0;
         }
 
 #ifdef GPSUART
@@ -208,6 +194,7 @@ public:
     }
     bool checkSD()
     {
+#if ENABLE_DATA_LOG
         Sd2Card card;
         SdVolume volume;
         state &= ~STATE_SD_READY;
@@ -215,7 +202,7 @@ public:
         lcd.setCursor(0, 4);
 
         lcd.setFont(FONT_SIZE_MEDIUM);
-        if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
+        if (card.init(SPI_FULL_SPEED, SD_CS_PIN)) {
             const char* type;
             char buf[20];
 
@@ -260,23 +247,24 @@ public:
 
         state |= STATE_SD_READY;
         return true;
+#else
+        return false;
+#endif
     }
 private:
     void dataIdleLoop()
     {
         // callback while waiting OBD data
         if (getState() == OBD_CONNECTED) {
-            if (lastDataTime) {
-                if (state & STATE_ACC_READY) {
-                    processAccelerometer();
-                }
-#ifdef GPSUART
-                uint32_t t = millis();
-                while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
-                    processGPS();
-                }
-#endif
+            if (state & STATE_ACC_READY) {
+                processAccelerometer();
             }
+#ifdef GPSUART
+            uint32_t t = millis();
+            while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
+                processGPS();
+            }
+#endif
             return;
         }
 
@@ -371,6 +359,7 @@ private:
 #endif
     void processAccelerometer()
     {
+#if USE_MPU6050
         dataTime = millis();
 
         if (dataTime - lastACCDataTime < ACC_DATA_INTERVAL) {
@@ -409,6 +398,7 @@ private:
         logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
 
         lastACCDataTime = dataTime;
+#endif
     }
     void logOBDData(byte pid)
     {
@@ -649,7 +639,6 @@ void setup()
     //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
     GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 #endif
-    Wire.begin();
 
     logger.begin();
     logger.initSender();

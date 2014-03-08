@@ -1,7 +1,16 @@
 #ifndef CONFIG_H_INCLUDED
 #define CONFIG_H_INCLUDED
 
+// definitions
+#define OBD_MODEL_UART 0
+#define OBD_MODEL_I2C 1
+
 // configurations
+/**************************************
+* Choose model of OBD-II Adapter
+**************************************/
+#define OBD_MODEL OBD_MODEL_UART
+
 /**************************************
 * Choose SD pin here
 **************************************/
@@ -17,6 +26,11 @@
 #define MAX_GPS_PROCESS_TIME 50 /* ms */
 #define GPS_BAUDRATE 38400 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
+
+/**************************************
+* Accelerometer & Gyro
+**************************************/
+#define USE_MPU6050 1
 
 /**************************************
 * Timeout/interval options
