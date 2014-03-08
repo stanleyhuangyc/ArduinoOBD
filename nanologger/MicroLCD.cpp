@@ -247,8 +247,8 @@ const PROGMEM unsigned char font8x16_terminal[][16] = {
 
 void LCD_Common::printInt(uint16_t value, int8_t padding)
 {
-    unsigned int den = 10000;
-    for (byte i = 5; i > 0; i--) {
+    uint16_t den = 10000;
+    for (int8_t i = 5; i > 0; i--) {
         byte v = (byte)(value / den);
         value -= v * den;
         den /= 10;
@@ -265,8 +265,8 @@ void LCD_Common::printInt(uint16_t value, int8_t padding)
 
 void LCD_Common::printLong(uint32_t value, int8_t padding)
 {
-    unsigned long den = 1000000000;
-    for (byte i = 10; i > 0; i--) {
+    uint32_t den = 1000000000;
+    for (int8_t i = 10; i > 0; i--) {
         byte v = (byte)(value / den);
         value -= v * den;
         den /= 10;

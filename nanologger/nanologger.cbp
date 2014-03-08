@@ -583,6 +583,7 @@
 			<Add directory="." />
 		</Compiler>
 		<Unit filename="MicroLCD.cpp" />
+		<Unit filename="MicroLCD.h" />
 		<Unit filename="SH1106.cpp" />
 		<Unit filename="config.h" />
 		<Unit filename="datalogger.h" />

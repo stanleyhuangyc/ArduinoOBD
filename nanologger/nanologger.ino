@@ -48,9 +48,6 @@ public:
     COBDLogger():state(0) {}
     void setup()
     {
-#if USE_GPS
-        lastGPSDataTime = 0;
-#endif
         showStates();
 
 #if USE_MPU6050
@@ -86,11 +83,6 @@ public:
             lcd.print("NO LOG");
         }
         delay(100);
-#endif
-
-#ifndef MEMORY_SAVING
-        //showECUCap();
-        //delay(1000);
 #endif
 
 #if ENABLE_DATA_LOG
@@ -240,27 +232,6 @@ private:
 
         // if OBD response is very fast, go on processing other data for a while
     }
-#ifndef MEMORY_SAVING
-    void showECUCap()
-    {
-        char buffer[24];
-        byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_CONTROL_MODULE_VOLTAGE, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
-        const char* namelist[] = {"RPM", "SPEED", "THROTTLE", "ENG.LOAD", "CTRL VOLT", "MAF", "MAP", "FUEL LV.", "FUEL PRE.", "COOLANT", "INTAKE","AMBIENT", "IGNITION", "BARO"};
-        byte i = 0;
-        lcd.clear();
-        lcd.setFont(FONT_SIZE_SMALL);
-        for (; i < sizeof(pidlist) / sizeof(pidlist[0]) / 2; i++) {
-            lcd.setCursor(0, i);
-            sprintf(buffer, "%s:%c", namelist[i], isValidPID(pidlist[i]) ? 'Y' : 'N');
-            lcd.print(buffer);
-        }
-        for (byte row = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, row++) {
-            lcd.setCursor(64, row);
-            sprintf(buffer, "%s:%c", namelist[i], isValidPID(pidlist[i]) ? 'Y' : 'N');
-            lcd.print(buffer);
-        }
-    }
-#endif
     void reconnect()
     {
 #if ENABLE_DATA_LOG
@@ -389,8 +360,6 @@ void setup()
     lcd.setFont(FONT_SIZE_MEDIUM);
     lcd.setCursor(0, 2);
     logger.checkSD();
-#else
-    lcd.clear();
 #endif
     logger.setup();
 }
