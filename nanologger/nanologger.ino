@@ -33,6 +33,8 @@ static int speed = 0;
 static uint32_t distance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
+static uint8_t lastPid = 0;
+static int lastValue = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
@@ -41,6 +43,8 @@ static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, P
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
 #define TIER_NUM3 sizeof(pidTier3)
+
+byte pidValue[TIER_NUM1];
 
 class COBDLogger : public COBD, public CDataLogger
 {
@@ -206,6 +210,13 @@ public:
         initLoggerScreen();
     }
 private:
+    void dataIdleLoop()
+    {
+        if (lastPid) {
+            showLoggerData(lastPid, lastValue);
+            lastPid = 0;
+        }
+    }
 #if USE_MPU6050
     void processAccelerometer()
     {
@@ -219,18 +230,18 @@ private:
         logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
     }
 #endif
-    void logOBDData(byte pid)
+    int logOBDData(byte pid)
     {
-        int value;
+        int value = 0;
         // send a query to OBD adapter for specified OBD-II pid
         if (read(pid, value)) {
             dataTime = millis();
-            showLoggerData(pid, value);
             // log data to SD card
             logData(0x100 | pid, value);
+            lastValue = value;
+            lastPid = pid;
         }
-
-        // if OBD response is very fast, go on processing other data for a while
+        return value;
     }
     void reconnect()
     {
