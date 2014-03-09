@@ -22,11 +22,15 @@ typedef enum {
 #define FLAG_PIXEL_DOUBLE (FLAG_PIXEL_DOUBLE_H | FLAG_PIXEL_DOUBLE_V)
 
 #define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 2))
+
 #define RGB16_RED 0xF800
 #define RGB16_GREEN 0x7E0
 #define RGB16_BLUE 0x1F
 #define RGB16_YELLOW 0xFFE0
+#define RGB16_CYAN 0x7FF
+#define RGB16_PINK 0xF81F
 #define RGB16_WHITE 0xFFFF
+
 
 extern const PROGMEM unsigned char font5x8[][5];
 extern const PROGMEM unsigned char digits8x8[][8] ;
@@ -34,6 +38,7 @@ extern const PROGMEM unsigned char digits16x16[][32];
 extern const PROGMEM unsigned char digits16x24[][48];
 extern const PROGMEM unsigned char font8x16_doslike[][16];
 extern const PROGMEM unsigned char font8x16_terminal[][16];
+
 #include "PCD8544.h"
 
 class LCD_Common
@@ -43,7 +48,7 @@ public:
     void setFont(FONT_SIZE size) { m_font = size; }
     void setFlags(byte flags) { m_flags = flags; }
     virtual void backlight(bool on) {}
-    virtual void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height) {}
+    virtual void draw(const PROGMEM byte* buffer, byte width, byte height) {}
     void printInt(uint16_t value, int8_t padding = -1);
     void printLong(uint32_t value, int8_t padding = -1);
 protected:
@@ -79,7 +84,7 @@ public:
         setCursor(0, line);
         for (byte i = 14; i > 0; i--) write(' ');
     }
-    void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height);
+    void draw(const PROGMEM byte* buffer, byte width, byte height);
 private:
     void writeDigit(byte n);
 };
@@ -90,7 +95,7 @@ class LCD_SSD1306 : public LCD_Common, public SSD1306, public Print
 {
 public:
     void setCursor(byte column, byte line);
-    void draw(const PROGMEM byte* buffer, byte x, byte y, byte width, byte height);
+    void draw(const PROGMEM byte* buffer, byte width, byte height);
     size_t write(uint8_t c);
     void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
     void clearLine(byte line);
@@ -108,10 +113,10 @@ class LCD_ILI9325D : public LCD_Common, public Print
 {
 public:
     LCD_ILI9325D() { m_font = FONT_SIZE_MEDIUM; }
-    void setCursor(uint16_t column, uint16_t line)
+    void setCursor(uint16_t column, uint8_t line)
     {
         m_y = column;
-        m_x = line * TFT_LINE_HEIGHT;
+        m_x = (uint16_t)line * TFT_LINE_HEIGHT;
     }
     void setTextColor(uint16_t color)
     {
@@ -131,8 +136,8 @@ public:
     }
     void begin();
     void clear(uint16_t x = 0, uint16_t y = 0, uint16_t width = 320, uint16_t height = 240);
-    void draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
-    void draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, byte width, byte height);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    void draw2x(const PROGMEM byte* buffer, byte width, byte height);
     void draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
     size_t write(uint8_t);
     void clearLine(byte line)
@@ -142,9 +147,9 @@ public:
     byte getLines() { return 53; }
     byte getCols() { return 30; }
 private:
+    void setXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1);
     void writeDigit(byte n);
     void clearPixels(uint16_t pixels);
-    void setXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1);
     void WriteData(uint16_t c);
     void WriteData(byte l, byte h);
     void WriteCommandData(uint16_t cmd,uint16_t dat);
@@ -162,10 +167,10 @@ class LCD_ILI9341 : public LCD_Common, public Print
 {
 public:
     LCD_ILI9341() { m_font = FONT_SIZE_MEDIUM; }
-    void setCursor(uint16_t column, uint16_t line)
+    void setCursor(uint16_t column, uint8_t line)
     {
-        m_y = column;
-        m_x = line * TFT_LINE_HEIGHT;
+        m_x = column;
+        m_y = (uint16_t)line * TFT_LINE_HEIGHT;
     }
     void setTextColor(uint16_t color)
     {
@@ -194,15 +199,16 @@ public:
         clear(0, line * TFT_LINE_HEIGHT, 320, 8);
     }
     void begin (void);
-    void setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
     void setPixel(uint16_t poX, uint16_t poY,uint16_t color);
     void clear(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
     void clear(void);
     size_t write(uint8_t);
     void backlight(bool on);
-    void draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
-    void draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, byte width, byte height);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    void draw2x(const PROGMEM byte* buffer, byte width, byte height);
 private:
+    void setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
+    void sendPixelData(byte d);
     void writeDigit(byte n);
     void clearPixels(uint16_t pixels);
     void setCol(uint16_t StartCol,uint16_t EndCol);
@@ -216,4 +222,23 @@ private:
     uint8_t m_color[2][2];
     uint16_t m_x;
     uint16_t m_y;
+};
+
+class LCD_SH1106 : public LCD_Common, public Print
+{
+public:
+    void begin();
+    void setCursor(byte column, byte line);
+    void draw(const PROGMEM byte* buffer, byte width, byte height);
+    size_t write(uint8_t c);
+    void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
+    void clearLine(byte line);
+    byte getLines() { return 21; }
+    byte getCols() { return 8; }
+private:
+    void WriteCommand(unsigned char ins);
+    void WriteData(unsigned char dat);
+    void writeDigit(byte n);
+    byte m_col;
+    byte m_row;
 };

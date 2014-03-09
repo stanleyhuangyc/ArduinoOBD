@@ -238,8 +238,8 @@ void SSD1306::fill(unsigned char dat)
     ssd1306_command(0x10);//set higher column address
     ssd1306_command(0xB0);//set page address
 
-    //uint8_t twbrbackup = TWBR;
-    //TWBR = 18; // upgrade to 400KHz!
+    uint8_t twbrbackup = TWBR;
+    TWBR = 18; // upgrade to 400KHz!
     for (byte i=0; i<(SSD1306_LCDHEIGHT/8); i++)
     {
         // send a bunch of data in one xmission
@@ -256,7 +256,7 @@ void SSD1306::fill(unsigned char dat)
             Wire.endTransmission();
         }
     }
-    //TWBR = twbrbackup;
+    TWBR = twbrbackup;
 }
 
 void SSD1306::draw8x8(byte* buffer, uint8_t x, uint8_t y)

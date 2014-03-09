@@ -412,10 +412,10 @@ void LCD_ILI9325D::writeDigit(byte n)
     }
 }
 
-void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
 {
     byte rows = height >> 3;
-    setXY(y, y + height - 1, x, x + width - 1);
+    setXY(m_y, m_y + height - 1, m_x, m_x + width - 1);
     uint16_t i = width - 1;
     do {
         for (uint8_t h = 0; h < rows; h++) {
@@ -425,13 +425,14 @@ void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint
             }
         }
     } while (i--);
+    m_x += width;
 }
 
-void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, byte width, byte height)
+void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, byte width, byte height)
 {
     char buf[240];
     uint16_t pixels = (uint16_t)width * height;
-    setXY(y, y + height * 2 - 1, x, x + width * 2- 1);
+    setXY(m_y, m_y + height * 2 - 1, m_x, m_x + width * 2- 1);
     uint16_t i = width - 1;
     do {
         memcpy_P(buf, buffer + (uint16_t)i * height * 2, height * 2);
@@ -444,6 +445,7 @@ void LCD_ILI9325D::draw2x(const PROGMEM byte* buffer, uint16_t x, uint16_t y, by
             WriteData(buf[j], buf[j + 1]);
         }
     } while (i--);
+    m_x += width * 2;
 }
 
 void LCD_ILI9325D::draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
