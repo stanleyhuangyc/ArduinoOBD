@@ -169,22 +169,22 @@ int COBD::normalizeData(byte pid, char* data)
 
 char* COBD::getResponse(byte& pid, char* buffer)
 {
-	receive(buffer);
-	char *p = buffer;
-	while ((p = strstr(p, "41 "))) {
-		p += 3;
-		byte curpid = hex2uint8(p);
-		if (pid == 0) pid = curpid;
-		if (curpid == pid) {
-			errors = 0;
-			p += 2;
-			if (*p == ' ')
-				return p + 1;
-		} else {
-			receive(buffer);
-			p = buffer;
-		}
-	}
+    int timeout = OBD_TIMEOUT_SHORT;
+    while (receive(buffer, timeout) > 0) {
+        char *p = buffer;
+        while ((p = strstr(p, "41 "))) {
+            p += 3;
+            byte curpid = hex2uint8(p);
+            if (pid == 0) pid = curpid;
+            if (curpid == pid) {
+                errors = 0;
+                p += 2;
+                if (*p == ' ')
+                    return p + 1;
+            }
+        }
+        timeout = 0;
+    }
 	return 0;
 }
 
