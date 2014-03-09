@@ -33,10 +33,11 @@ static int speed = 0;
 static uint32_t distance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
+static uint32_t pidCount = 0;
 static uint8_t lastPid = 0;
 static int lastValue = 0;
 
-static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
+static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_TIMING_ADVANCE};
 static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
 
@@ -107,7 +108,6 @@ public:
         static byte index = 0;
         static byte index2 = 0;
         static byte index3 = 0;
-        uint32_t t = millis();
 
         logOBDData(pidTier1[index++]);
         if (index == TIER_NUM1) {
@@ -121,26 +121,11 @@ public:
             }
         }
 
-
 #if USE_MPU6050
         if (state & STATE_ACC_READY) {
             processAccelerometer();
         }
 #endif
-
-#if ENABLE_DATA_LOG
-        // flush SD data every 1KB
-        if (dataSize - lastFileSize >= 1024) {
-            flushFile();
-            lastFileSize = dataSize;
-            // display logged data size
-            lcd.setFont(FONT_SIZE_MEDIUM);
-            lcd.setCursor(248, 11);
-            lcd.printInt(dataSize >> 10);
-            lcd.print("KB");
-        }
-#endif
-
         if (errors >= 2) {
             reconnect();
         }
@@ -210,6 +195,22 @@ private:
             showData(lastPid, lastValue);
             lastPid = 0;
         }
+        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setCursor(248, 8);
+        lcd.printInt(pidCount * 1000 / (millis() - startTime), 4);
+        lcd.print("ms");
+        
+#if ENABLE_DATA_LOG
+        // flush SD data every 1KB
+        if (dataSize - lastFileSize >= 1024) {
+            flushFile();
+            lastFileSize = dataSize;
+            // display logged data size
+            lcd.setCursor(248, 11);
+            lcd.printInt(dataSize >> 10, 4);
+            lcd.print("KB");
+        }
+#endif
     }
 #if USE_MPU6050
     void processAccelerometer()
@@ -228,12 +229,28 @@ private:
     {
         int value;
         // send a query to OBD adapter for specified OBD-II pid
-        if (read(pid, value)) {
-            dataTime = millis();
-            // log data to SD card
-            logData(0x100 | pid, value);
-            lastValue = value;
-            lastPid = pid;
+        
+        // send a query command
+	sendQuery(pid);
+	// wait for reponse
+	bool hasData;
+	unsigned long tick = millis();
+	do {
+		dataIdleLoop();
+	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
+	if (!hasData) {
+		errors++;
+		return;
+	}
+	// receive and parse the response
+        pid = 0;
+	if (getResult(pid, value)) {
+          dataTime = millis();
+          // log data to SD card
+          logData(0x100 | pid, value);
+          lastValue = value;
+          lastPid = pid;
+          pidCount++;
         }
     }
     void showECUCap()
