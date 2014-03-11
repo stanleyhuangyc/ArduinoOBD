@@ -59,7 +59,7 @@ class COBD
 public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	virtual void begin();
-	virtual bool init();
+	virtual bool init(byte protocol = 0);
 	virtual bool read(byte pid, int& result);
 	virtual void sleep();
 	virtual void wakeup();
@@ -78,7 +78,7 @@ protected:
 	virtual byte receive(char* buffer, int timeout = OBD_TIMEOUT_SHORT);
 	virtual bool available();
 	virtual char read();
-	virtual void write(char* s);
+	virtual void write(const char* s);
 	virtual void write(char c);
 	virtual void dataIdleLoop() {}
     void recover();
@@ -143,9 +143,9 @@ typedef struct {
 class COBDI2C : public COBD {
 public:
     void begin(byte addr = I2C_ADDR);
-    bool init();
+    bool init(byte protocol = 0);
     bool read(byte pid, int& result);
-    void write(char* s);
+    void write(const char* s);
     void setProtocol(bool auto, byte h);
     // Asynchronized access API
     void setPID(byte pid);

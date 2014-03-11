@@ -12,12 +12,6 @@
 //#define DEBUG Serial
 //#define REDIRECT Serial
 
-#define MAX_CMD_LEN 6
-
-const char PROGMEM s_initcmd[][MAX_CMD_LEN] = {"ATZ\r","ATE0\r","ATL1\r"};
-#define STR_CMD_FMT "%02X%02X 1\r"
-#define STR_SEARCHING "SEARCHING..."
-
 unsigned int hex2uint16(const char *p)
 {
 	char c = *p;
@@ -67,7 +61,7 @@ unsigned char hex2uint8(const char *p)
 void COBD::sendQuery(byte pid)
 {
 	char cmd[8];
-	sprintf(cmd, STR_CMD_FMT, dataMode, pid);
+	sprintf(cmd, "%02X%02X\r", dataMode, pid);
 #ifdef DEBUG
 	debugOutput(cmd);
 #endif
@@ -78,16 +72,6 @@ bool COBD::read(byte pid, int& result)
 {
 	// send a query command
 	sendQuery(pid);
-	// wait for reponse
-	bool hasData;
-	unsigned long tick = millis();
-	do {
-		dataIdleLoop();
-	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
-	if (!hasData) {
-		errors++;
-		return false;
-	}
 	// receive and parse the response
 	return getResult(pid, result);
 }
@@ -106,7 +90,7 @@ char COBD::read()
 	return c;
 }
 
-void COBD::write(char* s)
+void COBD::write(const char* s)
 {
 	OBDUART.write(s);
 }
@@ -169,8 +153,7 @@ int COBD::normalizeData(byte pid, char* data)
 
 char* COBD::getResponse(byte& pid, char* buffer)
 {
-    int timeout = OBD_TIMEOUT_SHORT;
-    while (receive(buffer, timeout) > 0) {
+    while (receive(buffer, OBD_TIMEOUT_SHORT) > 0) {
         char *p = buffer;
         while ((p = strstr(p, "41 "))) {
             p += 3;
@@ -183,7 +166,6 @@ char* COBD::getResponse(byte& pid, char* buffer)
                     return p + 1;
             }
         }
-        timeout = 0;
     }
 	return 0;
 }
@@ -194,6 +176,7 @@ bool COBD::getResult(byte& pid, int& result)
 	char* data = getResponse(pid, buffer);
 	if (!data) {
 		recover();
+		errors++;
 		return false;
 	}
 	result = normalizeData(pid, data);
@@ -224,7 +207,7 @@ void COBD::wakeup()
 bool COBD::isValidPID(byte pid)
 {
 	if (pid >= 0x7f)
-		return false;
+		return true;
 	pid--;
 	byte i = pid >> 3;
 	byte b = 0x80 >> (pid & 0x7);
@@ -251,12 +234,11 @@ byte COBD::receive(char* buffer, int timeout)
 	            prompted = true;
 	        } else if (n < OBD_RECV_BUF_SIZE - 1) {
 	            buffer[n++] = c;
-	            buffer[n] = 0;
-	            if (strstr(buffer, STR_SEARCHING)) {
-	                strcpy(buffer, buffer + sizeof(STR_SEARCHING));
-	                n -= sizeof(STR_SEARCHING);
+	            if (c == '.') {
+                    n = 0;
 	                timeout = OBD_TIMEOUT_LONG;
 	            }
+	            buffer[n] = 0;
 	        }
 	    } else if (prompted) {
 	        break;
@@ -274,45 +256,53 @@ byte COBD::receive(char* buffer, int timeout)
 void COBD::recover()
 {
 	write('\r');
-	delay(50);
+	delay(100);
 	while (available()) read();
 }
 
-bool COBD::init()
+bool COBD::init(byte protocol)
 {
+    const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r"};
 	char buffer[OBD_RECV_BUF_SIZE];
 
 	m_state = OBD_CONNECTING;
 	recover();
 
-	for (unsigned char i = 0; i < sizeof(s_initcmd) / sizeof(s_initcmd[0]); i++) {
-	    char cmd[MAX_CMD_LEN];
-	    strcpy_P(cmd, s_initcmd[i]);
+	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
-	    debugOutput(cmd);
+	    debugOutput(initcmd[i]);
 #endif
-	    write(cmd);
+	    write(initcmd[i]);
 		if (receive(buffer) == 0) {
 	        return false;
 		}
+		delay(50);
+	}
+	if (protocol) {
+        write("ATSP");
+        write('0' + protocol);
+        write('\r');
+        receive(buffer);
+        delay(50);
 	}
 	while (available()) read();
 
-	// load pid map
-	memset(pidmap, 0, sizeof(pidmap));
-	for (byte i = 0; i < 4; i++) {
-	    byte pid = i * 0x20;
-	    sendQuery(pid);
-	    char* data = getResponse(pid, buffer);
-	    if (!data) break;
-	    data--;
-	    for (byte n = 0; n < 4; n++) {
-	        if (data[n * 3] != ' ')
-	            break;
-	        pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
-	    }
-	}
-	while (available()) read();
+    // load pid map
+    memset(pidmap, 0, sizeof(pidmap));
+    for (byte i = 0; i < 4; i++) {
+        byte pid = i * 0x20;
+        sendQuery(pid);
+        char* data = getResponse(pid, buffer);
+        if (!data) break;
+        data--;
+        for (byte n = 0; n < 4; n++) {
+            if (data[n * 3] != ' ')
+                break;
+            pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
+        }
+        delay(100);
+    }
+    while (available()) read();
 
 	m_state = OBD_CONNECTED;
 	errors = 0;
@@ -341,7 +331,7 @@ void COBDI2C::begin(byte addr)
 	memset(obdInfo, 0, sizeof(obdInfo));
 }
 
-bool COBDI2C::init()
+bool COBDI2C::init(byte protocol)
 {
 	m_state = OBD_CONNECTING;
 	sendCommand(CMD_QUERY_STATUS);
@@ -370,7 +360,7 @@ bool COBDI2C::read(byte pid, int& result)
 	return getResult(pid, result);
 }
 
-void COBDI2C::write(char* s)
+void COBDI2C::write(const char* s)
 {
 	COMMAND_BLOCK cmdblock = {millis(), CMD_SEND_AT_COMMAND};
 	Wire.beginTransmission(m_addr);
