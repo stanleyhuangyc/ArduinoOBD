@@ -33,11 +33,11 @@ static int speed = 0;
 static uint32_t distance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
-static uint32_t pidCount = 0;
+static uint16_t elapsed = 0;
 static uint8_t lastPid = 0;
 static int lastValue = 0;
 
-static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE};
+static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_TIMING_ADVANCE};
 static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
 
@@ -63,11 +63,15 @@ public:
 
         do {
             showStates();
-        } while (!init());
+        } while (!init(OBD_PROTOCOL));
 
         state |= STATE_OBD_READY;
 
         showStates();
+
+        lcd.clear();
+        benchmark();
+        delay(1000);
 
         uint16_t flags = FLAG_CAR | FLAG_OBD;
         if (state & STATE_GPS_FOUND) flags |= FLAG_GPS;
@@ -88,9 +92,6 @@ public:
         delay(100);
 #endif
 
-        //showECUCap();
-        //delay(3000);
-
 #if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
@@ -101,7 +102,37 @@ public:
         }
 #endif
 
+        showECUCap();
+        delay(3000);
+
         initScreen();
+    }
+    void benchmark()
+    {
+        lcd.setFont(FONT_SIZE_MEDIUM);
+
+        char buf[OBD_RECV_BUF_SIZE];
+        uint8_t count = 0;
+        startTime = millis();
+        for (uint8_t n = 0; n < TIER_NUM1; n++) {
+            sendQuery(pidTier1[n]);
+            lcd.write('[');
+            lcd.print(millis());
+            lcd.write(']');
+            lcd.println(pidTier1[n], HEX);
+            if (receive(buf) > 0) {
+                lcd.println(buf);
+                count++;
+            }
+        }
+        lcd.setCursor(0, 28);
+        if (count) {
+            lcd.print("OBD Time: ");
+            lcd.printInt((millis() - startTime) / count);
+            lcd.print("ms");
+        } else {
+            lcd.print("No PID!");
+        }
     }
     void loop()
     {
@@ -195,20 +226,26 @@ private:
             showData(lastPid, lastValue);
             lastPid = 0;
         }
-        lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(248, 8);
-        lcd.printInt(pidCount * 1000 / (millis() - startTime), 4);
-        lcd.print("ms");
-        
+        uint16_t t = (millis() - startTime) >> 10;
+        if (t != elapsed) {
+            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setCursor(260, 8);
+            lcd.printInt(elapsed / 60, 2);
+            lcd.write(':');
+            lcd.setFlags(FLAG_PAD_ZERO);
+            lcd.printInt(elapsed % 60, 2);
+            lcd.setFlags(0);
+            elapsed = t;
+        }
+
 #if ENABLE_DATA_LOG
         // flush SD data every 1KB
         if (dataSize - lastFileSize >= 1024) {
             flushFile();
             lastFileSize = dataSize;
             // display logged data size
-            lcd.setCursor(248, 11);
+            lcd.setCursor(260, 11);
             lcd.printInt(dataSize >> 10, 4);
-            lcd.print("KB");
         }
 #endif
     }
@@ -229,40 +266,39 @@ private:
     {
         int value;
         // send a query to OBD adapter for specified OBD-II pid
-        
+
         // send a query command
-	sendQuery(pid);
-	// wait for reponse
-	bool hasData;
-	unsigned long tick = millis();
-	do {
-		dataIdleLoop();
-	} while (!(hasData = available()) && millis() - tick < OBD_TIMEOUT_SHORT);
-	if (!hasData) {
-		errors++;
-		return;
-	}
-	// receive and parse the response
-        pid = 0;
-	if (getResult(pid, value)) {
-          dataTime = millis();
-          // log data to SD card
-          logData(0x100 | pid, value);
-          lastValue = value;
-          lastPid = pid;
-          pidCount++;
+        sendQuery(pid);
+        // wait for reponse
+        pid = 0; // this lets PID also get from response
+        // receive and parse the response
+        if (getResult(pid, value)) {
+            dataTime = millis();
+            // log data to SD card
+            logData(0x100 | pid, value);
+            lastValue = value;
+            lastPid = pid;
+        } else {
+            errors++;
+            return;
         }
     }
     void showECUCap()
     {
-        byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_CONTROL_MODULE_VOLTAGE, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
-        const char* namelist[] = {"RPM", "SPEED", "THR", "ENG.LOAD", "CTRL VOLT", "MAF", "MAP", "FUEL LV.", "FUEL PRE.", "COOLANT", "INTAKE","AMBIENT", "IGNITION", "BARO"};
+        lcd.clear();
         lcd.setFont(FONT_SIZE_MEDIUM);
-        for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
-            lcd.setCursor(192, i << 1);
-            lcd.print(namelist[i]);
-            lcd.write(':');
-            showTickCross(isValidPID(pidlist[i]));
+        byte pid = 0;
+        uint16_t col;
+        uint8_t row;
+        for (byte i = 0; ; pid++) {
+            if (pid % 0x20 == 0) continue;
+            col = (i / 15) * 52;
+            row = (i % 15) << 1;
+            i++;
+            if (col > 280) break;
+            lcd.setCursor(col, row);
+            lcd.print(0x100 | pid, HEX);
+            showTickCross(isValidPID(pid));
         }
     }
     void reconnect()
@@ -277,12 +313,16 @@ private:
         state &= ~(STATE_OBD_READY | STATE_ACC_READY);
         state |= STATE_SLEEPING;
         //digitalWrite(SD_CS_PIN, LOW);
-        for (int i = 0; !init(); i++) {
-            if (i == 10) lcd.clear();
+        for (uint16_t i = 0; !init(); i++) {
+            if (i == 5) {
+                lcd.backlight(false);
+                lcd.clear();
+            }
         }
         state &= ~STATE_SLEEPING;
         fileIndex++;
         write('\r');
+        lcd.backlight(true);
         setup();
     }
     byte state;
@@ -297,10 +337,10 @@ private:
     void showStates()
     {
         lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(0, 10);
+        lcd.setCursor(0, 6);
         lcd.print("OBD ");
         showTickCross(state & STATE_OBD_READY);
-        lcd.setCursor(0, 13);
+        lcd.setCursor(0, 8);
         lcd.print("ACC ");
         showTickCross(state & STATE_ACC_READY);
     }
@@ -382,12 +422,11 @@ private:
     void showChart(int value)
     {
         static uint16_t pos = 0;
-        byte n = value / 60;
+        if (value < 500) return;
+        byte n = (value - 600) / 30;
         lcd.fill(pos, pos, 239 - n, 239, RGB16_CYAN);
-        if (++pos == 320) {
-            lcd.fill(0, 319, 120, 239);
-            pos = 0;
-        }
+        pos = (pos + 1) % 320;
+        lcd.fill(pos, pos, 120, 239);
     }
     void initLoggerScreen()
     {
@@ -411,10 +450,10 @@ private:
         lcd.setCursor(164, 7);
         lcd.print("INTAKE MAP");
 
-        lcd.setCursor(248, 7);
-        lcd.print("OBD Time:");
-        lcd.setCursor(248, 10);
-        lcd.print("Log Size:");
+        lcd.setCursor(260, 7);
+        lcd.print("ELAPSED");
+        lcd.setCursor(260, 10);
+        lcd.print("LOG SIZE");
 
         lcd.setTextColor(RGB16_YELLOW);
         lcd.setCursor(24, 5);
@@ -431,6 +470,9 @@ private:
         lcd.print("km");
         lcd.setCursor(200, 12);
         lcd.print("kpa");
+        lcd.setCursor(296, 12);
+        lcd.print("KB");
+
 
         lcd.setTextColor(RGB16_WHITE);
 
@@ -457,7 +499,7 @@ void setup()
 
 #if ENABLE_DATA_LOG
     lcd.setFont(FONT_SIZE_MEDIUM);
-    lcd.setCursor(0, 7);
+    lcd.setCursor(0, 4);
     logger.checkSD();
 #endif
     logger.setup();
