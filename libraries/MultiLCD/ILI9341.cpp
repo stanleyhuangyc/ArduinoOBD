@@ -287,50 +287,23 @@ void LCD_ILI9341::setPage(uint16_t StartPage,uint16_t EndPage)
     sendData(EndPage);
 }
 
-void LCD_ILI9341::clear(uint16_t XL, uint16_t XR, uint16_t YU, uint16_t YD, uint16_t color)
+void LCD_ILI9341::fill(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1, uint16_t color)
 {
-    unsigned long  XY=0;
-    unsigned long i=0;
+    uint8_t Hcolor = color>>8;
+    uint8_t Lcolor = color&0xff;
 
-    backlight(false);
-    if(XL > XR)
-    {
-        XL = XL^XR;
-        XR = XL^XR;
-        XL = XL^XR;
-    }
-    if(YU > YD)
-    {
-        YU = YU^YD;
-        YD = YU^YD;
-        YU = YU^YD;
-    }
-    XL = constrain(XL, MIN_X,MAX_X);
-    XR = constrain(XR, MIN_X,MAX_X);
-    YU = constrain(YU, MIN_Y,MAX_Y);
-    YD = constrain(YD, MIN_Y,MAX_Y);
-
-    XY = (XR-XL+1);
-    XY = XY*(YD-YU+1);
-
-    setCol(XL,XR);
-    setPage(YU, YD);
+    setCol(239 - y1, 239 - y0);
+    setPage(x0, x1);
     sendCMD(0x2c);                                                  /* start to write to display ra */
                                                                         /* m                            */
     TFT_DC_HIGH;
     TFT_CS_LOW;
-
-    uint8_t Hcolor = color>>8;
-    uint8_t Lcolor = color&0xff;
-    for(i=0; i < XY; i++)
+    for(uint16_t n = (x1-x0+1) * (y1-y0+1); n > 0; n--)
     {
         SPI.transfer(Hcolor);
         SPI.transfer(Lcolor);
     }
-
     TFT_CS_HIGH;
-
-    backlight(true);
 }
 
 void LCD_ILI9341::clear(void)
@@ -365,7 +338,7 @@ void LCD_ILI9341::setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1)
 
 void LCD_ILI9341::setPixel(uint16_t poX, uint16_t poY,uint16_t color)
 {
-    setXY(poX, poY, poX, poY);
+    setXY(poY, poY, poX, poX);
     sendData(color);
 }
 
@@ -405,9 +378,7 @@ size_t LCD_ILI9341::write(uint8_t c)
         m_y += (m_font + 1) << 3;
         return 0;
     } else if (c == '\r') {
-        setXY(m_y, m_y + 7, m_x, 319);
-        clearPixels((320 - m_x) * 8);
-        m_y = 0;
+        m_x = 0;
         return 0;
     }
 

@@ -196,11 +196,11 @@ public:
     }
     void clearLine(byte line)
     {
-        clear(0, line * TFT_LINE_HEIGHT, 320, 8);
+        fill(0, line * TFT_LINE_HEIGHT, 320, 8);
     }
     void begin (void);
     void setPixel(uint16_t poX, uint16_t poY,uint16_t color);
-    void clear(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
+    void fill(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
     void clear(void);
     size_t write(uint8_t);
     void backlight(bool on);
