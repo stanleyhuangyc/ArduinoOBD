@@ -69,9 +69,11 @@ public:
 
         showStates();
 
+        /*
         lcd.clear();
         benchmark();
         delay(1000);
+        */
 
         uint16_t flags = FLAG_CAR | FLAG_OBD;
         if (state & STATE_GPS_FOUND) flags |= FLAG_GPS;
@@ -157,7 +159,7 @@ public:
             processAccelerometer();
         }
 #endif
-        if (errors >= 2) {
+        if (errors >= 5) {
             reconnect();
         }
     }
@@ -278,6 +280,7 @@ private:
             logData(0x100 | pid, value);
             lastValue = value;
             lastPid = pid;
+            errors = 0;
         } else {
             errors++;
             return;
