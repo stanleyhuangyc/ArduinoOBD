@@ -81,7 +81,7 @@ protected:
 	virtual void write(const char* s);
 	virtual void write(char c);
 	virtual void dataIdleLoop() {}
-    void recover();
+	void recover();
 	void debugOutput(const char* s);
 	int normalizeData(byte pid, char* data);
 	byte m_state;
