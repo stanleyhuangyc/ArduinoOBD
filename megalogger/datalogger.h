@@ -276,7 +276,7 @@ public:
         dataSize += sdfile.print(pid, HEX);
         dataSize += sdfile.write(',');
         dataSize += sdfile.print(value1);
-        dataSize += sdfile.write(' ');
+        dataSize += sdfile.write(',');
         dataSize += sdfile.print(value2);
         dataSize += sdfile.write('\n');
         m_lastDataTime = dataTime;
@@ -304,9 +304,9 @@ public:
         dataSize += sdfile.print(pid, HEX);
         dataSize += sdfile.write(',');
         dataSize += sdfile.print(value1);
-        dataSize += sdfile.write(' ');
+        dataSize += sdfile.write(',');
         dataSize += sdfile.print(value2);
-        dataSize += sdfile.write(' ');
+        dataSize += sdfile.write(',');
         dataSize += sdfile.print(value3);
         dataSize += sdfile.write('\n');
         m_lastDataTime = dataTime;
