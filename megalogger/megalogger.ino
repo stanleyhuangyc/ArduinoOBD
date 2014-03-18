@@ -452,7 +452,8 @@ private:
         for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
             bool valid = isValidPID(pidlist[i]);
             lcd.setTextColor(valid ? RGB16_GREEN : RGB16_RED);
-            lcd.draw(valid ? tick : cross, 304, i * 16 + 32, 16, 16);
+            lcd.setCursor(304, i * 2 + 4);
+            lcd.draw(valid ? tick : cross, 16, 16);
         }
         lcd.setTextColor(RGB16_WHITE);
     }
@@ -480,27 +481,27 @@ private:
         lcd.setFont(FONT_SIZE_MEDIUM);
 
         lcd.setCursor(0, 8);
-        lcd.print("OBD");
+        lcd.print("OBD ");
         lcd.setTextColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
-        lcd.draw((state & STATE_OBD_READY) ? tick : cross, 36, 64, 16, 16);
+        lcd.draw((state & STATE_OBD_READY) ? tick : cross, 16, 16);
         lcd.setTextColor(RGB16_WHITE);
 
         lcd.setCursor(0, 10);
-        lcd.print("ACC");
+        lcd.print("ACC ");
         lcd.setTextColor((state & STATE_ACC_READY) ? RGB16_GREEN : RGB16_RED);
-        lcd.draw((state & STATE_ACC_READY) ? tick : cross, 36, 80, 16, 16);
+        lcd.draw((state & STATE_ACC_READY) ? tick : cross, 16, 16);
         lcd.setTextColor(RGB16_WHITE);
 
         lcd.setCursor(0, 12);
-        lcd.print("GPS");
+        lcd.print("GPS ");
         if (state & STATE_GPS_READY) {
             lcd.setTextColor(RGB16_GREEN);
-            lcd.draw(tick, 36, 96, 16, 16);
+            lcd.draw(tick, 16, 16);
         } else if (state & STATE_GPS_CONNECTED)
-            lcd.print(" --");
+            lcd.print("--");
         else {
             lcd.setTextColor(RGB16_RED);
-            lcd.draw(cross, 36, 96, 16, 16);
+            lcd.draw(cross, 16, 16);
         }
         lcd.setTextColor(RGB16_WHITE);
     }
@@ -545,10 +546,13 @@ private:
     {
         lcd.clear();
 #ifndef MEMORY_SAVING
-        lcd.draw2x(frame0[0], 0, 0, 78, 58);
-        lcd.draw2x(frame0[0], 164, 0, 78, 58);
-        lcd.draw2x(frame0[0], 0, 124, 78, 58);
-        lcd.draw2x(frame0[0], 164, 124, 78, 58);
+        lcd.draw2x(frame0[0], 78, 58);
+        lcd.setXY(164, 0);
+        lcd.draw2x(frame0[0], 78, 58);
+        lcd.setXY(0, 124);
+        lcd.draw2x(frame0[0], 78, 58);
+        lcd.setXY(164, 124);
+        lcd.draw2x(frame0[0], 78, 58);
 #endif
 
         //lcd.setColor(RGB16(0x7f, 0x7f, 0x7f));

@@ -107,6 +107,25 @@ private:
     byte m_row;
 };
 
+class LCD_SH1106 : public LCD_Common, public Print
+{
+public:
+    void begin();
+    void setCursor(byte column, byte line);
+    void draw(const PROGMEM byte* buffer, byte width, byte height);
+    size_t write(uint8_t c);
+    void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
+    void clearLine(byte line);
+    byte getLines() { return 21; }
+    byte getCols() { return 8; }
+private:
+    void WriteCommand(unsigned char ins);
+    void WriteData(unsigned char dat);
+    void writeDigit(byte n);
+    byte m_col;
+    byte m_row;
+};
+
 #define TFT_LINE_HEIGHT 8
 
 class LCD_ILI9325D : public LCD_Common, public Print
@@ -117,6 +136,11 @@ public:
     {
         m_y = column;
         m_x = (uint16_t)line * TFT_LINE_HEIGHT;
+    }
+    void setXY(uint16_t x, uint16_t y)
+    {
+        m_y = x;
+        m_y = y;
     }
     void setTextColor(uint16_t color)
     {
@@ -172,6 +196,11 @@ public:
         m_x = column;
         m_y = (uint16_t)line * TFT_LINE_HEIGHT;
     }
+    void setXY(uint16_t x, uint16_t y)
+    {
+        m_y = x;
+        m_y = y;
+    }
     void setTextColor(uint16_t color)
     {
         m_color[1][0] = color & 0xff;
@@ -222,23 +251,4 @@ private:
     uint8_t m_color[2][2];
     uint16_t m_x;
     uint16_t m_y;
-};
-
-class LCD_SH1106 : public LCD_Common, public Print
-{
-public:
-    void begin();
-    void setCursor(byte column, byte line);
-    void draw(const PROGMEM byte* buffer, byte width, byte height);
-    size_t write(uint8_t c);
-    void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
-    void clearLine(byte line);
-    byte getLines() { return 21; }
-    byte getCols() { return 8; }
-private:
-    void WriteCommand(unsigned char ins);
-    void WriteData(unsigned char dat);
-    void writeDigit(byte n);
-    byte m_col;
-    byte m_row;
 };
