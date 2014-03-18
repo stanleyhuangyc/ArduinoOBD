@@ -11,7 +11,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <MPU6050.h>
-#include "MicroLCD.h"
+#include "MultiLCD.h"
 #include "images.h"
 #include "config.h"
 #if USE_SOFTSERIAL
@@ -82,17 +82,13 @@ static byte stage = STAGE_IDLE;
 
 static uint16_t times[4] = {0};
 
-static byte pollPattern[]= {
-    PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_RPM, PID_SPEED, PID_THROTTLE
-};
+static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
+static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
+static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL};
 
-static byte pollPattern2[] = {
-    PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL,
-};
-
-#define PATTERN_NUM sizeof(pollPattern)
-#define PATTERN_NUM2 sizeof(pollPattern2)
-#define POLL_INTERVAL 10000 /* ms */
+#define TIER_NUM1 sizeof(pidTier1)
+#define TIER_NUM2 sizeof(pidTier2)
+#define TIER_NUM3 sizeof(pidTier3)
 
 class COBDLogger : public COBD, public CDataLogger
 {
@@ -174,7 +170,7 @@ public:
     {
         static byte index = 0;
         static byte index2 = 0;
-        static uint32_t lastTime = 0;
+        static byte index3 = 0;
 
 #ifdef GPSUART
         if (millis() - lastGPSDataTime > GPS_DATA_TIMEOUT || gps.satellites() < 3) {
@@ -190,22 +186,15 @@ public:
         if (mode == MODE_TIMER) {
             timerLoop();
         } else {
-            logOBDData(pollPattern[index]);
-            index = (index + 1) % PATTERN_NUM;
-
-            if (index == 0) {
-                if (isValidPID(PID_INTAKE_MAP))
-                    logOBDData(PID_INTAKE_MAP);
-                else if (isValidPID(PID_MAF_FLOW))
-                    logOBDData(PID_MAF_FLOW);
-            }
-
-            if (millis() - lastTime > POLL_INTERVAL) {
-                byte pid = pollPattern2[index2];
-                if (isValidPID(pid)) {
-                    lastTime = millis();
-                    logOBDData(pid);
-                    index2 = (index2 + 1) % PATTERN_NUM2;
+            logOBDData(pidTier1[index++]);
+            if (index == TIER_NUM1) {
+                index = 0;
+                if (index2 == TIER_NUM2) {
+                    index2 = 0;
+                    logOBDData(pidTier3[index3]);
+                    index3 = (index3 + 1) % TIER_NUM3;
+                } else {
+                    logOBDData(pidTier2[index2++]);
                 }
             }
 

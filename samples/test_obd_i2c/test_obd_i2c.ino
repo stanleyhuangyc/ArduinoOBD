@@ -3,9 +3,6 @@
 #include <OBD.h>
 #include <MPU6050.h>
 #include <SPI.h>
-//#include <MultiLCD.h>
-
-//LCD_ILI9341 lcd;
 
 #define CON Serial
 

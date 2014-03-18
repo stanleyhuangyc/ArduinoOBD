@@ -34,7 +34,7 @@
 /**************************************
 * Choose LCD model here
 **************************************/
-LCD_SH1106 lcd;
+LCD_ILI9341 lcd;
 //LCD_SSD1306 lcd;
 //LCD_Null lcd;
 
