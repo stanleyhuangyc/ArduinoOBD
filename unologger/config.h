@@ -4,14 +4,15 @@
 /**************************************
 * OBD-II options
 **************************************/
+#define OBD_MODEL OBD_MODEL_UART
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
 * Data logging/streaming out
 **************************************/
-#define ENABLE_DATA_OUT 0
+#define ENABLE_DATA_OUT 1
 #define ENABLE_DATA_LOG 1
-#define USE_SOFTSERIAL 0
+#define USE_SOFTSERIAL 1
 //this defines the format of log file
 #define LOG_FORMAT FORMAT_CSV
 
@@ -39,9 +40,9 @@
 /**************************************
 * Choose LCD model here
 **************************************/
-LCD_ILI9341 lcd;
+//LCD_ILI9341 lcd;
 //LCD_SSD1306 lcd;
-//LCD_Null lcd;
+LCD_Null lcd;
 
 /**************************************
 * Other options

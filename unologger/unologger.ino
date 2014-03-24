@@ -45,7 +45,11 @@ static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, P
 #define TIER_NUM2 sizeof(pidTier2)
 #define TIER_NUM3 sizeof(pidTier3)
 
+#if OBD_MODEL == OBD_MODEL_UART
 class COBDLogger : public COBD, public CDataLogger
+#else
+class COBDLogger : public COBDI2C, public CDataLogger
+#endif
 {
 public:
     COBDLogger():state(0) {}
