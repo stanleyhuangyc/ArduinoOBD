@@ -103,7 +103,7 @@ public:
 
         do {
             showStates();
-        } while (!init());
+        } while (!init(OBD_PROTOCOL));
 
         state |= STATE_OBD_READY;
 

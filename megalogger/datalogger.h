@@ -93,7 +93,7 @@ typedef struct {
 #define FILE_NAME_FORMAT "/DAT%05d.CSV"
 #endif
 
-#if ENABLE_DATA_OUT && !USE_OBD_BT
+#if ENABLE_DATA_OUT
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
     SoftwareSerial mySerial(A8, A9); /* for BLE Shield on MEGA*/
 #elif defined(__AVR_ATmega644P__)
@@ -111,11 +111,7 @@ public:
     void initSender()
     {
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btInit(9600);
-#else
         mySerial.begin(9600);
-#endif
 #endif
 #if ENABLE_DATA_LOG && LOG_FORMAT == FORMAT_CSV
         m_lastDataTime = 0;
@@ -140,26 +136,17 @@ public:
         info.logType = hdr.logType;
         info.logFlags = hdr.flags;
         info.checksum = getChecksum((char*)&info, sizeof(info));
-#if USE_OBD_BT
-        btSend((uint8_t*)&info, sizeof(info));
-#else
         mySerial.write((uint8_t*)&info, sizeof(info));
-#endif
     }
     void sendCommand(byte message, void* data = 0, byte bytes = 0)
     {
         LOG_DATA_COMMAND msg = {0, PID_MESSAGE, message};
         if (data) memcpy(msg.data, data, bytes);
         msg.checksum = getChecksum((char*)&msg, sizeof(msg));
-#if USE_OBD_BT
-        btSend((uint8_t*)&msg, sizeof(msg));
-#else
         mySerial.write((uint8_t*)&msg, sizeof(msg));
-#endif
     }
     bool receiveCommand(LOG_DATA_COMMAND& msg)
     {
-#if !USE_OBD_BT
         if (!mySerial.available())
             return false;
 
@@ -171,7 +158,6 @@ public:
         if (getChecksum((char*)&msg, sizeof(msg)) != msg.checksum) {
             return false;
         }
-#endif
         return true;
     }
 #endif
@@ -180,11 +166,7 @@ public:
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 12);
-#else
         mySerial.write((uint8_t*)&ld, 12);
-#endif
 #endif
 #if ENABLE_DATA_LOG
 #if LOG_FORMAT == FORMAT_BIN
@@ -206,11 +188,7 @@ public:
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 12);
-#else
         mySerial.write((uint8_t*)&ld, 12);
-#endif
 #endif
 #if ENABLE_DATA_LOG
 #if LOG_FORMAT == FORMAT_BIN
@@ -232,11 +210,7 @@ public:
         LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
         ld.checksum = getChecksum((char*)&ld, 16);
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 16);
-#else
         mySerial.write((uint8_t*)&ld, 16);
-#endif
 #endif
 #if ENABLE_DATA_LOG
 #if LOG_FORMAT == FORMAT_BIN
@@ -260,11 +234,7 @@ public:
         LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
         ld.checksum = getChecksum((char*)&ld, 16);
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 16);
-#else
         mySerial.write((uint8_t*)&ld, 16);
-#endif
 #endif
 #if ENABLE_DATA_LOG
 #if LOG_FORMAT == FORMAT_BIN
@@ -288,11 +258,7 @@ public:
         LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
         ld.checksum = getChecksum((char*)&ld, 20);
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 20);
-#else
         mySerial.write((uint8_t*)&ld, 20);
-#endif
 #endif
 #if ENABLE_DATA_LOG
 #if LOG_FORMAT == FORMAT_BIN

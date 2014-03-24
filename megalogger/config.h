@@ -10,6 +10,7 @@
 * Choose model of OBD-II Adapter
 **************************************/
 #define OBD_MODEL OBD_MODEL_UART
+#define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
 * Choose SD pin here
