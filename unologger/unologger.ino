@@ -245,8 +245,8 @@ private:
         }
 
 #if ENABLE_DATA_LOG
-        // flush SD data every 1KB
-        if (dataSize - lastFileSize >= 1024) {
+        // flush SD data every 4KB
+        if (dataSize - lastFileSize >= 4096) {
             flushFile();
             lastFileSize = dataSize;
             // display logged data size
@@ -320,10 +320,15 @@ private:
         state &= ~(STATE_OBD_READY | STATE_ACC_READY);
         state |= STATE_SLEEPING;
         //digitalWrite(SD_CS_PIN, LOW);
-        for (uint16_t i = 0; !init(); i++) {
+        for (uint16_t i = 0; ; i++) {
             if (i == 5) {
                 lcd.backlight(false);
                 lcd.clear();
+            }
+            if (init()) {
+                int value;
+                if (read(PID_RPM, value) && value > 0)
+                    break;
             }
         }
         state &= ~STATE_SLEEPING;
