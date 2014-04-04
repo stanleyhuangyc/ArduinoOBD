@@ -255,8 +255,16 @@ private:
         state &= ~(STATE_OBD_READY | STATE_ACC_READY);
         state |= STATE_SLEEPING;
         //digitalWrite(SD_CS_PIN, LOW);
-        for (int i = 0; !init(); i++) {
-            if (i == 10) lcd.clear();
+        for (uint16_t i = 0; ; i++) {
+            if (i == 5) {
+                lcd.backlight(false);
+                lcd.clear();
+            }
+            if (init()) {
+                int value;
+                if (read(PID_RPM, value) && value > 0)
+                    break;
+            }
         }
         state &= ~STATE_SLEEPING;
         fileIndex++;
