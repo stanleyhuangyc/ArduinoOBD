@@ -79,9 +79,6 @@ public:
         delay(1000);
         */
 
-        uint16_t flags = FLAG_CAR | FLAG_OBD;
-        if (state & STATE_GPS_FOUND) flags |= FLAG_GPS;
-        if (state & STATE_ACC_READY) flags |= FLAG_ACC;
 #if ENABLE_DATA_LOG
         uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
         lcd.setFont(FONT_SIZE_SMALL);
@@ -108,9 +105,10 @@ public:
         }
 #endif
 
+#if 0
         showECUCap();
         delay(3000);
-
+#endif
         initScreen();
     }
     void benchmark()
@@ -333,7 +331,6 @@ private:
         }
         state &= ~STATE_SLEEPING;
         fileIndex++;
-        write('\r');
         lcd.backlight(true);
         setup();
     }
