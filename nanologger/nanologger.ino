@@ -70,11 +70,8 @@ public:
 
         showStates();
 
-        uint16_t flags = FLAG_CAR | FLAG_OBD;
-        if (state & STATE_GPS_FOUND) flags |= FLAG_GPS;
-        if (state & STATE_ACC_READY) flags |= FLAG_ACC;
 #if ENABLE_DATA_LOG
-        uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
+        uint16_t index = openFile();
         lcd.setFont(FONT_SIZE_SMALL);
         lcd.setCursor(86, 0);
         if (index) {
