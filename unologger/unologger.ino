@@ -485,7 +485,6 @@ private:
         lcd.setCursor(296, 12);
         lcd.print("KB");
 
-
         lcd.setTextColor(RGB16_WHITE);
 
 
