@@ -132,7 +132,7 @@ public:
         lcd.printInt(index);
 #endif
 
-#ifndef MEMORY_SAVING
+#if 0
         showECUCap();
         delay(1000);
 #endif
@@ -448,14 +448,12 @@ private:
         for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
             lcd.setCursor(160, i * 2 + 4);
             lcd.print(namelist[i]);
-        }
-        for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+            lcd.write(' ');
             bool valid = isValidPID(pidlist[i]);
             lcd.setTextColor(valid ? RGB16_GREEN : RGB16_RED);
-            lcd.setCursor(304, i * 2 + 4);
             lcd.draw(valid ? tick : cross, 16, 16);
+            lcd.setTextColor(RGB16_WHITE);
         }
-        lcd.setTextColor(RGB16_WHITE);
     }
     void reconnect()
     {
@@ -467,8 +465,16 @@ private:
         lcd.print("Reconnecting...");
         state &= ~(STATE_OBD_READY | STATE_ACC_READY | STATE_DATE_SAVED);
         //digitalWrite(SD_CS_PIN, LOW);
-        for (int i = 0; !init(); i++) {
-            if (i == 10) lcd.clear();
+        for (uint16_t i = 0; ; i++) {
+            if (i == 5) {
+                lcd.backlight(false);
+                lcd.clear();
+            }
+            if (init()) {
+                int value;
+                if (read(PID_RPM, value) && value > 0)
+                    break;
+            }
         }
         fileIndex++;
         setup();

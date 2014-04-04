@@ -9,7 +9,7 @@
 /**************************************
 * Choose model of OBD-II Adapter
 **************************************/
-#define OBD_MODEL OBD_MODEL_UART
+#define OBD_MODEL OBD_MODEL_I2C
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
@@ -45,7 +45,6 @@
 **************************************/
 #define ENABLE_DATA_OUT 0
 #define ENABLE_DATA_LOG 1
-#define USE_OBD_BT 0
 #define LOG_FORMAT FORMAT_CSV /* options: FORMAT_CSV, FORMAT_BIN */
 
 /**************************************
