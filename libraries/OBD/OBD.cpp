@@ -225,14 +225,14 @@ byte COBD::receive(char* buffer, int timeout)
 	unsigned char n = 0;
 	bool prompted = false;
 
-	buffer[0] = 0;
+	if (buffer) buffer[0] = 0;
 	for (;;) {
 	    if (available()) {
 	        char c = read();
 	        if (n > 2 && c == '>') {
 	            // prompt char received
 	            prompted = true;
-	        } else if (n < OBD_RECV_BUF_SIZE - 1) {
+	        } else if (n < OBD_RECV_BUF_SIZE - 1 && buffer) {
 	            buffer[n++] = c;
 	            if (c == '.') {
                     n = 0;

@@ -10,7 +10,7 @@
 #define OBD_TIMEOUT_SHORT 2000 /* ms */
 #define OBD_TIMEOUT_LONG 7000 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
-#define OBD_RECV_BUF_SIZE 80
+#define OBD_RECV_BUF_SIZE 128
 
 #ifndef OBDUART
 #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644P__)
@@ -155,7 +155,7 @@ public:
     // GPS API
     bool gpsQuery(GPS_DATA* gpsdata);
     void gpsSetup(uint32_t baudrate, const char* cmds = 0);
-private:
+protected:
     bool sendCommand(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
     byte receive(char* buffer, int timeout = OBD_TIMEOUT_SHORT);
     byte m_addr;
