@@ -1,18 +1,21 @@
 #ifndef CONFIG_H_INCLUDED
 #define CONFIG_H_INCLUDED
 
+#define OBD_MODEL_UART 0
+#define OBD_MODEL_I2C 1
+
 /**************************************
 * OBD-II options
 **************************************/
-#define OBD_MODEL OBD_MODEL_UART
+#define OBD_MODEL OBD_MODEL_I2C
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
 * Data logging/streaming out
 **************************************/
 #define ENABLE_DATA_OUT 1
-#define ENABLE_DATA_LOG 1
-#define USE_SOFTSERIAL 1
+#define ENABLE_DATA_LOG 0
+#define USE_SOFTSERIAL 0
 //this defines the format of log file
 #define LOG_FORMAT FORMAT_CSV
 
@@ -40,9 +43,9 @@
 /**************************************
 * Choose LCD model here
 **************************************/
-//LCD_ILI9341 lcd;
+LCD_ILI9341 lcd;
 //LCD_SSD1306 lcd;
-LCD_Null lcd;
+//LCD_Null lcd;
 
 /**************************************
 * Other options

@@ -121,12 +121,8 @@ public:
             }
         }
 
-        uint16_t flags = FLAG_CAR | FLAG_OBD;
-        if (state & STATE_GPS_CONNECTED) flags |= FLAG_GPS;
-        if (state & STATE_ACC_READY) flags |= FLAG_ACC;
-
 #if ENABLE_DATA_LOG
-        uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
+        uint16_t index = openFile();
         lcd.setCursor(0, 6);
         lcd.print("File ID:");
         lcd.printInt(index);
