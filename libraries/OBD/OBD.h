@@ -1,7 +1,7 @@
 /*************************************************************************
 * Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
-* Visit http://freematics.com for more information
+* Visit http://arduinodev.com for more information
 * (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
@@ -58,7 +58,11 @@ class COBD
 {
 public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
-	virtual void begin();
+	/*
+       Serial baudrate is only adjustable for Arduino OBD-II Adapters V2
+       Check out http://arduinodev.com/hardware/obd-kit/
+	*/
+	virtual void begin(unsigned long baudrate = 0);
 	virtual bool init(byte protocol = 0);
 	virtual bool read(byte pid, int& result);
 	virtual void sleep();
@@ -75,7 +79,7 @@ public:
 	byte vin[17];
 protected:
 	virtual char* getResponse(byte& pid, char* buffer);
-	virtual byte receive(char* buffer, int timeout = OBD_TIMEOUT_SHORT);
+	virtual byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
 	virtual bool available();
 	virtual char read();
 	virtual void write(const char* s);

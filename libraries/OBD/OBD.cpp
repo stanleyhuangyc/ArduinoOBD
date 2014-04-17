@@ -1,7 +1,7 @@
 /*************************************************************************
 * Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
-* Visit http://freematics.com for more information
+* Visit http://arduinodev.com for more information
 * (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
@@ -214,9 +214,17 @@ bool COBD::isValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-void COBD::begin()
+void COBD::begin(unsigned long baudrate)
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
+	if (baudrate) {
+        OBDUART.print("ATBR1 ");
+        OBDUART.print(baudrate);
+        OBDUART.print('\r');
+        OBDUART.end();
+        delay(100);
+        OBDUART.begin(baudrate);
+	}
 }
 
 byte COBD::receive(char* buffer, int timeout)
@@ -225,20 +233,23 @@ byte COBD::receive(char* buffer, int timeout)
 	unsigned char n = 0;
 	bool prompted = false;
 
-	if (buffer) buffer[0] = 0;
 	for (;;) {
 	    if (available()) {
 	        char c = read();
 	        if (n > 2 && c == '>') {
 	            // prompt char received
 	            prompted = true;
-	        } else if (n < OBD_RECV_BUF_SIZE - 1 && buffer) {
-	            buffer[n++] = c;
-	            if (c == '.') {
-                    n = 0;
-	                timeout = OBD_TIMEOUT_LONG;
+	        } else if (n < OBD_RECV_BUF_SIZE - 1) {
+	            if (buffer) {
+                    if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
+                        n = 0;
+                        timeout = OBD_TIMEOUT_LONG;
+                    } else {
+                        buffer[n++] = c;
+                    }
+	            } else {
+                    n++;
 	            }
-	            buffer[n] = 0;
 	        }
 	    } else if (prompted) {
 	        break;
@@ -250,6 +261,7 @@ byte COBD::receive(char* buffer, int timeout)
 	        dataIdleLoop();
 	    }
 	}
+    if (buffer) buffer[n] = 0;
 	return n;
 }
 
