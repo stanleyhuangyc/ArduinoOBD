@@ -165,7 +165,7 @@ public:
         ld.checksum = getChecksum((char*)&ld, 12);
 #endif
 #if ENABLE_DATA_OUT
-#if LOG_FORMAT == FORMAT_BIN
+#if STREAM_FORMAT == FORMAT_BIN
         SerialBLE.write((uint8_t*)&ld, 12);
 #else
         SerialBLE.print(pid, HEX);
@@ -197,7 +197,7 @@ public:
         ld.checksum = getChecksum((char*)&ld, 12);
 #endif
 #if ENABLE_DATA_OUT
-#if LOG_FORMAT == FORMAT_BIN
+#if STREAM_FORMAT == FORMAT_BIN
         SerialBLE.write((uint8_t*)&ld, 12);
 #else
         SerialBLE.print(pid, HEX);
@@ -229,7 +229,7 @@ public:
         ld.checksum = getChecksum((char*)&ld, 16);
 #endif
 #if ENABLE_DATA_OUT
-#if LOG_FORMAT == FORMAT_BIN
+#if STREAM_FORMAT == FORMAT_BIN
         SerialBLE.write((uint8_t*)&ld, 16);
 #else
         SerialBLE.print(pid, HEX);
@@ -265,7 +265,7 @@ public:
         ld.checksum = getChecksum((char*)&ld, 16);
 #endif
 #if ENABLE_DATA_OUT
-#if LOG_FORMAT == FORMAT_BIN
+#if STREAM_FORMAT == FORMAT_BIN
         SerialBLE.write((uint8_t*)&ld, 16);
 #else
         SerialBLE.print(pid, HEX);
@@ -301,7 +301,7 @@ public:
         ld.checksum = getChecksum((char*)&ld, 20);
 #endif
 #if ENABLE_DATA_OUT
-#if LOG_FORMAT == FORMAT_BIN
+#if STREAM_FORMAT == FORMAT_BIN
         SerialBLE.write((uint8_t*)&ld, 20);
 #else
         SerialBLE.print(pid, HEX);
