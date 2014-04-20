@@ -198,7 +198,7 @@ public:
     }
     void setXY(uint16_t x, uint16_t y)
     {
-        m_y = x;
+        m_x = x;
         m_y = y;
     }
     void setTextColor(uint16_t color)
