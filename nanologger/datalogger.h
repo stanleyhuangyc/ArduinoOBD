@@ -175,6 +175,7 @@ public:
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 12);
         dataSize += 12;
@@ -207,6 +208,7 @@ public:
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 12);
         dataSize += 12;
@@ -241,6 +243,7 @@ public:
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 16);
         dataSize += 16;
@@ -277,6 +280,7 @@ public:
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 16);
         dataSize += 16;
@@ -315,6 +319,7 @@ public:
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 20);
         dataSize += 20;
@@ -375,7 +380,7 @@ public:
     }
     void flushFile()
     {
-        sdfile.flush();
+        if (sdfile) sdfile.flush();
     }
 #endif
     uint32_t dataTime;
