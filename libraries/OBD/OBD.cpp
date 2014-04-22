@@ -22,9 +22,9 @@ unsigned int hex2uint16(const char *p)
 		} else if (c>='a' && c<='f') {
 			c -= 39;
         } else if (c == ' ') {
-            continue;
+		continue;
         } else if (c < '0' || c > '9') {
-			break;
+		break;
         }
 		i = (i << 4) | (c & 0xF);
 		n++;
@@ -39,14 +39,14 @@ unsigned char hex2uint8(const char *p)
 	if (c1 >= 'A' && c1 <= 'F')
 		c1 -= 7;
 	else if (c1 >='a' && c1 <= 'f')
-	    c1 -= 39;
+		c1 -= 39;
 	else if (c1 < '0' || c1 > '9')
 		return 0;
 
 	if (c2 >= 'A' && c2 <= 'F')
 		c2 -= 7;
 	else if (c2 >= 'a' && c2 <= 'f')
-	    c2 -= 39;
+		c2 -= 39;
 	else if (c2 < '0' || c2 > '9')
 		return 0;
 
@@ -85,7 +85,7 @@ char COBD::read()
 {
 	char c = OBDUART.read();
 #ifdef REDIRECT
-    REDIRECT.write(c);
+	REDIRECT.write(c);
 #endif
 	return c;
 }
@@ -218,41 +218,34 @@ void COBD::begin(unsigned long baudrate)
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 	if (baudrate) {
-        OBDUART.print("ATBR1 ");
-        OBDUART.print(baudrate);
-        OBDUART.print('\r');
-        OBDUART.end();
-        delay(100);
-        OBDUART.begin(baudrate);
+		OBDUART.print("ATBR1 ");
+		OBDUART.print(baudrate);
+		OBDUART.print('\r');
+		OBDUART.end();
+		delay(100);
+		OBDUART.begin(baudrate);
 	}
 }
 
 byte COBD::receive(char* buffer, int timeout)
 {
-	unsigned long startTime = millis();
 	unsigned char n = 0;
-	bool prompted = false;
-
-	for (;;) {
+	for (unsigned long startTime = millis();;) {
 	    if (available()) {
 	        char c = read();
 	        if (n > 2 && c == '>') {
 	            // prompt char received
-	            prompted = true;
+	            break;
+	        } else if (!buffer) {
+                n++;
 	        } else if (n < OBD_RECV_BUF_SIZE - 1) {
-	            if (buffer) {
-                    if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
-                        n = 0;
-                        timeout = OBD_TIMEOUT_LONG;
-                    } else {
-                        buffer[n++] = c;
-                    }
-	            } else {
-                    n++;
-	            }
+                if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
+                    n = 0;
+                    timeout = OBD_TIMEOUT_LONG;
+                } else {
+                    buffer[n++] = c;
+                }
 	        }
-	    } else if (prompted) {
-	        break;
 	    } else {
 	        if (millis() - startTime > timeout) {
 	            // timeout
@@ -261,8 +254,9 @@ byte COBD::receive(char* buffer, int timeout)
 	        dataIdleLoop();
 	    }
 	}
-    if (buffer) buffer[n] = 0;
-	return n;
+
+	if (buffer) buffer[n] = 0;
+		return n;
 }
 
 void COBD::recover()
@@ -282,20 +276,20 @@ bool COBD::init(byte protocol)
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
-	    debugOutput(initcmd[i]);
+		debugOutput(initcmd[i]);
 #endif
-	    write(initcmd[i]);
+		write(initcmd[i]);
 		if (receive(buffer) == 0) {
-	        return false;
+			return false;
 		}
 		delay(50);
 	}
 	if (protocol) {
-	        write("ATSP");
-	        write('0' + protocol);
-	        write('\r');
-	        receive(buffer);
-	        delay(50);
+		write("ATSP");
+		write('0' + protocol);
+		write('\r');
+		receive(buffer);
+		delay(50);
 	}
 	while (available()) read();
 
