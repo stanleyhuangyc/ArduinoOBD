@@ -582,8 +582,12 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
+		<Unit filename="ILI9341.cpp" />
+		<Unit filename="MultiLCD.cpp" />
+		<Unit filename="MultiLCD.h" />
 		<Unit filename="config.h" />
 		<Unit filename="datalogger.h" />
+		<Unit filename="fonts.cpp" />
 		<Unit filename="images.h" />
 		<Unit filename="unologger.ino">
 			<Option compile="1" />

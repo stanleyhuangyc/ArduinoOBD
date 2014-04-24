@@ -10,9 +10,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-#if USE_MPU6050
 #include <MPU6050.h>
-#endif
 #include "MultiLCD.h"
 #include "images.h"
 #include "config.h"
@@ -28,7 +26,6 @@
 #define STATE_SLEEPING 0x20
 
 static uint32_t lastFileSize = 0;
-static int lastSpeed = -1;
 static int speed = 0;
 static uint32_t distance = 0;
 static uint16_t fileIndex = 0;
@@ -37,13 +34,11 @@ static uint16_t elapsed = 0;
 static uint8_t lastPid = 0;
 static int lastValue = 0;
 
-static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
-static byte pidTier2[] = {PID_INTAKE_MAP, PID_TIMING_ADVANCE};
-static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
+static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_INTAKE_MAP};
+static byte pidTier2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
 
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
-#define TIER_NUM3 sizeof(pidTier3)
 
 #if OBD_MODEL == OBD_MODEL_UART
 class COBDLogger : public COBD, public CDataLogger
@@ -73,47 +68,32 @@ public:
 
         showStates();
 
-        /*
         lcd.clear();
         benchmark();
-        delay(1000);
-        */
-
-#if ENABLE_DATA_LOG
-        if (state & STATE_SD_READY) {
-            uint16_t index = openFile();
-            lcd.setFont(FONT_SIZE_SMALL);
-            lcd.setCursor(86, 0);
-            if (index) {
-                lcd.write('[');
-                lcd.setFlags(FLAG_PAD_ZERO);
-                lcd.printInt(index, 5);
-                lcd.setFlags(0);
-                lcd.write(']');
-            } else {
-                lcd.print("NO LOG");
-            }
-            delay(100);
-        }
-#endif
+        delay(5000);
 
 #if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
             lcd.setFont(FONT_SIZE_MEDIUM);
-            lcd.setCursor(0, 8);
+            lcd.setCursor(0, 10);
             if (checkSD()) {
                 state |= STATE_SD_READY;
-                showStates();
+                uint16_t index = openFile();
+                lcd.setCursor(0, 12);
+                if (index) {
+                    lcd.print("File ID: ");
+                    lcd.print(index);
+                } else {
+                    lcd.print("No File");
+                }
                 delay(1000);
             }
         }
 #endif
 
-        /*
         showECUCap();
         delay(3000);
-        */
 
         initScreen();
     }
@@ -130,6 +110,7 @@ public:
             lcd.print(millis());
             lcd.write(']');
             lcd.println(pidTier1[n], HEX);
+            memset(buf, 0, sizeof(buf));
             if (receive(buf) > 0) {
                 lcd.println(buf);
                 count++;
@@ -155,8 +136,6 @@ public:
             index = 0;
             if (index2 == TIER_NUM2) {
                 index2 = 0;
-                logOBDData(pidTier3[index3]);
-                index3 = (index3 + 1) % TIER_NUM3;
             } else {
                 logOBDData(pidTier2[index2++]);
             }
@@ -277,12 +256,8 @@ private:
         int value;
         // send a query to OBD adapter for specified OBD-II pid
 
-        // send a query command
-        sendQuery(pid);
-        // wait for reponse
-        pid = 0; // this lets PID also get from response
         // receive and parse the response
-        if (getResult(pid, value)) {
+        if (read(pid, value)) {
             dataTime = millis();
             // log data to SD card
             logData(0x100 | pid, value);
@@ -353,9 +328,11 @@ private:
         lcd.setCursor(0, 6);
         lcd.print("OBD ");
         showTickCross(state & STATE_OBD_READY);
+#if USE_MPU6050
         lcd.setCursor(0, 8);
         lcd.print("ACC ");
         showTickCross(state & STATE_ACC_READY);
+#endif
     }
     void showData(byte pid, int value)
     {
@@ -367,12 +344,9 @@ private:
             showChart(value);
             break;
         case PID_SPEED:
-            if (lastSpeed != value) {
-                lcd.setCursor(90, 2);
-                lcd.setFont(FONT_SIZE_XLARGE);
-                lcd.printInt((unsigned int)value % 1000, 3);
-                lastSpeed = value;
-            }
+            lcd.setCursor(90, 2);
+            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.printInt((unsigned int)value % 1000, 3);
             break;
         case PID_ENGINE_LOAD:
             lcd.setCursor(164, 2);

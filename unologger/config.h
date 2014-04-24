@@ -13,8 +13,8 @@
 /**************************************
 * Data logging/streaming out
 **************************************/
-#define ENABLE_DATA_OUT 0
-#define ENABLE_DATA_LOG 1
+#define ENABLE_DATA_OUT 1
+#define ENABLE_DATA_LOG 0
 #define USE_SOFTSERIAL 0
 //this defines the format of log file
 #define LOG_FORMAT FORMAT_CSV
@@ -39,13 +39,12 @@
 * Choose LCD model here
 **************************************/
 LCD_ILI9341 lcd;
-//LCD_SSD1306 lcd;
 //LCD_Null lcd;
 
 /**************************************
 * Other options
 **************************************/
-#define USE_MPU6050 0
+#define USE_MPU6050 1
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 //#define DEBUG Serial
 #define DEBUG_BAUDRATE 9600
