@@ -13,11 +13,13 @@
 /**************************************
 * Data logging/streaming out
 **************************************/
-#define ENABLE_DATA_OUT 1
-#define ENABLE_DATA_LOG 0
+#define ENABLE_DATA_OUT 0
+#define ENABLE_DATA_LOG 1
 #define USE_SOFTSERIAL 0
 //this defines the format of log file
 #define LOG_FORMAT FORMAT_CSV
+#define STREAM_FORMAT FORMAT_CSV
+#define STREAM_BAUDRATE 115200
 
 /**************************************
 * Default working mode
@@ -32,13 +34,6 @@
 //#define SD_CS_PIN 4 // ethernet shield
 //#define SD_CS_PIN 7 // microduino
 #define SD_CS_PIN 10 // SD breakout
-
-/**************************************
-* Config GPS here
-**************************************/
-#define USE_GPS 0
-#define GPS_BAUDRATE 38400 /* bps */
-//#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
 /**************************************
 * Choose LCD model here

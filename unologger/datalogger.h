@@ -63,14 +63,6 @@ typedef struct {
 #define PID_ACC 0xF020
 #define PID_GYRO 0xF021
 
-#define PID_MESSAGE 0xFE00
-#define PID_HEART_BEAT 0xFFEE
-
-#define MSG_FILE_LIST_BEGIN 0x1
-#define MSG_FILE_LIST_END 0x2
-#define MSG_FILE_INFO 0x3
-#define MSG_FILE_REQUEST 0x4
-
 #if LOG_FORMAT == FORMAT_BIN
 #define FILE_NAME_FORMAT "/DAT%05d.LOG"
 #else
@@ -89,75 +81,34 @@ typedef struct {
     SoftwareSerial SerialBLE(A2, A3); /* for BLE Shield on UNO/leonardo*/
 #endif
 
-#define OUTPUT_BAUDRATE 9600
-
 #else
 
 #define SerialBLE Serial
-#define OUTPUT_BAUDRATE 115200
 
 #endif
 
 #endif
-
-void btInit(int baudrate);
-void btSend(byte* data, byte length);
 
 class CDataLogger {
 public:
     void initSender()
     {
 #if ENABLE_DATA_OUT
-        SerialBLE.begin(OUTPUT_BAUDRATE);
+        SerialBLE.begin(STREAM_BAUDRATE);
 #endif
 #if ENABLE_DATA_LOG && LOG_FORMAT == FORMAT_CSV
         m_lastDataTime = 0;
 #endif
     }
-#if ENABLE_DATA_OUT
-    void sendFileInfo(File& file)
+    void logData(char c)
     {
-        if (file.size() < HEADER_LEN) return;
-
-        LOG_DATA_FILE_INFO info = {0};
-        info.fileIndex = atol(file.name() + 3);
-        if (info.fileIndex == 0) return;
-
-        HEADER hdr;
-        if (file.readBytes((char*)&hdr, sizeof(hdr)) != sizeof(hdr)) return;
-
-        info.pid = PID_MESSAGE;
-        info.message = MSG_FILE_INFO;
-        info.fileSize = file.size();
-        info.time = hdr.dateTime;
-        info.logType = hdr.logType;
-        info.logFlags = hdr.flags;
-        info.checksum = getChecksum((char*)&info, sizeof(info));
-        SerialBLE.write((uint8_t*)&info, sizeof(info));
-    }
-    void sendCommand(byte message, void* data = 0, byte bytes = 0)
-    {
-        LOG_DATA_COMMAND msg = {0, PID_MESSAGE, message};
-        if (data) memcpy(msg.data, data, bytes);
-        msg.checksum = getChecksum((char*)&msg, sizeof(msg));
-        SerialBLE.write((uint8_t*)&msg, sizeof(msg));
-    }
-    bool receiveCommand(LOG_DATA_COMMAND& msg)
-    {
-        if (!SerialBLE.available())
-            return false;
-
-        if (SerialBLE.readBytes((char*)&msg, sizeof(msg)) != sizeof(msg))
-            return false;
-
-        uint8_t checksum = msg.checksum;
-        msg.checksum = 0;
-        if (getChecksum((char*)&msg, sizeof(msg)) != msg.checksum) {
-            return false;
-        }
-        return true;
-    }
+#if ENABLE_DATA_OUT && STREAM_FORMAT == FORMAT_CSV
+        SerialBLE.write(c);
 #endif
+#if ENABLE_DATA_LOG
+        if (sdfile) dataSize += sdfile.write(c);
+#endif
+    }
     void logData(uint16_t pid, int value)
     {
 #if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
@@ -386,7 +337,7 @@ public:
     uint32_t dataTime;
     uint32_t dataSize;
 private:
-    static byte getChecksum(char* buffer, byte len)
+    byte getChecksum(char* buffer, byte len)
     {
         uint8_t checksum = 0;
         for (byte i = 0; i < len; i++) {

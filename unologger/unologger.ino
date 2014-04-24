@@ -1,16 +1,18 @@
 /*************************************************************************
-* Arduino GPS/OBD-II/G-Force Data Logger
+* Arduino OBD-II/G-Force Data Logger
 * Distributed under GPL v2.0
 * Copyright (c) 2013 Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
 *************************************************************************/
 
 #include <Arduino.h>
-#include <Wire.h>
 #include <OBD.h>
 #include <SPI.h>
 #include <SD.h>
+#include <Wire.h>
+#if USE_MPU6050
 #include <MPU6050.h>
+#endif
 #include "MultiLCD.h"
 #include "images.h"
 #include "config.h"
@@ -22,8 +24,6 @@
 // logger states
 #define STATE_SD_READY 0x1
 #define STATE_OBD_READY 0x2
-#define STATE_GPS_FOUND 0x4
-#define STATE_GPS_READY 0x8
 #define STATE_ACC_READY 0x10
 #define STATE_SLEEPING 0x20
 
@@ -80,35 +80,41 @@ public:
         */
 
 #if ENABLE_DATA_LOG
-        uint16_t index = openFile(LOG_TYPE_DEFAULT, flags);
-        lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setCursor(86, 0);
-        if (index) {
-            lcd.write('[');
-            lcd.setFlags(FLAG_PAD_ZERO);
-            lcd.printInt(index, 5);
-            lcd.setFlags(0);
-            lcd.write(']');
-        } else {
-            lcd.print("NO LOG");
+        if (state & STATE_SD_READY) {
+            uint16_t index = openFile();
+            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setCursor(86, 0);
+            if (index) {
+                lcd.write('[');
+                lcd.setFlags(FLAG_PAD_ZERO);
+                lcd.printInt(index, 5);
+                lcd.setFlags(0);
+                lcd.write(']');
+            } else {
+                lcd.print("NO LOG");
+            }
+            delay(100);
         }
-        delay(100);
 #endif
 
 #if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
+            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setCursor(0, 8);
             if (checkSD()) {
                 state |= STATE_SD_READY;
                 showStates();
+                delay(1000);
             }
         }
 #endif
 
-#if 0
+        /*
         showECUCap();
         delay(3000);
-#endif
+        */
+
         initScreen();
     }
     void benchmark()
@@ -171,7 +177,7 @@ public:
         Sd2Card card;
         SdVolume volume;
         state &= ~STATE_SD_READY;
-        pinMode(SS, OUTPUT);
+        pinMode(SD_CS_PIN, OUTPUT);
         if (card.init(SPI_FULL_SPEED, SD_CS_PIN)) {
             const char* type;
 
@@ -206,7 +212,8 @@ public:
             lcd.print("GB");
         } else {
             lcd.print("SD  ");
-            lcd.draw(cross, 16, 16);
+            showTickCross(false);
+            digitalWrite(SD_CS_PIN, HIGH);
             return false;
         }
 
@@ -243,8 +250,8 @@ private:
         }
 
 #if ENABLE_DATA_LOG
-        // flush SD data every 4KB
-        if (dataSize - lastFileSize >= 4096) {
+        // flush SD data every 1KB
+        if (dataSize - lastFileSize >= 1024) {
             flushFile();
             lastFileSize = dataSize;
             // display logged data size
@@ -261,7 +268,6 @@ private:
         dataTime = millis();
         // log x/y/z of accelerometer
         logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
-        //showGForce(data.value.y_accel);
         // log x/y/z of gyro meter
         logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
     }
@@ -334,8 +340,6 @@ private:
         lcd.backlight(true);
         setup();
     }
-    byte state;
-
     void showTickCross(bool yes)
     {
         lcd.setTextColor(yes ? RGB16_GREEN : RGB16_RED);
@@ -353,35 +357,6 @@ private:
         lcd.print("ACC ");
         showTickCross(state & STATE_ACC_READY);
     }
-#if USE_MPU6050
-    void showGForce(int g)
-    {
-        byte n;
-        /* 0~1.5g -> 0~8 */
-        g /= 85 * 25;
-        lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setCursor(0, 3);
-        if (g == 0) {
-            lcd.clearLine(1);
-        } else if (g < 0 && g >= -10) {
-            for (n = 0; n < 10 + g; n++) {
-                lcd.write(' ');
-            }
-            for (; n < 10; n++) {
-                lcd.write('<');
-            }
-            lcd.print("        ");
-        } else if (g > 0 && g < 10) {
-            lcd.print("        ");
-            for (n = 0; n < g; n++) {
-                lcd.write('>');
-            }
-            for (; n < 10; n++) {
-                lcd.write(' ');
-            }
-        }
-    }
-#endif
     void showData(byte pid, int value)
     {
         switch (pid) {
@@ -431,11 +406,13 @@ private:
     void showChart(int value)
     {
         static uint16_t pos = 0;
-        if (value < 500) return;
-        byte n = (value - 600) / 30;
-        lcd.fill(pos, pos, 239 - n, 239, RGB16_CYAN);
+        if (value >= 500) {
+            byte n = (value - 600) / 30;
+            if (n > 130) n = 130;
+            lcd.fill(pos, pos, 239 - n, 239, RGB16_CYAN);
+        }
         pos = (pos + 1) % 320;
-        lcd.fill(pos, pos, 120, 239);
+        lcd.fill(pos, pos, 110, 239);
     }
     void initLoggerScreen()
     {
@@ -490,6 +467,7 @@ private:
         //lcd.setCursor(80, 5);
         //lcd.print("AIR:   C");
     }
+    byte state;
 };
 
 static COBDLogger logger;
@@ -499,17 +477,12 @@ void setup()
     lcd.begin();
     lcd.setFont(FONT_SIZE_MEDIUM);
     lcd.setTextColor(RGB16_YELLOW);
-    lcd.println("UnoLogger");
+    lcd.println("UNOLOGGER");
     lcd.setTextColor(RGB16_WHITE);
 
     logger.begin();
     logger.initSender();
 
-#if ENABLE_DATA_LOG
-    lcd.setFont(FONT_SIZE_MEDIUM);
-    lcd.setCursor(0, 4);
-    logger.checkSD();
-#endif
     logger.setup();
 }
 
