@@ -6,11 +6,12 @@
 *************************************************************************/
 
 #include <Arduino.h>
-#include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
 #include <TinyGPS.h>
+#if USE_SOFTSERIAL
 #include <SoftwareSerial.h>
+#endif
 #include "MultiLCD.h"
 #include "config.h"
 #include "datalogger.h"
@@ -35,6 +36,7 @@ uint32_t time;
 
 
 #if USE_MPU6050
+#include <Wire.h>
 #include <MPU6050.h>
 #endif
 
@@ -45,7 +47,6 @@ uint32_t time;
 #else
 #define GPSUART Serial
 #endif
-#define GPS_BAUDRATE 38400
 
 #define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
 
@@ -285,7 +286,6 @@ void displayMPU6050()
 
 void setup()
 {
-    Wire.begin();
     lcd.begin();
     lcd.setFont(FONT_SIZE_MEDIUM);
 
@@ -295,18 +295,23 @@ void setup()
     CheckSD();
 
     lcd.setCursor(0, 2);
-    lcd.print("ACC:");
-    lcd.print(acc ? "YES" : "NO");
+    int index = logger.openFile();
+    lcd.print("File: ");
+    lcd.println(index);
 
-    lcd.setCursor(0, 4);
+#if USE_MPU6050
+    Wire.begin();
+    acc = initACC();
+
+    lcd.print("ACC:");
+    lcd.println(acc ? "YES" : "NO");
+#endif
+
+    lcd.setCursor(0, 6);
     lcd.print("GPS:");
 
     GPSUART.begin(GPS_BAUDRATE);
     logger.initSender();
-
-#if USE_MPU6050
-    acc = initACC();
-#endif
 
     byte n = 0xff;
     uint32_t tm = 0;
@@ -346,7 +351,6 @@ void setup()
 
     //GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 
-    logger.openFile(LOG_TYPE_TRIP, FLAG_GPS | (acc ? FLAG_ACC : 0));
 
     initScreen();
 

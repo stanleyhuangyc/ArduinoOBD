@@ -1,14 +1,3 @@
-typedef enum {
-    LOG_TYPE_DEFAULT = 0,
-    LOG_TYPE_DASH,
-    LOG_TYPE_LAPS,
-    LOG_TYPE_TRIP,
-} LOG_TYPES;
-
-#define FLAG_OBD 0x1
-#define FLAG_GPS 0x2
-#define FLAG_ACC 0x4
-
 #define FORMAT_BIN 0
 #define FORMAT_CSV 1
 
@@ -74,242 +63,235 @@ typedef struct {
 #define PID_ACC 0xF020
 #define PID_GYRO 0xF021
 
-#define PID_MESSAGE 0xFE00
-#define PID_HEART_BEAT 0xFFEE
-
-#define MSG_FILE_LIST_BEGIN 0x1
-#define MSG_FILE_LIST_END 0x2
-#define MSG_FILE_INFO 0x3
-#define MSG_FILE_REQUEST 0x4
-
 #if LOG_FORMAT == FORMAT_BIN
 #define FILE_NAME_FORMAT "/DAT%05d.LOG"
 #else
 #define FILE_NAME_FORMAT "/DAT%05d.CSV"
 #endif
 
-#if ENABLE_DATA_OUT && !USE_OBD_BT
+#if ENABLE_DATA_OUT
+
+#if USE_SOFTSERIAL
+
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-    SoftwareSerial mySerial(A8, A9); /* for BLE Shield on MEGA*/
+    SoftwareSerial SerialBLE(A8, A9); /* for BLE Shield on MEGA*/
 #elif defined(__AVR_ATmega644P__)
-    SoftwareSerial mySerial(9, 10); /* for Microduino */
+    SoftwareSerial SerialBLE(9, 10); /* for Microduino */
 #else
-    SoftwareSerial mySerial(A2, A3); /* for BLE Shield on UNO*/
-#endif
+    SoftwareSerial SerialBLE(A2, A3); /* for BLE Shield on UNO/leonardo*/
 #endif
 
-void btInit(int baudrate);
-void btSend(byte* data, byte length);
+#else
+
+#define SerialBLE Serial
+
+#endif
+
+#endif
 
 class CDataLogger {
 public:
     void initSender()
     {
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btInit(9600);
-#else
-        mySerial.begin(9600);
-#endif
+        SerialBLE.begin(STREAM_BAUDRATE);
 #endif
 #if ENABLE_DATA_LOG && LOG_FORMAT == FORMAT_CSV
         m_lastDataTime = 0;
 #endif
     }
-#if ENABLE_DATA_OUT
-    void sendFileInfo(File& file)
+    void logData(char c)
     {
-        if (file.size() < HEADER_LEN) return;
-
-        LOG_DATA_FILE_INFO info = {0};
-        info.fileIndex = atol(file.name() + 3);
-        if (info.fileIndex == 0) return;
-
-        HEADER hdr;
-        if (file.readBytes((char*)&hdr, sizeof(hdr)) != sizeof(hdr)) return;
-
-        info.pid = PID_MESSAGE;
-        info.message = MSG_FILE_INFO;
-        info.fileSize = file.size();
-        info.time = hdr.dateTime;
-        info.logType = hdr.logType;
-        info.logFlags = hdr.flags;
-        info.checksum = getChecksum((char*)&info, sizeof(info));
-#if USE_OBD_BT
-        btSend((uint8_t*)&info, sizeof(info));
-#else
-        mySerial.write((uint8_t*)&info, sizeof(info));
+#if ENABLE_DATA_OUT && STREAM_FORMAT == FORMAT_CSV
+        SerialBLE.write(c);
+#endif
+#if ENABLE_DATA_LOG
+        if (sdfile) dataSize += sdfile.write(c);
 #endif
     }
-    void sendCommand(byte message, void* data = 0, byte bytes = 0)
-    {
-        LOG_DATA_COMMAND msg = {0, PID_MESSAGE, message};
-        if (data) memcpy(msg.data, data, bytes);
-        msg.checksum = getChecksum((char*)&msg, sizeof(msg));
-#if USE_OBD_BT
-        btSend((uint8_t*)&msg, sizeof(msg));
-#else
-        mySerial.write((uint8_t*)&msg, sizeof(msg));
-#endif
-    }
-    bool receiveCommand(LOG_DATA_COMMAND& msg)
-    {
-#if !USE_OBD_BT
-        if (!mySerial.available())
-            return false;
-
-        if (mySerial.readBytes((char*)&msg, sizeof(msg)) != sizeof(msg))
-            return false;
-
-        uint8_t checksum = msg.checksum;
-        msg.checksum = 0;
-        if (getChecksum((char*)&msg, sizeof(msg)) != msg.checksum) {
-            return false;
-        }
-#endif
-        return true;
-    }
-#endif
     void logData(uint16_t pid, int value)
     {
+#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
+#endif
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 12);
+#if STREAM_FORMAT == FORMAT_BIN
+        SerialBLE.write((uint8_t*)&ld, 12);
 #else
-        mySerial.write((uint8_t*)&ld, 12);
+        SerialBLE.print(pid, HEX);
+        SerialBLE.write(',');
+        SerialBLE.print(value);
+        SerialBLE.write('\n');
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 12);
         dataSize += 12;
 #else
         dataSize += sdfile.print(dataTime - m_lastDataTime);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value);
-        dataSize += sdfile.write('\n');
+        sdfile.write('\n');
+        dataSize += 3;
         m_lastDataTime = dataTime;
 #endif
 #endif
     }
     void logData(uint16_t pid, float value)
     {
+#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
+#endif
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 12);
+#if STREAM_FORMAT == FORMAT_BIN
+        SerialBLE.write((uint8_t*)&ld, 12);
 #else
-        mySerial.write((uint8_t*)&ld, 12);
+        SerialBLE.print(pid, HEX);
+        SerialBLE.write(',');
+        SerialBLE.print(value);
+        SerialBLE.write('\n');
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 12);
         dataSize += 12;
 #else
         dataSize += sdfile.print(dataTime - m_lastDataTime);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value);
-        dataSize += sdfile.write('\n');
+        sdfile.write('\n');
+        dataSize += 3;
         m_lastDataTime = dataTime;
 #endif
 #endif
     }
     void logData(uint16_t pid, float value1, float value2)
     {
+#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
         ld.checksum = getChecksum((char*)&ld, 16);
+#endif
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 16);
+#if STREAM_FORMAT == FORMAT_BIN
+        SerialBLE.write((uint8_t*)&ld, 16);
 #else
-        mySerial.write((uint8_t*)&ld, 16);
+        SerialBLE.print(pid, HEX);
+        SerialBLE.write(',');
+        SerialBLE.print(value1, 6);
+        SerialBLE.write(',');
+        SerialBLE.print(value2, 6);
+        SerialBLE.write('\n');
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 16);
         dataSize += 16;
 #else
         dataSize += sdfile.print(dataTime - m_lastDataTime);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value1, 6);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value2, 6);
-        dataSize += sdfile.write('\n');
+        sdfile.write('\n');
+        dataSize += 4;
         m_lastDataTime = dataTime;
 #endif
 #endif
     }
     void logData(uint16_t pid, uint32_t value1, uint32_t value2)
     {
+#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
         ld.checksum = getChecksum((char*)&ld, 16);
+#endif
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 16);
+#if STREAM_FORMAT == FORMAT_BIN
+        SerialBLE.write((uint8_t*)&ld, 16);
 #else
-        mySerial.write((uint8_t*)&ld, 16);
+        SerialBLE.print(pid, HEX);
+        SerialBLE.write(',');
+        SerialBLE.print(value1);
+        SerialBLE.write(',');
+        SerialBLE.print(value2);
+        SerialBLE.write('\n');
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 16);
         dataSize += 16;
 #else
         dataSize += sdfile.print(dataTime - m_lastDataTime);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value1);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value2);
-        dataSize += sdfile.write('\n');
+        sdfile.write('\n');
+        dataSize += 4;
         m_lastDataTime = dataTime;
 #endif
 #endif
     }
     void logData(uint16_t pid, int value1, int value2, int value3)
     {
+#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
         ld.checksum = getChecksum((char*)&ld, 20);
+#endif
 #if ENABLE_DATA_OUT
-#if USE_OBD_BT
-        btSend((uint8_t*)&ld, 20);
+#if STREAM_FORMAT == FORMAT_BIN
+        SerialBLE.write((uint8_t*)&ld, 20);
 #else
-        mySerial.write((uint8_t*)&ld, 20);
+        SerialBLE.print(pid, HEX);
+        SerialBLE.write(',');
+        SerialBLE.print(value1);
+        SerialBLE.write(',');
+        SerialBLE.print(value2);
+        SerialBLE.write(',');
+        SerialBLE.print(value3);
+        SerialBLE.write('\n');
 #endif
 #endif
 #if ENABLE_DATA_LOG
+        if (!sdfile) return;
 #if LOG_FORMAT == FORMAT_BIN
         sdfile.write((uint8_t*)&ld, 20);
         dataSize += 20;
 #else
         dataSize += sdfile.print(dataTime - m_lastDataTime);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(pid, HEX);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value1);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value2);
-        dataSize += sdfile.write(',');
+        sdfile.write(',');
         dataSize += sdfile.print(value3);
-        dataSize += sdfile.write('\n');
+        sdfile.write('\n');
+        dataSize += 5;
         m_lastDataTime = dataTime;
 #endif
 #endif
     }
 #if ENABLE_DATA_LOG
-    uint16_t openFile(LOG_TYPES logType, uint16_t logFlags = 0, uint32_t dateTime = 0)
+    uint16_t openFile(uint16_t logFlags = 0, uint32_t dateTime = 0)
     {
         uint16_t fileIndex;
         char filename[24] = "/FRMATICS";
@@ -335,12 +317,15 @@ public:
         }
 
 #if LOG_FORMAT == FORMAT_BIN
-        HEADER hdr = {'UDUS', HEADER_LEN, 1, logType, logFlags, dateTime};
+        HEADER hdr = {'UDUS', HEADER_LEN, 1, 0, logFlags, dateTime};
         sdfile.write((uint8_t*)&hdr, sizeof(hdr));
         for (byte i = 0; i < HEADER_LEN - sizeof(hdr); i++)
             sdfile.write((uint8_t)0);
         dataSize = HEADER_LEN;
+#else
+        sdfile.println("# Freematics Log File");
 #endif
+        sdfile.flush();
         return fileIndex;
     }
     void closeFile()
@@ -349,13 +334,13 @@ public:
     }
     void flushFile()
     {
-        sdfile.flush();
+        if (sdfile) sdfile.flush();
     }
 #endif
     uint32_t dataTime;
     uint32_t dataSize;
 private:
-    static byte getChecksum(char* buffer, byte len)
+    byte getChecksum(char* buffer, byte len)
     {
         uint8_t checksum = 0;
         for (byte i = 0; i < len; i++) {
