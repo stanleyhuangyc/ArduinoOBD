@@ -1,7 +1,7 @@
 /*************************************************************************
 * Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
-* Visit http://arduinodev.com for more information
+* Visit http://freematics.com for more information
 * (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
@@ -482,7 +482,7 @@ uint16_t COBDI2C::getData(byte pid, int& result)
 	case PID_ABSOLUTE_ENGINE_LOAD:
 	case PID_ETHANOL_PERCENTAGE:
 	case PID_HYBRID_BATTERY_PERCENTAGE:
-		result = pi->value * 100 / 255; // %
+		result = (uint16_t)(pi->value * 100 + 50) / 255;
 		break;
 	case PID_MAF_FLOW:
 		result = pi->value / 100;
@@ -490,14 +490,14 @@ uint16_t COBDI2C::getData(byte pid, int& result)
 	case PID_TIMING_ADVANCE:
 		result = (int)pi->value / 2 - 64;
 		break;
-	case PID_CONTROL_MODULE_VOLTAGE: // V
-		result = pi->value / 1000;
+	case PID_CONTROL_MODULE_VOLTAGE: // mV
+		result = pi->value;
 		break;
 	case PID_ENGINE_FUEL_RATE: // L/h
 		result = pi->value / 20;
 		break;
 	case PID_ENGINE_TORQUE_PERCENTAGE: // %
-		result = (int)pi->value - 125;
+		result = (uint16_t)pi->value - 125;
 		break;
 	default:
 		result = pi->value;
