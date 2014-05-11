@@ -19,11 +19,13 @@
 #endif
 #include "datalogger.h"
 
-// logger states
 #define STATE_SD_READY 0x1
 #define STATE_OBD_READY 0x2
 #define STATE_ACC_READY 0x10
 #define STATE_SLEEPING 0x20
+
+#define OBD_MODEL_UART 0
+#define OBD_MODEL_I2C 1
 
 static uint32_t lastFileSize = 0;
 static int speed = 0;

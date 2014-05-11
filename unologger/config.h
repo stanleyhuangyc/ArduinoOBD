@@ -1,19 +1,16 @@
 #ifndef CONFIG_H_INCLUDED
 #define CONFIG_H_INCLUDED
 
-#define OBD_MODEL_UART 0
-#define OBD_MODEL_I2C 1
-
 /**************************************
 * OBD-II options
 **************************************/
-#define OBD_MODEL OBD_MODEL_I2C
+#define OBD_MODEL OBD_MODEL_UART
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
 * Data logging/streaming out
 **************************************/
-#define ENABLE_DATA_OUT 1
+#define ENABLE_DATA_OUT 0
 #define ENABLE_DATA_LOG 0
 #define USE_SOFTSERIAL 0
 //this defines the format of log file
@@ -44,8 +41,7 @@ LCD_ILI9341 lcd;
 /**************************************
 * Other options
 **************************************/
-#define USE_MPU6050 1
-#define GPS_DATA_TIMEOUT 2000 /* ms */
+#define USE_MPU6050 0
 //#define DEBUG Serial
 #define DEBUG_BAUDRATE 9600
 
