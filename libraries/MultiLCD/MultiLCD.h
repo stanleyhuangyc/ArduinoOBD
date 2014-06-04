@@ -4,9 +4,14 @@
 * Copyright (c) 2013 Stanley Huang <stanleyhuangyc@live.com>
 * All rights reserved.
 *************************************************************************/
+#include <UTFT.h>
 
-#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
-//#define MEMORY_SAVING
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
+#define MEMORY_SAVING
+#endif
+
+#ifdef __arm__
+#define PROGMEM
 #endif
 
 typedef enum {
@@ -39,16 +44,16 @@ extern const PROGMEM unsigned char digits16x24[][48];
 extern const PROGMEM unsigned char font8x16_doslike[][16];
 extern const PROGMEM unsigned char font8x16_terminal[][16];
 
-#include "PCD8544.h"
-
 class LCD_Common
 {
 public:
     LCD_Common():m_font(FONT_SIZE_SMALL),m_flags(0) {}
-    void setFont(FONT_SIZE size) { m_font = size; }
+    void setFontSize(FONT_SIZE size) { m_font = size; }
     void setFlags(byte flags) { m_flags = flags; }
     virtual void backlight(bool on) {}
-    virtual void draw(const PROGMEM byte* buffer, byte width, byte height) {}
+    virtual void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height) {}
+    virtual void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0) {}
+    virtual void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height) {}
     void printInt(uint16_t value, int8_t padding = -1);
     void printLong(uint32_t value, int8_t padding = -1);
 protected:
@@ -69,63 +74,6 @@ public:
     size_t write(uint8_t c) { return 0; }
 };
 
-class LCD_PCD8544 : public LCD_Common, public PCD8544
-{
-public:
-    byte getLines() { return 6; }
-    byte getCols() { return 14; }
-    void backlight(bool on)
-    {
-        pinMode(7, OUTPUT);
-        digitalWrite(7, on ? HIGH : LOW);
-    }
-    void clearLine(byte line)
-    {
-        setCursor(0, line);
-        for (byte i = 14; i > 0; i--) write(' ');
-    }
-    void draw(const PROGMEM byte* buffer, byte width, byte height);
-private:
-    void writeDigit(byte n);
-};
-
-#include "SSD1306.h"
-
-class LCD_SSD1306 : public LCD_Common, public SSD1306, public Print
-{
-public:
-    void setCursor(byte column, byte line);
-    void draw(const PROGMEM byte* buffer, byte width, byte height);
-    size_t write(uint8_t c);
-    void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
-    void clearLine(byte line);
-    byte getLines() { return 21; }
-    byte getCols() { return 8; }
-private:
-    void writeDigit(byte n);
-    byte m_col;
-    byte m_row;
-};
-
-class LCD_SH1106 : public LCD_Common, public Print
-{
-public:
-    void begin();
-    void setCursor(byte column, byte line);
-    void draw(const PROGMEM byte* buffer, byte width, byte height);
-    size_t write(uint8_t c);
-    void clear(byte x = 0, byte y = 0, byte width = 128, byte height = 64);
-    void clearLine(byte line);
-    byte getLines() { return 21; }
-    byte getCols() { return 8; }
-private:
-    void WriteCommand(unsigned char ins);
-    void WriteData(unsigned char dat);
-    void writeDigit(byte n);
-    byte m_col;
-    byte m_row;
-};
-
 #define TFT_LINE_HEIGHT 8
 
 class LCD_ILI9325D : public LCD_Common, public Print
@@ -142,27 +90,27 @@ public:
         m_y = x;
         m_x = y;
     }
-    void setTextColor(uint16_t color)
+    void setColor(uint16_t color)
     {
         m_color[1] = color;
     }
-    void setTextColor(uint8_t R, uint8_t G, uint8_t B)
+    void setColor(uint8_t R, uint8_t G, uint8_t B)
     {
         m_color[1] = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
     }
-    void SetBGColor(uint16_t color)
+    void setBackColor(uint16_t color)
     {
         m_color[0] = color;
     }
-    void SetBGColor(uint8_t R, uint8_t G, uint8_t B)
+    void setBackColor(uint8_t R, uint8_t G, uint8_t B)
     {
         m_color[0] = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
     }
     void begin();
     void clear(uint16_t x = 0, uint16_t y = 0, uint16_t width = 320, uint16_t height = 240);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
-    void draw2x(const PROGMEM byte* buffer, byte width, byte height);
-    void draw4bpp(const PROGMEM byte* buffer, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
+    void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
     size_t write(uint8_t);
     void clearLine(byte line)
     {
@@ -201,23 +149,23 @@ public:
         m_x = x;
         m_y = y;
     }
-    void setTextColor(uint16_t color)
+    void setColor(uint16_t color)
     {
         m_color[1][0] = color & 0xff;
         m_color[1][1] = color >> 8;
     }
-    void setTextColor(uint8_t R, uint8_t G, uint8_t B)
+    void setColor(uint8_t R, uint8_t G, uint8_t B)
     {
         uint16_t color = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
         m_color[1][0] = color & 0xff;
         m_color[1][1] = color >> 8;
     }
-    void SetBGColor(uint16_t color)
+    void setBackColor(uint16_t color)
     {
         m_color[0][0] = color & 0xff;
         m_color[0][1] = color >> 8;
     }
-    void SetBGColor(uint8_t R, uint8_t G, uint8_t B)
+    void setBackColor(uint8_t R, uint8_t G, uint8_t B)
     {
         uint16_t color = ((uint16_t)R << 11) | ((uint16_t)G << 5) | B;
         m_color[0][0] = color & 0xff;
@@ -234,7 +182,7 @@ public:
     size_t write(uint8_t);
     void backlight(bool on);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
-    void draw2x(const PROGMEM byte* buffer, byte width, byte height);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
 private:
     void setXY(uint16_t x0, uint16_t x1, uint16_t y0, uint16_t y1);
     void sendPixelData(byte d);
@@ -252,3 +200,57 @@ private:
     uint16_t m_x;
     uint16_t m_y;
 };
+
+class LCD_SSD1289 : public UTFT, public LCD_Common
+{
+public:
+    LCD_SSD1289()
+    {
+        m_font = FONT_SIZE_MEDIUM;
+        disp_x_size = 239;
+        disp_y_size = 319;
+        display_transfer_mode = 16;
+        display_model = ITDB32S;
+        __p1 = 38;
+        __p2 = 39;
+        __p3 = 40;
+        __p4 = 41;
+        __p5 = 0;
+
+		P_RS	= portOutputRegister(digitalPinToPort(38));
+		B_RS	= digitalPinToBitMask(38);
+		P_WR	= portOutputRegister(digitalPinToPort(39));
+		B_WR	= digitalPinToBitMask(39);
+		P_CS	= portOutputRegister(digitalPinToPort(40));
+		B_CS	= digitalPinToBitMask(40);
+		P_RST	= portOutputRegister(digitalPinToPort(41));
+		B_RST	= digitalPinToBitMask(41);
+    }
+    void setCursor(uint16_t column, uint8_t line)
+    {
+        m_x = column;
+        m_y = (uint16_t)line * TFT_LINE_HEIGHT;
+    }
+    void setXY(uint16_t x, uint16_t y)
+    {
+        m_x = x;
+        m_y = y;
+    }
+    void begin();
+    void clear();
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
+    void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    size_t write(uint8_t);
+    void clearLine(byte line)
+    {
+        //clear(0, line * TFT_LINE_HEIGHT, 320, 8);
+    }
+private:
+    void setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+    void writeDigit(byte n);
+    void clearPixels(uint16_t pixels);
+    void Enable();
+    void Disable();
+};
+
