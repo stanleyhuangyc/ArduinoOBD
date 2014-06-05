@@ -1,11 +1,6 @@
 #ifndef CONFIG_H_INCLUDED
 #define CONFIG_H_INCLUDED
 
-// definitions
-#define OBD_MODEL_UART 0
-#define OBD_MODEL_I2C 1
-
-// configurations
 /**************************************
 * Choose model of OBD-II Adapter
 **************************************/
@@ -44,13 +39,15 @@
 * Data logging/streaming options
 **************************************/
 #define ENABLE_DATA_OUT 0
-#define ENABLE_DATA_LOG 1
+#define ENABLE_DATA_LOG 0
 #define LOG_FORMAT FORMAT_CSV /* options: FORMAT_CSV, FORMAT_BIN */
 
 /**************************************
-* LCD module
+* LCD module (uncomment only one)
 **************************************/
-LCD_ILI9325D lcd; /* for ILI9325 based TFT shield */
-//LCD_ILI9341 lcd; /* for ILI9341 based SPI TFT */
+//LCD_SSD1289 lcd; /* 3.2" SSD12389 based TFT LCD */
+LCD_ILI9325D lcd; /* 2.8" ILI9325 based TFT LCD */
+//LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
+//LCD_Null lcd;
 
 #endif

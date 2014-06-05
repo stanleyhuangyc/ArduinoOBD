@@ -32,10 +32,10 @@
 
 #ifdef USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
-#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__SAM3X8E__)
-#define GPSUART Serial2
-#elif defined(__AVR_ATmega644P__)
+#if defined(__AVR_ATmega644P__)
 #define GPSUART Serial1
+#else
+#define GPSUART Serial2
 #endif
 
 #ifdef GPSUART
@@ -49,10 +49,6 @@
 TinyGPS gps;
 
 #endif // GPSUART
-#endif
-
-#if !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega644P__) && !defined(__SAM3X8E__)
-#define MEMORY_SAVING
 #endif
 
 static uint8_t lastFileSize = 0;
@@ -128,10 +124,8 @@ public:
         lcd.printInt(index);
 #endif
 
-#if 0
         showECUCap();
         delay(1000);
-#endif
 
         read(PID_DISTANCE, (int&)startDistance);
 
@@ -164,7 +158,7 @@ public:
             char buf[10];
             unsigned int sec = (dataTime - startTime) / 1000;
             sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
-            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(250, 2);
             lcd.print(buf);
             lcd.setCursor(250, 11);
@@ -197,7 +191,7 @@ public:
         pinMode(SS, OUTPUT);
         lcd.setCursor(0, 4);
 
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         if (card.init(SPI_FULL_SPEED, SD_CS_PIN)) {
             const char* type;
             char buf[20];
@@ -268,7 +262,7 @@ private:
         char buf[10];
         unsigned int t = (millis() - startTime) / 1000;
         sprintf(buf, "%02u:%02u", t / 60, t % 60);
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(0, 28);
         lcd.print(buf);
 #ifdef GPSUART
@@ -332,7 +326,7 @@ private:
                 logData(PID_GPS_ALTITUDE, (float)gps.altitude());
             }
 
-            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
             char buf[16];
             sprintf(buf, "%d.%ld", (int)(lat / 100000), abs(lat) % 100000);
             lcd.setCursor(50, 18);
@@ -366,7 +360,7 @@ private:
         accel_t_gyro_union data;
         MPU6050_readout(&data);
 
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
 
         sprintf(buf, "%3d", data.value.x_accel / 160);
         lcd.setCursor(197, 21);
@@ -419,10 +413,10 @@ private:
         if ((dataSize >> 10) != lastFileSize) {
             flushFile();
             // display logged data size
-            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(250, 8);
             lcd.printInt((unsigned int)(dataSize >> 10));
-            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setFontSize(FONT_SIZE_SMALL);
             lcd.print(" KB");
             lastFileSize = dataSize >> 10;
         }
@@ -440,15 +434,15 @@ private:
         byte pidlist[] = {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD, PID_MAF_FLOW, PID_INTAKE_MAP, PID_FUEL_LEVEL, PID_FUEL_PRESSURE, PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_TIMING_ADVANCE, PID_BAROMETRIC};
         const char* namelist[] = {"ENGINE RPM", "SPEED", "THROTTLE", "ENGINE LOAD", "MAF", "MAP", "FUEL LEVEL", "FUEL PRESSURE", "COOLANT TEMP", "INTAKE TEMP","AMBIENT TEMP", "IGNITION TIMING", "BAROMETER"};
 
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
             lcd.setCursor(160, i * 2 + 4);
             lcd.print(namelist[i]);
             lcd.write(' ');
             bool valid = isValidPID(pidlist[i]);
-            lcd.setTextColor(valid ? RGB16_GREEN : RGB16_RED);
+            lcd.setColor(valid ? RGB16_GREEN : RGB16_RED);
             lcd.draw(valid ? tick : cross, 16, 16);
-            lcd.setTextColor(RGB16_WHITE);
+            lcd.setColor(RGB16_WHITE);
         }
     }
     void reconnect()
@@ -457,7 +451,7 @@ private:
         closeFile();
 #endif
         lcd.clear();
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting...");
         state &= ~(STATE_OBD_READY | STATE_ACC_READY | STATE_DATE_SAVED);
         //digitalWrite(SD_CS_PIN, LOW);
@@ -480,63 +474,63 @@ private:
     // screen layout related stuff
     void showStates()
     {
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
 
         lcd.setCursor(0, 8);
         lcd.print("OBD ");
-        lcd.setTextColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
+        lcd.setColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
         lcd.draw((state & STATE_OBD_READY) ? tick : cross, 16, 16);
-        lcd.setTextColor(RGB16_WHITE);
+        lcd.setColor(RGB16_WHITE);
 
         lcd.setCursor(0, 10);
         lcd.print("ACC ");
-        lcd.setTextColor((state & STATE_ACC_READY) ? RGB16_GREEN : RGB16_RED);
+        lcd.setColor((state & STATE_ACC_READY) ? RGB16_GREEN : RGB16_RED);
         lcd.draw((state & STATE_ACC_READY) ? tick : cross, 16, 16);
-        lcd.setTextColor(RGB16_WHITE);
+        lcd.setColor(RGB16_WHITE);
 
         lcd.setCursor(0, 12);
         lcd.print("GPS ");
         if (state & STATE_GPS_READY) {
-            lcd.setTextColor(RGB16_GREEN);
+            lcd.setColor(RGB16_GREEN);
             lcd.draw(tick, 16, 16);
         } else if (state & STATE_GPS_CONNECTED)
             lcd.print("--");
         else {
-            lcd.setTextColor(RGB16_RED);
+            lcd.setColor(RGB16_RED);
             lcd.draw(cross, 16, 16);
         }
-        lcd.setTextColor(RGB16_WHITE);
+        lcd.setColor(RGB16_WHITE);
     }
     void showSensorData(byte pid, int value)
     {
         char buf[8];
         switch (pid) {
         case PID_RPM:
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.setCursor(34, 7);
             lcd.printInt((unsigned int)value % 10000, 4);
             break;
         case PID_SPEED:
             if (lastSpeed != value) {
-                lcd.setFont(FONT_SIZE_XLARGE);
+                lcd.setFontSize(FONT_SIZE_XLARGE);
                 lcd.setCursor(50, 2);
                 lcd.printInt((unsigned int)value % 1000, 3);
                 lastSpeed = value;
             }
             break;
         case PID_THROTTLE:
-            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setFontSize(FONT_SIZE_SMALL);
             lcd.setCursor(39, 12);
             lcd.printInt(value % 100, 3);
             break;
         case PID_INTAKE_TEMP:
-            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setFontSize(FONT_SIZE_SMALL);
             lcd.setCursor(102, 12);
             lcd.printInt(value % 1000, 3);
             break;
         case PID_DISTANCE:
             if ((unsigned int)value >= startDistance) {
-                lcd.setFont(FONT_SIZE_MEDIUM);
+                lcd.setFontSize(FONT_SIZE_MEDIUM);
                 lcd.setCursor(250, 5);
                 lcd.printInt(((unsigned int)value - startDistance) % 1000);
                 lcd.print("km");
@@ -547,18 +541,16 @@ private:
     void initScreen()
     {
         lcd.clear();
-#ifndef MEMORY_SAVING
-        lcd.draw2x(frame0[0], 78, 58);
+        lcd.draw4bpp(frame0[0], 78, 58);
         lcd.setXY(164, 0);
-        lcd.draw2x(frame0[0], 78, 58);
+        lcd.draw4bpp(frame0[0], 78, 58);
         lcd.setXY(0, 124);
-        lcd.draw2x(frame0[0], 78, 58);
+        lcd.draw4bpp(frame0[0], 78, 58);
         lcd.setXY(164, 124);
-        lcd.draw2x(frame0[0], 78, 58);
-#endif
+        lcd.draw4bpp(frame0[0], 78, 58);
 
         //lcd.setColor(RGB16(0x7f, 0x7f, 0x7f));
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(110, 4);
         lcd.print("km/h");
         lcd.setCursor(110, 8);
@@ -587,12 +579,12 @@ private:
         lcd.setCursor(20, 27);
         lcd.print("SAT:");
 
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(185, 18);
         lcd.print("Accelerometer");
         lcd.setCursor(200, 23);
         lcd.print("Gyroscope");
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(185, 21);
         lcd.print("X:     Y:     Z:");
         lcd.setCursor(185, 26);
@@ -626,13 +618,8 @@ void btSend(byte* data, byte length)
 
 void setup()
 {
-    lcd.begin();
-    lcd.setFont(FONT_SIZE_MEDIUM);
-    lcd.backlight(true);
-    lcd.setTextColor(0xFFE0);
-    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
-    lcd.setTextColor(RGB16_WHITE);
-
+    Serial.begin(115200);
+    Serial.println("MegaLogger");
 #ifdef GPSUART
 #ifdef GPS_OPEN_BAUDRATE
     GPSUART.begin(GPS_OPEN_BAUDRATE);
@@ -648,6 +635,13 @@ void setup()
 
     logger.begin();
     logger.initSender();
+
+    lcd.begin();
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.backlight(true);
+    lcd.setColor(0xFFE0);
+    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
+    lcd.setColor(RGB16_WHITE);
 
     logger.checkSD();
     logger.setup();
