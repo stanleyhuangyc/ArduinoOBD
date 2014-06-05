@@ -19,11 +19,13 @@
 #endif
 #include "datalogger.h"
 
-// logger states
 #define STATE_SD_READY 0x1
 #define STATE_OBD_READY 0x2
 #define STATE_ACC_READY 0x10
 #define STATE_SLEEPING 0x20
+
+#define OBD_MODEL_UART 0
+#define OBD_MODEL_I2C 1
 
 static uint32_t lastFileSize = 0;
 static int speed = 0;
@@ -75,7 +77,7 @@ public:
 #if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
-            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(0, 10);
             if (checkSD()) {
                 state |= STATE_SD_READY;
@@ -99,7 +101,7 @@ public:
     }
     void benchmark()
     {
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
 
         char buf[OBD_RECV_BUF_SIZE];
         uint8_t count = 0;
@@ -218,7 +220,7 @@ private:
         }
         uint16_t t = (millis() - startTime) >> 10;
         if (t != elapsed) {
-            lcd.setFont(FONT_SIZE_MEDIUM);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(260, 8);
             lcd.printInt(elapsed / 60, 2);
             lcd.write(':');
@@ -272,7 +274,7 @@ private:
     void showECUCap()
     {
         lcd.clear();
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         byte pid = 0;
         uint16_t col;
         uint8_t row;
@@ -293,7 +295,7 @@ private:
         closeFile();
 #endif
         lcd.clear();
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting");
         startTime = millis();
         state &= ~(STATE_OBD_READY | STATE_ACC_READY);
@@ -317,14 +319,14 @@ private:
     }
     void showTickCross(bool yes)
     {
-        lcd.setTextColor(yes ? RGB16_GREEN : RGB16_RED);
+        lcd.setColor(yes ? RGB16_GREEN : RGB16_RED);
         lcd.draw(yes ? tick : cross, 16, 16);
-        lcd.setTextColor(RGB16_WHITE);
+        lcd.setColor(RGB16_WHITE);
     }
     // screen layout related stuff
     void showStates()
     {
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(0, 6);
         lcd.print("OBD ");
         showTickCross(state & STATE_OBD_READY);
@@ -339,39 +341,39 @@ private:
         switch (pid) {
         case PID_RPM:
             lcd.setCursor(0, 2);
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.printInt((unsigned int)value % 10000, 4);
             showChart(value);
             break;
         case PID_SPEED:
             lcd.setCursor(90, 2);
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.printInt((unsigned int)value % 1000, 3);
             break;
         case PID_ENGINE_LOAD:
             lcd.setCursor(164, 2);
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.printInt(value % 100, 3);
             break;
         case PID_INTAKE_TEMP:
             if ((uint16_t)value < 1000) {
                 lcd.setCursor(248, 2);
-                lcd.setFont(FONT_SIZE_XLARGE);
+                lcd.setFontSize(FONT_SIZE_XLARGE);
                 lcd.printInt(value, 3);
             }
             break;
         case PID_INTAKE_MAP:
             lcd.setCursor(164, 9);
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.printInt((uint16_t)value % 1000, 3);
             break;
         case PID_COOLANT_TEMP:
             lcd.setCursor(8, 9);
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.printInt((uint16_t)value % 1000, 3);
             break;
         case PID_DISTANCE:
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.setCursor(90, 9);
             lcd.printInt((uint16_t)value % 1000, 3);
             break;
@@ -392,8 +394,8 @@ private:
     {
         lcd.clear();
         lcd.backlight(true);
-        lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setTextColor(RGB16_CYAN);
+        lcd.setFontSize(FONT_SIZE_SMALL);
+        lcd.setColor(RGB16_CYAN);
         lcd.setCursor(4, 0);
         lcd.print("ENGINE RPM");
         lcd.setCursor(104, 0);
@@ -415,7 +417,7 @@ private:
         lcd.setCursor(260, 10);
         lcd.print("LOG SIZE");
 
-        lcd.setTextColor(RGB16_YELLOW);
+        lcd.setColor(RGB16_YELLOW);
         lcd.setCursor(24, 5);
         lcd.print("rpm");
         lcd.setCursor(110, 5);
@@ -433,7 +435,7 @@ private:
         lcd.setCursor(296, 12);
         lcd.print("KB");
 
-        lcd.setTextColor(RGB16_WHITE);
+        lcd.setColor(RGB16_WHITE);
 
 
         //lcd.setCursor(0, 5);
@@ -449,10 +451,10 @@ static COBDLogger logger;
 void setup()
 {
     lcd.begin();
-    lcd.setFont(FONT_SIZE_MEDIUM);
-    lcd.setTextColor(RGB16_YELLOW);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.setColor(RGB16_YELLOW);
     lcd.println("UNOLOGGER");
-    lcd.setTextColor(RGB16_WHITE);
+    lcd.setColor(RGB16_WHITE);
 
     logger.begin();
     logger.initSender();
