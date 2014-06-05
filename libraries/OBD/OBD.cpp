@@ -6,25 +6,24 @@
 *************************************************************************/
 
 #include <Arduino.h>
-#include <avr/pgmspace.h>
 #include "OBD.h"
 
 //#define DEBUG Serial
 //#define REDIRECT Serial
 
-unsigned int hex2uint16(const char *p)
+uint16_t hex2uint16(const char *p)
 {
 	char c = *p;
-	unsigned int i = 0;
+	uint16_t i = 0;
 	for (char n = 0; c && n < 4; c = *(++p)) {
 		if (c >= 'A' && c <= 'F') {
 			c -= 7;
 		} else if (c>='a' && c<='f') {
 			c -= 39;
         } else if (c == ' ') {
-		continue;
+            continue;
         } else if (c < '0' || c > '9') {
-		break;
+			break;
         }
 		i = (i << 4) | (c & 0xF);
 		n++;
@@ -32,21 +31,21 @@ unsigned int hex2uint16(const char *p)
 	return i;
 }
 
-unsigned char hex2uint8(const char *p)
+byte hex2uint8(const char *p)
 {
-	unsigned char c1 = *p;
-	unsigned char c2 = *(p + 1);
+	byte c1 = *p;
+	byte c2 = *(p + 1);
 	if (c1 >= 'A' && c1 <= 'F')
 		c1 -= 7;
 	else if (c1 >='a' && c1 <= 'f')
-		c1 -= 39;
+	    c1 -= 39;
 	else if (c1 < '0' || c1 > '9')
 		return 0;
 
 	if (c2 >= 'A' && c2 <= 'F')
 		c2 -= 7;
 	else if (c2 >= 'a' && c2 <= 'f')
-		c2 -= 39;
+	    c2 -= 39;
 	else if (c2 < '0' || c2 > '9')
 		return 0;
 
@@ -85,7 +84,7 @@ char COBD::read()
 {
 	char c = OBDUART.read();
 #ifdef REDIRECT
-	REDIRECT.write(c);
+    REDIRECT.write(c);
 #endif
 	return c;
 }
@@ -218,12 +217,12 @@ void COBD::begin(unsigned long baudrate)
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 	if (baudrate) {
-		OBDUART.print("ATBR1 ");
-		OBDUART.print(baudrate);
-		OBDUART.print('\r');
-		OBDUART.end();
-		delay(100);
-		OBDUART.begin(baudrate);
+        OBDUART.print("ATBR1 ");
+        OBDUART.print(baudrate);
+        OBDUART.print('\r');
+        OBDUART.end();
+        delay(100);
+        OBDUART.begin(baudrate);
 	}
 }
 
@@ -254,9 +253,8 @@ byte COBD::receive(char* buffer, int timeout)
 	        dataIdleLoop();
 	    }
 	}
-
-	if (buffer) buffer[n] = 0;
-		return n;
+    if (buffer) buffer[n] = 0;
+	return n;
 }
 
 void COBD::recover()
@@ -276,20 +274,20 @@ bool COBD::init(byte protocol)
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
-		debugOutput(initcmd[i]);
+	    debugOutput(initcmd[i]);
 #endif
-		write(initcmd[i]);
+	    write(initcmd[i]);
 		if (receive(buffer) == 0) {
-			return false;
+	        return false;
 		}
 		delay(50);
 	}
 	if (protocol) {
-		write("ATSP");
-		write('0' + protocol);
-		write('\r');
-		receive(buffer);
-		delay(50);
+	        write("ATSP");
+	        write('0' + protocol);
+	        write('\r');
+	        receive(buffer);
+	        delay(50);
 	}
 	while (available()) read();
 
@@ -461,7 +459,7 @@ uint16_t COBDI2C::getData(byte pid, int& result)
 	for (n = 0; n < MAX_PIDS && obdPid[n] != pid; n++);
 	if (n == MAX_PIDS)
 		return -1;
-	
+
 	PID_INFO* pi = obdInfo + n;
 	switch (pid) {
 	case PID_RPM:
@@ -482,7 +480,7 @@ uint16_t COBDI2C::getData(byte pid, int& result)
 	case PID_ABSOLUTE_ENGINE_LOAD:
 	case PID_ETHANOL_PERCENTAGE:
 	case PID_HYBRID_BATTERY_PERCENTAGE:
-		result = (uint16_t)(pi->value * 100 + 50) / 255;
+		result = pi->value * 100 / 255; // %
 		break;
 	case PID_MAF_FLOW:
 		result = pi->value / 100;
@@ -490,14 +488,14 @@ uint16_t COBDI2C::getData(byte pid, int& result)
 	case PID_TIMING_ADVANCE:
 		result = (int)pi->value / 2 - 64;
 		break;
-	case PID_CONTROL_MODULE_VOLTAGE: // mV
-		result = pi->value;
+	case PID_CONTROL_MODULE_VOLTAGE: // V
+		result = pi->value / 1000;
 		break;
 	case PID_ENGINE_FUEL_RATE: // L/h
 		result = pi->value / 20;
 		break;
 	case PID_ENGINE_TORQUE_PERCENTAGE: // %
-		result = (uint16_t)pi->value - 125;
+		result = (int)pi->value - 125;
 		break;
 	default:
 		result = pi->value;
