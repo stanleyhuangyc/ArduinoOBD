@@ -1,7 +1,7 @@
-Arduino OBD-II Adapter Library & Examples
+Arduino OBD-II Adapter Library & Sketches
 =========================================
 
-(C)2012-2013 Stanley Huang
+(C)2012-2014 Freematics.com
 
 The Arduino OBD-II Adapter is a product that works as a vehicle OBD-II data bridge for Arduino with open-source Arduino library provided. Besides providing OBD-II data access, it also provides power supply (converted and regulated from OBD-II port) for Arduino and its attached devices.
 
@@ -12,42 +12,59 @@ OBD-II Data Logger Kits: http://arduinodev.com/hardware/#logger_kit
 
 About the library
 -----------------
-In current version of the library, following OBD-II PIDs are defined:
+Most commonly use PIDs are defined in OBD library as followings.
 
-    Vehicle speed (PID_SPEED)
-    Engine RPM (PID_RPM)
-    Throttle position (PID_THROTTLE)
-    Calculated Engine load (PID_ENGINE_LOAD)
-    Absolute Engine load (PID_ABS_ENGINE_LOAD)
-    Engine coolant temperature (PID_COOLANT_TEMP)
-    Intake temperature (PID_INTAKE_TEMP)
-    Intake MAP (PID_INTAKE_PRESSURE)
-    MAF flow pressure (PID_MAF_FLOW)
-    Fuel pressure (PID_FUEL_PRESSURE)
-    Fuel level (PID_FUEL_LEVEL)
-    Barometric pressure (PID_BAROMETRIC)
-    Ignition timing advance (PID_TIMING_ADVANCE)
-    Engine running time (PID_RUNTIME)
-    Vehicle running distance (PID_DISTANCE)
+Engine
 
-Additional defines can be added to access all OBD-II PIDs which the car's ECU provides. 
+    PID_RPM – Engine RPM (rpm)
+    PID_ENGINE_LOAD – Calculated engine load (%)
+    PID_COOLANT_TEMP – Engine coolant temperature (°C)
+    PID_ENGINE_LOAD – Calculated Engine load (%)
+    PID_ABSOLUTE_ENGINE_LOAD – Absolute Engine load (%)
+    PID_TIMING_ADVANCE – Ignition timing advance (°)
+    PID_ENGINE_OIL_TEMP – Engine oil temperature (°C)
+    PID_ENGINE_TORQUE_PERCENTAGE – Engine torque percentage (%)
+    PID_ENGINE_REF_TORQUE – Engine reference torque (Nm)
+
+Intake/Exhaust
+
+    PID_INTAKE_TEMP – Intake temperature (°C)
+    PID_INTAKE_PRESSURE – Intake manifold absolute pressure (kPa)
+    PID_MAF_FLOW – MAF flow pressure (grams/s)
+    PID_BAROMETRIC – Barometric pressure (kPa)
+
+Speed/Time
+
+    PID_SPEED – Vehicle speed (km/h)
+    PID_RUNTIME – Engine running time (second)
+    PID_DISTANCE – Vehicle running distance (km)
+
+Driver
+
+    PID_THROTTLE – Throttle position (%)
+    PID_AMBIENT_TEMP – Ambient temperature (°C)
+
+Electric Systems
+
+    PID_CONTROL_MODULE_VOLTAGE – vehicle control module voltage (V)
+    PID_HYBRID_BATTERY_PERCENTAGE – Hybrid battery pack remaining life (%)
+
+Additional defines can be added to access other OBD-II PIDs.
 
 Directory Descriptions
 ----------------------
 
 libraries - all Arduino libraries needed for OBD-II adapter and kits
 
-samples/dashboard_1602 - an example sketch showing a set of vehicle data with a LCD1602 shield
+samples - several simple sketches for testing purpose
 
-samples/dashboard_4884 - a sketch providing extensive display of vehicle data with a LCD4884 shield
+nanologger - OBD-II data logger working with 128x64 monochrome OLED display (for Arduino Nano)
 
-samples/dashboard_oled - a sketch providing extensive display of vehicle data with a OLED module
+unologger - OBD-II data logger working with 320x240 TFT LCD display (for Arduino UNO & Bluno)
 
-samples/obdtest - a testing sketch for OBD-II adapter
+megalogger - OBD-II and GPS data logger based on 320x240 TFT LCD display (for Arduino MEGA, ADK and DUE)
 
-obdlogger - a complete OBD-II and GPS data logger and timer based on 128x64 OLED display
-
-megalogger - a complete OBD-II and GPS data logger based on Arduino MEGA and TFT LCD shield
+utilites - useful utility source code for development
 
 How to view logged data
 -----------------------
