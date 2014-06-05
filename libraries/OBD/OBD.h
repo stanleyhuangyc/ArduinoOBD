@@ -7,16 +7,19 @@
 
 #include <Arduino.h>
 
+#define OBD_MODEL_UART 0
+#define OBD_MODEL_I2C 1
+
 #define OBD_TIMEOUT_SHORT 2000 /* ms */
 #define OBD_TIMEOUT_LONG 7000 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
 #define OBD_RECV_BUF_SIZE 128
 
 #ifndef OBDUART
-#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega644P__)
-#define OBDUART Serial1
-#else
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 #define OBDUART Serial
+#else
+#define OBDUART Serial1
 #endif
 #endif
 
@@ -51,8 +54,8 @@
 #define OBD_CONNECTING 1
 #define OBD_CONNECTED 2
 
-unsigned int hex2uint16(const char *p);
-unsigned char hex2uint8(const char *p);
+uint16_t hex2uint16(const char *p);
+uint8_t hex2uint8(const char *p);
 
 class COBD
 {
