@@ -30,15 +30,9 @@
 #define STATE_ACC_READY 0x10
 #define STATE_DATE_SAVED 0x20
 
-#ifdef USE_GPS
+#if USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
-#if defined(__AVR_ATmega644P__)
-#define GPSUART Serial1
-#else
 #define GPSUART Serial2
-#endif
-
-#ifdef GPSUART
 
 #define PMTK_SET_NMEA_UPDATE_1HZ "$PMTK220,1000*1F"
 #define PMTK_SET_NMEA_UPDATE_5HZ "$PMTK220,200*2C"
@@ -48,7 +42,6 @@
 
 TinyGPS gps;
 
-#endif // GPSUART
 #endif
 
 static uint8_t lastFileSize = 0;
@@ -87,7 +80,7 @@ public:
         showStates();
 #endif
 
-#ifdef GPSUART
+#if USE_GPS
         unsigned long t = millis();
         do {
             if (GPSUART.available() && GPSUART.read() == '\r') {
@@ -174,7 +167,7 @@ public:
             reconnect();
         }
 
-#ifdef GPSUART
+#if USE_GPS
         if (millis() - lastGPSDataTime > GPS_DATA_TIMEOUT || gps.satellites() < 3) {
             // GPS not ready
             state &= ~STATE_GPS_READY;
@@ -251,7 +244,7 @@ private:
             if (state & STATE_ACC_READY) {
                 processAccelerometer();
             }
-#ifdef GPSUART
+#if USE_GPS
             uint32_t t = millis();
             while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
                 processGPS();
@@ -267,7 +260,7 @@ private:
         lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(0, 28);
         lcd.print(buf);
-#ifdef GPSUART
+#if USE_GPS
         // detect GPS signal
         if (GPSUART.available()) {
             char c = GPSUART.read();
@@ -292,7 +285,7 @@ private:
         }
 #endif
     }
-#ifdef GPSUART
+#if USE_GPS
     void processGPS()
     {
         // process GPS data
@@ -384,7 +377,7 @@ private:
         // log x/y/z of accelerometer
         logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
         // log x/y/z of gyro meter
-        logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+        //logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
 
         lastACCDataTime = dataTime;
 #endif
@@ -626,7 +619,7 @@ void setup()
     lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
     lcd.setColor(RGB16_WHITE);
 
-#ifdef GPSUART
+#if USE_GPS
 #ifdef GPS_OPEN_BAUDRATE
     GPSUART.begin(GPS_OPEN_BAUDRATE);
     delay(10);

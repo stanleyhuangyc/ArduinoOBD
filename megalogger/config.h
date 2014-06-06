@@ -42,7 +42,8 @@
 /**************************************
 * Config GPS here
 **************************************/
-#define USE_GPS
+#define USE_GPS 1
+#define GPSUART Serial2
 #define MAX_GPS_PROCESS_TIME 50 /* ms */
 #define GPS_BAUDRATE 38400 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
