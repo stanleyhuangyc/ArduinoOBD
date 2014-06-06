@@ -4,6 +4,8 @@
 /**************************************
 * Choose model of OBD-II Adapter
 **************************************/
+// OBD_MODEL_I2C for I2C version
+// OBD_MODEL_UART for UART version
 #define OBD_MODEL OBD_MODEL_I2C
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
@@ -13,8 +15,6 @@
 // enable(1)/disable(0) data logging (if SD card is present)
 #define ENABLE_DATA_LOG 1
 
-//#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 10 // SD breakout
 #define SD_CS_PIN SS
 
 /**************************************
