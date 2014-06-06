@@ -8,12 +8,36 @@
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
-* Choose SD pin here
+* Data logging options
 **************************************/
+// enable(1)/disable(0) data logging (if SD card is present)
+#define ENABLE_DATA_LOG 1
+
 //#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 7 // microduino
 //#define SD_CS_PIN 10 // SD breakout
 #define SD_CS_PIN SS
+
+/**************************************
+* Data streaming options
+**************************************/
+// enable(1)/disable(0) data streaming
+#define ENABLE_DATA_OUT 1
+
+// uses software(1)/hardware(0) serial for data streaming
+#define USE_SOFTSERIAL 0
+
+// this defines the format of data streaming
+// FORMAT_BIN is required by Freematics OBD iOS App
+#define STREAM_FORMAT FORMAT_CSV
+
+/* Default streaming baudrates:
+   9600bps for BLE
+   38400bps for BT 2.1
+*/
+#define STREAM_BAUDRATE 9600
+
+// outputs debug information
+#define VERBOSE 0
 
 /**************************************
 * Config GPS here
@@ -31,22 +55,15 @@
 /**************************************
 * Timeout/interval options
 **************************************/
-//#define OBD_MIN_INTERVAL 200 /* ms */
+#define OBD_MIN_INTERVAL 50 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 
 /**************************************
-* Data logging/streaming options
-**************************************/
-#define ENABLE_DATA_OUT 0
-#define ENABLE_DATA_LOG 0
-#define LOG_FORMAT FORMAT_CSV /* options: FORMAT_CSV, FORMAT_BIN */
-
-/**************************************
 * LCD module (uncomment only one)
 **************************************/
-//LCD_SSD1289 lcd; /* 3.2" SSD12389 based TFT LCD */
-LCD_ILI9325D lcd; /* 2.8" ILI9325 based TFT LCD */
+LCD_SSD1289 lcd; /* 3.2" SSD12389 based TFT LCD */
+//LCD_ILI9325D lcd; /* 2.8" ILI9325 based TFT LCD */
 //LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
 //LCD_Null lcd;
 

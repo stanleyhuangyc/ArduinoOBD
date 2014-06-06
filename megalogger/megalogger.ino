@@ -124,12 +124,14 @@ public:
         lcd.printInt(index);
 #endif
 
+#if 0
         showECUCap();
         delay(1000);
-
-        read(PID_DISTANCE, (int&)startDistance);
+#endif
 
         initScreen();
+
+        read(PID_DISTANCE, (int&)startDistance);
 
         lastRefreshTime = millis() >> 10;
     }
@@ -299,17 +301,16 @@ private:
             return;
 
         // parsed GPS data is ready
-        static uint32_t lastAltTime = 0;
         uint32_t time;
         uint32_t date;
 
         dataTime = millis();
 
         gps.get_datetime(&date, &time, 0);
-        logData(PID_GPS_TIME, time, date);
+        logData(PID_GPS_TIME, (int32_t)time);
 
-        float speed = gps.speed() * 1852 / 100000;
-        logData(PID_GPS_SPEED, speed);
+        int kph = gps.speed() * 1852 / 100000;
+        logData(PID_GPS_SPEED, kph);
 
         // no need to log GPS data when vehicle has not been moving
         // that's when previous speed is zero and current speed is also zero
@@ -318,13 +319,11 @@ private:
             // lastSpeed will be updated
             //ShowSensorData(PID_SPEED, speed);
 
-            long lat, lon;
+            int32_t lat, lon;
             gps.get_position(&lat, &lon, 0);
-            logData(PID_GPS_COORDINATES, (float)lat / 100000, (float)lon / 100000);
-
-            if (dataTime - lastAltTime > 10000) {
-                logData(PID_GPS_ALTITUDE, (float)gps.altitude());
-            }
+            logData(PID_GPS_LATITUDE, lat);
+            logData(PID_GPS_LONGITUDE, lon);
+            logData(PID_GPS_ALTITUDE, (int)(gps.altitude() / 100));
 
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             char buf[16];
@@ -397,7 +396,9 @@ private:
 
         // read OBD-II data
         int value;
-        if (!read(pid, value)) {
+        sendQuery(pid);
+        pid = 0;
+        if (!getResult(pid, value)) {
             return;
         }
 
@@ -618,8 +619,13 @@ void btSend(byte* data, byte length)
 
 void setup()
 {
-    Serial.begin(115200);
-    Serial.println("MegaLogger");
+    lcd.begin();
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.backlight(true);
+    lcd.setColor(0xFFE0);
+    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
+    lcd.setColor(RGB16_WHITE);
+
 #ifdef GPSUART
 #ifdef GPS_OPEN_BAUDRATE
     GPSUART.begin(GPS_OPEN_BAUDRATE);
@@ -635,13 +641,7 @@ void setup()
 
     logger.begin();
     logger.initSender();
-
-    lcd.begin();
-    lcd.setFontSize(FONT_SIZE_MEDIUM);
-    lcd.backlight(true);
-    lcd.setColor(0xFFE0);
-    lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
-    lcd.setColor(RGB16_WHITE);
+    delay(500);
 
     logger.checkSD();
     logger.setup();
