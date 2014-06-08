@@ -28,7 +28,7 @@
 #define STATE_GPS_CONNECTED 0x4
 #define STATE_GPS_READY 0x8
 #define STATE_ACC_READY 0x10
-#define STATE_DATE_SAVED 0x20
+#define STATE_GUI_ON 0x20
 
 #if USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
@@ -48,9 +48,7 @@ static uint8_t lastFileSize = 0;
 static uint32_t lastGPSDataTime = 0;
 static uint32_t lastACCDataTime = 0;
 static uint8_t lastRefreshTime = 0;
-static uint16_t lastSpeed = -1;
 static uint16_t startDistance = 0;
-static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
@@ -112,15 +110,13 @@ public:
 
 #if ENABLE_DATA_LOG
         uint16_t index = openFile();
-        lcd.setCursor(0, 6);
+        lcd.setCursor(0, 16);
         lcd.print("File ID:");
         lcd.printInt(index);
 #endif
 
-#if 0
         showECUCap();
         delay(1000);
-#endif
 
         initScreen();
 
@@ -142,10 +138,12 @@ public:
             index = 0;
             if (index2 == TIER_NUM2) {
                 index2 = 0;
-                logOBDData(pidTier3[index3]);
+                if (isValidPID(pidTier3[index3]))
+                    logOBDData(pidTier3[index3]);
                 index3 = (index3 + 1) % TIER_NUM3;
             } else {
-                logOBDData(pidTier2[index2++]);
+                if (isValidPID(pidTier2[index2]))
+                    logOBDData(pidTier2[index2++]);
             }
         }
 
@@ -163,7 +161,7 @@ public:
             lastRefreshTime = dataTime >> 10;
         }
 
-        if (errors >= 10) {
+        if (errors >= 3) {
             reconnect();
         }
 
@@ -240,7 +238,7 @@ private:
     void dataIdleLoop()
     {
         // callback while waiting OBD data
-        if (getState() == OBD_CONNECTED) {
+        if (state & STATE_GUI_ON) {
             if (state & STATE_ACC_READY) {
                 processAccelerometer();
             }
@@ -250,40 +248,18 @@ private:
                 processGPS();
             }
 #endif
+
+            if (getState() != OBD_CONNECTED) {
+                // display while initializing
+                char buf[10];
+                unsigned int t = (millis() - startTime) / 1000;
+                sprintf(buf, "%02u:%02u", t / 60, t % 60);
+                lcd.setFontSize(FONT_SIZE_SMALL);
+                lcd.setCursor(0, 28);
+                lcd.print(buf);
+            }
             return;
         }
-
-        // display while initializing
-        char buf[10];
-        unsigned int t = (millis() - startTime) / 1000;
-        sprintf(buf, "%02u:%02u", t / 60, t % 60);
-        lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(0, 28);
-        lcd.print(buf);
-#if USE_GPS
-        // detect GPS signal
-        if (GPSUART.available()) {
-            char c = GPSUART.read();
-            if (gps.encode(c)) {
-                state |= STATE_GPS_READY;
-                lastGPSDataTime = millis();
-
-                unsigned long date, time;
-                gps.get_datetime(&date, &time, 0);
-                long lat, lon;
-                gps.get_position(&lat, &lon, 0);
-                lcd.setCursor(0, 14);
-                lcd.print("Time:");
-                lcd.print(time);
-                lcd.setCursor(0, 16);
-                lcd.print("LAT: ");
-                lcd.print(lat);
-                lcd.setCursor(0, 18);
-                lcd.print("LON: ");
-                lcd.println(lon);
-            }
-        }
-#endif
     }
 #if USE_GPS
     void processGPS()
@@ -309,9 +285,6 @@ private:
         // that's when previous speed is zero and current speed is also zero
         byte sat = gps.satellites();
         if (sat >= 3 && sat < 100) {
-            // lastSpeed will be updated
-            //ShowSensorData(PID_SPEED, speed);
-
             int32_t lat, lon;
             gps.get_position(&lat, &lon, 0);
             logData(PID_GPS_LATITUDE, lat);
@@ -392,6 +365,7 @@ private:
         sendQuery(pid);
         pid = 0;
         if (!getResult(pid, value)) {
+            errors++;
             return;
         }
 
@@ -444,24 +418,31 @@ private:
 #if ENABLE_DATA_LOG
         closeFile();
 #endif
+        uninit();
         lcd.clear();
         lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting...");
-        state &= ~(STATE_OBD_READY | STATE_ACC_READY | STATE_DATE_SAVED);
+        state &= ~(STATE_OBD_READY | STATE_GUI_ON);
         //digitalWrite(SD_CS_PIN, LOW);
         for (uint16_t i = 0; ; i++) {
-            if (i == 5) {
+            if (i == 3) {
                 lcd.backlight(false);
                 lcd.clear();
             }
-            if (init()) {
-                int value;
-                if (read(PID_RPM, value) && value > 0)
-                    break;
-            }
+            if (getState() != OBD_CONNECTED && !init())
+                continue;
+
+            int value;
+            if (read(PID_RPM, value) && value > 0)
+                break;
         }
-        fileIndex++;
-        setup();
+        lcd.backlight(true);
+        state |= STATE_OBD_READY;
+#if ENABLE_DATA_LOG
+        openFile();
+#endif
+        initScreen();
+        read(PID_DISTANCE, (int&)startDistance);
     }
     byte state;
 
@@ -505,12 +486,9 @@ private:
             lcd.printInt((unsigned int)value % 10000, 4);
             break;
         case PID_SPEED:
-            if (lastSpeed != value) {
-                lcd.setFontSize(FONT_SIZE_XLARGE);
-                lcd.setCursor(50, 2);
-                lcd.printInt((unsigned int)value % 1000, 3);
-                lastSpeed = value;
-            }
+            lcd.setFontSize(FONT_SIZE_XLARGE);
+            lcd.setCursor(50, 2);
+            lcd.printInt((unsigned int)value % 1000, 3);
             break;
         case PID_THROTTLE:
             lcd.setFontSize(FONT_SIZE_SMALL);
@@ -593,6 +571,8 @@ private:
         lcd.setCursor(112, 4);
         lcd.print("C");
         */
+
+        state |= STATE_GUI_ON;
     }
 };
 
@@ -629,7 +609,7 @@ void setup()
     GPSUART.begin(GPS_BAUDRATE);
     // switching to 10Hz mode, effective only for MTK3329
     //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
-    GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
+    //GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 #endif
 
     logger.begin();

@@ -56,7 +56,7 @@
 /**************************************
 * Timeout/interval options
 **************************************/
-#define OBD_MIN_INTERVAL 50 /* ms */
+#define OBD_MIN_INTERVAL 25 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 
