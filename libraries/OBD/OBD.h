@@ -67,6 +67,7 @@ public:
 	*/
 	virtual void begin(unsigned long baudrate = 0);
 	virtual bool init(byte protocol = 0);
+	virtual void uninit();
 	virtual bool read(byte pid, int& result);
 	virtual void sleep();
 	virtual void wakeup();
