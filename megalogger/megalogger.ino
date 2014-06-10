@@ -1,8 +1,9 @@
 /*************************************************************************
 * Arduino GPS/OBD-II/G-Force Data Logger
 * Distributed under GPL v2.0
-* Copyright (c) 2013 Stanley Huang <stanleyhuangyc@gmail.com>
+* Copyright (c) 2013-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
+* Visit http://freematics.com for more information
 *************************************************************************/
 
 #include <Arduino.h>
@@ -17,7 +18,7 @@
 #include <SPI.h>
 #include "config.h"
 #include "images.h"
-#if ENABLE_DATA_OUT
+#if ENABLE_DATA_OUT && USE_SOFTSERIAL
 #include <SoftwareSerial.h>
 #endif
 #include "datalogger.h"
@@ -53,7 +54,7 @@ static uint32_t startTime = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL};
+static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
 
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
@@ -147,7 +148,7 @@ public:
             }
         }
 
-        if (dataTime >> 10 != lastRefreshTime) {
+        if ((dataTime >> 10) != lastRefreshTime) {
             char buf[10];
             unsigned int sec = (dataTime - startTime) / 1000;
             sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
@@ -365,7 +366,6 @@ private:
         sendQuery(pid);
         pid = 0;
         if (!getResult(pid, value)) {
-            errors++;
             return;
         }
 
@@ -429,7 +429,7 @@ private:
                 lcd.backlight(false);
                 lcd.clear();
             }
-            if (getState() != OBD_CONNECTED && !init())
+            if ((getState() != OBD_CONNECTED || errors > 1) && !init())
                 continue;
 
             int value;
@@ -476,29 +476,52 @@ private:
         }
         lcd.setColor(RGB16_WHITE);
     }
+    void setColorByValue(int value, int threshold1, int threshold2, int threshold3)
+    {
+        if (value < threshold1) {
+          lcd.setColor(RGB16_WHITE);
+        } else if (value < threshold2) {
+          byte n = (uint32_t)(threshold2 - value) * 255 / (threshold2 - threshold1);
+          lcd.setColor(255, 255, n);
+        } else if (value < threshold3) {
+          byte n = (uint32_t)(threshold3 - value) * 255 / (threshold3 - threshold2);
+          lcd.setColor(255, n, 0);
+        } else {
+          lcd.setColor(255, 0, 0); 
+        }
+    }
     void showSensorData(byte pid, int value)
     {
+        static int lastSpeed;
         char buf[8];
         switch (pid) {
         case PID_RPM:
             lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.setCursor(34, 7);
-            lcd.printInt((unsigned int)value % 10000, 4);
+            if (value >= 10000) break;
+            setColorByValue(value, 2500, 3500, 4500);
+            lcd.printInt(value, 4);
             break;
         case PID_SPEED:
             lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.setCursor(50, 2);
+            if (value > 350) break;
+            setColorByValue(value, 60, 100, 150);
             lcd.printInt((unsigned int)value % 1000, 3);
             break;
         case PID_THROTTLE:
-            lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(39, 12);
-            lcd.printInt(value % 100, 3);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
+            lcd.setCursor(42, 11);
+            if (value >= 100) break;
+            setColorByValue(value, 50, 75, 90);
+            lcd.printInt(value, 2);
             break;
-        case PID_INTAKE_TEMP:
-            lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(102, 12);
-            lcd.printInt(value % 1000, 3);
+        case PID_ENGINE_LOAD:
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
+            lcd.setCursor(116, 11);
+            if (value >= 100) break;
+            setColorByValue(value, 50, 75, 90);
+            lcd.printInt(value, 2);
             break;
         case PID_DISTANCE:
             if ((unsigned int)value >= startDistance) {
@@ -509,6 +532,7 @@ private:
             }
             break;
         }
+        lcd.setColor(RGB16_WHITE);
     }
     void initScreen()
     {
@@ -529,8 +553,8 @@ private:
         lcd.print("rpm");
         lcd.setCursor(15, 12);
         lcd.print("THR:    %");
-        lcd.setCursor(78, 12);
-        lcd.print("AIR:    C");
+        lcd.setCursor(84, 12);
+        lcd.print("LOAD:    %");
 
         //lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.setCursor(185, 2);
@@ -577,18 +601,6 @@ private:
 };
 
 static COBDLogger logger;
-
-#if ENABLE_DATA_OUT && USE_OBD_BT
-void btInit(int baudrate)
-{
-    logger.btInit(baudrate);
-}
-
-void btSend(byte* data, byte length)
-{
-    logger.btSend(data, length);
-}
-#endif
 
 void setup()
 {

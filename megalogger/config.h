@@ -14,7 +14,6 @@
 **************************************/
 // enable(1)/disable(0) data logging (if SD card is present)
 #define ENABLE_DATA_LOG 1
-
 #define SD_CS_PIN SS
 
 /**************************************
@@ -40,7 +39,7 @@
 #define VERBOSE 0
 
 /**************************************
-* Config GPS here
+* GPS configuration
 **************************************/
 #define USE_GPS 1
 #define GPSUART Serial2
@@ -56,7 +55,7 @@
 /**************************************
 * Timeout/interval options
 **************************************/
-#define OBD_MIN_INTERVAL 25 /* ms */
+#define OBD_MIN_INTERVAL 20 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 

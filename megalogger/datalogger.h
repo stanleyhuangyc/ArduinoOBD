@@ -1,3 +1,11 @@
+/*************************************************************************
+* Arduino Data Logger Class
+* Distributed under GPL v2.0
+* Copyright (c) 2013-2014 Stanley Huang <stanleyhuangyc@gmail.com>
+* All rights reserved.
+* Visit http://freematics.com for more information
+*************************************************************************/
+
 #define FORMAT_BIN 0
 #define FORMAT_CSV 1
 
@@ -143,7 +151,8 @@ public:
     {
         uint16_t fileIndex;
         char filename[24] = "/FRMATICS";
-
+        
+        dataSize = 0;
         if (SD.exists(filename)) {
             for (fileIndex = 1; fileIndex; fileIndex++) {
                 sprintf(filename + 9, FILE_NAME_FORMAT, fileIndex);
@@ -163,8 +172,6 @@ public:
         if (!sdfile) {
             return 0;
         }
-
-        dataSize = sdfile.print(idstr);
         return fileIndex;
     }
     void closeFile()
