@@ -7,7 +7,6 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <UTFT.h>
 #include "MultiLCD.h"
 #include "fonts.h"
 

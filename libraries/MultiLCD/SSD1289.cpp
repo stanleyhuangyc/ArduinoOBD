@@ -166,9 +166,11 @@ void LCD_SSD1289::clearPixels(uint16_t pixels)
 
 void LCD_SSD1289::clear()
 {
+	setColor(0);
+	fillRect(0, 0, 319, 239);
+	setColor(0xffff);
     m_x = 0;
     m_y = 0;
-    clrScr();
 }
 
 size_t LCD_SSD1289::write(uint8_t c)
