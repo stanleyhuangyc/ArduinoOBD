@@ -313,11 +313,6 @@ bool COBD::init(byte protocol)
 	return true;
 }
 
-void COBD::uninit()
-{
-    m_state = OBD_DISCONNECTED;
-}
-
 #ifdef DEBUG
 void COBD::debugOutput(const char *s)
 {
@@ -354,12 +349,14 @@ bool COBDI2C::init(byte protocol)
 	}
 	if (recvbuf[4] == 'Y') {
 		memcpy(pidmap, recvbuf + 16, sizeof(pidmap));
-		m_state = OBD_CONNECTED;
-		return true;
-	} else {
-		m_state = OBD_DISCONNECTED;
-		return false;
+		int value;
+		if (read(PID_RPM, value)) {
+			m_state = OBD_CONNECTED;
+			return true;
+		}
 	}
+	m_state = OBD_DISCONNECTED;
+	return false;
 }
 
 bool COBDI2C::read(byte pid, int& result)
