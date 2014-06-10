@@ -51,6 +51,8 @@
 * Accelerometer & Gyro
 **************************************/
 #define USE_MPU6050 1
+#define ACC_DATA_RATIO 160
+#define GYRO_DATA_RATIO 256
 
 /**************************************
 * Timeout/interval options

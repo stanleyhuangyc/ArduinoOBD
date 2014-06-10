@@ -48,13 +48,13 @@ TinyGPS gps;
 static uint8_t lastFileSize = 0;
 static uint32_t lastGPSDataTime = 0;
 static uint32_t lastACCDataTime = 0;
-static uint8_t lastRefreshTime = 0;
+static uint32_t lastRefreshTime = 0;
 static uint16_t startDistance = 0;
 static uint32_t startTime = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
+static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE, PID_DISTANCE};
 
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
@@ -123,7 +123,7 @@ public:
 
         read(PID_DISTANCE, (int&)startDistance);
 
-        lastRefreshTime = millis() >> 10;
+        lastRefreshTime = millis();
     }
     void loop()
     {
@@ -148,18 +148,18 @@ public:
             }
         }
 
-        if ((dataTime >> 10) != lastRefreshTime) {
-            char buf[10];
+        if (dataTime -  lastRefreshTime >= 1000) {
+            char buf[12];
             unsigned int sec = (dataTime - startTime) / 1000;
             sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(250, 2);
             lcd.print(buf);
             lcd.setCursor(250, 11);
-            lcd.printInt((uint16_t)t);
-            lcd.print("ms ");
-
-            lastRefreshTime = dataTime >> 10;
+            if (t < 10000) {
+              lcd.printInt((uint16_t)t);
+            }
+            lastRefreshTime = dataTime;
         }
 
         if (errors >= 3) {
@@ -219,7 +219,7 @@ public:
             sprintf(buf, "%dMB", (int)volumesize);
             lcd.print(buf);
         } else {
-            lcd.print("No SD Card      ");
+            lcd.print("No SD Card");
             return false;
         }
 
@@ -322,36 +322,47 @@ private:
             return;
         }
 
-        char buf[20];
+        char buf[8];
         accel_t_gyro_union data;
         MPU6050_readout(&data);
 
         lcd.setFontSize(FONT_SIZE_SMALL);
 
-        sprintf(buf, "%3d", data.value.x_accel / 160);
-        lcd.setCursor(197, 21);
+        data.value.x_accel /= ACC_DATA_RATIO;
+        data.value.y_accel /= ACC_DATA_RATIO;
+        data.value.z_accel /= ACC_DATA_RATIO;
+        data.value.x_gyro /= GYRO_DATA_RATIO;
+        data.value.y_gyro /= GYRO_DATA_RATIO;
+        data.value.z_gyro /= GYRO_DATA_RATIO;
+        
+        sprintf(buf, "%3d", data.value.x_accel);
+        setColorByValue(data.value.x_accel, 50, 100, 200); 
+        lcd.setCursor(197, 20);
         lcd.print(buf);
-        sprintf(buf, "%3d", data.value.y_accel / 160);
-        lcd.setCursor(239, 21);
+        sprintf(buf, "%3d", data.value.y_accel);
+        setColorByValue(data.value.y_accel, 50, 100, 200); 
+        lcd.setCursor(239, 20);
         lcd.print(buf);
-        sprintf(buf, "%3d", data.value.z_accel / 160);
-        lcd.setCursor(281, 21);
+        sprintf(buf, "%3d", data.value.z_accel);
+        setColorByValue(data.value.z_accel, 50, 100, 200); 
+        lcd.setCursor(281, 20);
         lcd.print(buf);
 
-        sprintf(buf, "%3d", data.value.x_gyro / 256);
-        lcd.setCursor(197, 26);
+        lcd.setColor(RGB16_WHITE);
+        sprintf(buf, "%3d ", data.value.x_gyro);
+        lcd.setCursor(197, 24);
         lcd.print(buf);
-        sprintf(buf, "%3d", data.value.y_gyro / 256);
-        lcd.setCursor(239, 26);
+        sprintf(buf, "%3d ", data.value.y_gyro);
+        lcd.setCursor(239, 24);
         lcd.print(buf);
-        sprintf(buf, "%3d", data.value.z_gyro / 256);
-        lcd.setCursor(281, 26);
+        sprintf(buf, "%3d ", data.value.z_gyro);
+        lcd.setCursor(281, 24);
         lcd.print(buf);
 
         // log x/y/z of accelerometer
         logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
         // log x/y/z of gyro meter
-        //logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+        logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
 
         lastACCDataTime = dataTime;
 #endif
@@ -381,11 +392,10 @@ private:
         if ((dataSize >> 10) != lastFileSize) {
             flushFile();
             // display logged data size
-            lcd.setFontSize(FONT_SIZE_MEDIUM);
-            lcd.setCursor(250, 8);
-            lcd.printInt((unsigned int)(dataSize >> 10));
             lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.print(" KB");
+            lcd.setCursor(242, 27);
+            lcd.print((unsigned int)(dataSize >> 10));
+            lcd.print("KB");
             lastFileSize = dataSize >> 10;
         }
 #endif
@@ -478,6 +488,7 @@ private:
     }
     void setColorByValue(int value, int threshold1, int threshold2, int threshold3)
     {
+        if (value < 0) value = -value;
         if (value < threshold1) {
           lcd.setColor(RGB16_WHITE);
         } else if (value < threshold2) {
@@ -525,12 +536,19 @@ private:
             break;
         case PID_DISTANCE:
             if ((unsigned int)value >= startDistance) {
-                lcd.setFontSize(FONT_SIZE_MEDIUM);
-                lcd.setCursor(250, 5);
-                lcd.printInt(((unsigned int)value - startDistance) % 1000);
-                lcd.print("km");
+                uint16_t distance = (uint16_t)value - startDistance;
+                if (distance < 1000) {
+                  lcd.setFontSize(FONT_SIZE_MEDIUM);
+                  lcd.setCursor(250, 5);
+                  lcd.printInt(distance);
+                }
             }
             break;
+        case PID_ENGINE_FUEL_RATE:
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
+            lcd.setCursor(250, 8);
+            lcd.printInt(value);
+            break;        
         }
         lcd.setColor(RGB16_WHITE);
     }
@@ -557,14 +575,21 @@ private:
         lcd.print("LOAD:    %");
 
         //lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setColor(RGB16_CYAN);
         lcd.setCursor(185, 2);
         lcd.print("ELAPSED:");
         lcd.setCursor(185, 5);
         lcd.print("DISTANCE:");
+        lcd.setCursor(185, 6);
+        lcd.print("(km)");
         lcd.setCursor(185, 8);
-        lcd.print("LOG SIZE:");
+        lcd.print("FUEL CSM:");
+        lcd.setCursor(185, 9);
+        lcd.print("(L/h)");
         lcd.setCursor(185, 11);
         lcd.print("OBD TIME:");
+        lcd.setCursor(185, 12);
+        lcd.print("(ms)");
 
         lcd.setCursor(20, 18);
         lcd.print("LAT:");
@@ -575,15 +600,17 @@ private:
         lcd.setCursor(20, 27);
         lcd.print("SAT:");
 
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        lcd.setCursor(185, 18);
-        lcd.print("Accelerometer");
-        lcd.setCursor(200, 23);
-        lcd.print("Gyroscope");
         lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(185, 21);
+        lcd.setCursor(204, 18);
+        lcd.print("ACCELEROMETER");
+        lcd.setCursor(214, 22);
+        lcd.print("GYROSCOPE");
+        lcd.setCursor(185, 27);
+        lcd.print("LOG SIZE:");
+        lcd.setCursor(185, 20);
+        lcd.setColor(RGB16_WHITE);
         lcd.print("X:     Y:     Z:");
-        lcd.setCursor(185, 26);
+        lcd.setCursor(185, 24);
         lcd.print("X:     Y:     Z:");
 
         //lcd.setColor(0xFFFF);
