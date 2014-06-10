@@ -499,27 +499,27 @@ private:
             lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.setCursor(34, 7);
             if (value >= 10000) break;
-            setColorByValue(value, 2500, 3500, 4500);
+            setColorByValue(value, 2500, 3500, 5000);
             lcd.printInt(value, 4);
             break;
         case PID_SPEED:
             lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.setCursor(50, 2);
             if (value > 350) break;
-            setColorByValue(value, 60, 100, 150);
+            setColorByValue(value, 50, 80, 160);
             lcd.printInt((unsigned int)value % 1000, 3);
             break;
         case PID_THROTTLE:
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(42, 11);
-            if (value >= 100) break;
+            if (value >= 100) value = 99;
             setColorByValue(value, 50, 75, 90);
             lcd.printInt(value, 2);
             break;
         case PID_ENGINE_LOAD:
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(116, 11);
-            if (value >= 100) break;
+            if (value >= 100) value = 99;
             setColorByValue(value, 50, 75, 90);
             lcd.printInt(value, 2);
             break;
