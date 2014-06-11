@@ -63,8 +63,10 @@
 /**************************************
 * LCD module (uncomment only one)
 **************************************/
-LCD_SSD1289 lcd; /* 3.2" SSD12389 based TFT LCD */
-//LCD_ILI9325D lcd; /* 2.8" ILI9325 based TFT LCD */
+#define DISPLAY_DASHBOARD 1
+#define SHOWECUCAP 1
+//LCD_SSD1289 lcd; /* 3.2" SSD12389 based TFT LCD */
+LCD_ILI9325D lcd; /* 2.8" ILI9325 based TFT LCD */
 //LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
 //LCD_Null lcd;
 

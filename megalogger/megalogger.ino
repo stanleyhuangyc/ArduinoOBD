@@ -61,6 +61,23 @@ static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, P
 #define TIER_NUM2 sizeof(pidTier2)
 #define TIER_NUM3 sizeof(pidTier3)
 
+#if DISPLAY_DASHBOARD
+#include "plots.h"
+CirclePlot plotSpeed;
+CirclePlot plotRPM;
+BarPlot plotTempCoolant;
+BarPlot plotThrottle;
+GPlot plotG;
+
+void initDashboard(){
+    plotSpeed.init(&lcd, 172, 0, 180, "SPEED", "km/h");
+    plotRPM.init(&lcd, 20, 0, 650, "RPM", "0 rpm");
+    plotTempCoolant.init(&lcd, 0, 120, 150, 100, "COOLANT", "'C");
+    plotThrottle.init(&lcd, 96, 120, 100, 70, "THROTTLE", "%");
+    plotG.init(&lcd, 192, 120, 70, 50, false, true, "G");
+}
+#endif
+
 #if OBD_MODEL == OBD_MODEL_I2C
 class COBDLogger : public COBDI2C, public CDataLogger
 #else
@@ -117,9 +134,9 @@ public:
         lcd.printInt(index);
 #endif
 
-#if 0
+#if SHOWECUCAP
         showECUCap();
-        delay(1000);
+        delay(2000);
 #endif
 
         initScreen();
@@ -148,8 +165,8 @@ public:
                 logOBDData(pidTier2[index2++]);
             }
         }
-
         if (dataTime >> 10 != lastRefreshTime) {
+#if !DISPLAY_DASHBOARD
             char buf[10];
             unsigned int sec = (dataTime - startTime) / 1000;
             sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
@@ -159,7 +176,7 @@ public:
             lcd.setCursor(250, 11);
             lcd.printInt((uint16_t)t);
             lcd.print("ms ");
-
+#endif
             lastRefreshTime = dataTime >> 10;
         }
 
@@ -256,10 +273,12 @@ private:
         // display while initializing
         char buf[10];
         unsigned int t = (millis() - startTime) / 1000;
+#if !DISPLAY_DASHBOARD
         sprintf(buf, "%02u:%02u", t / 60, t % 60);
         lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(0, 28);
         lcd.print(buf);
+#endif
 #if USE_GPS
         // detect GPS signal
         if (GPSUART.available()) {
@@ -272,6 +291,7 @@ private:
                 gps.get_datetime(&date, &time, 0);
                 long lat, lon;
                 gps.get_position(&lat, &lon, 0);
+#if !DISPLAY_DASHBOARD                
                 lcd.setCursor(0, 14);
                 lcd.print("Time:");
                 lcd.print(time);
@@ -281,6 +301,7 @@ private:
                 lcd.setCursor(0, 18);
                 lcd.print("LON: ");
                 lcd.println(lon);
+#endif                
             }
         }
 #endif
@@ -317,7 +338,7 @@ private:
             logData(PID_GPS_LATITUDE, lat);
             logData(PID_GPS_LONGITUDE, lon);
             logData(PID_GPS_ALTITUDE, (int)(gps.altitude() / 100));
-
+#if !DISPLAY_DASHBOARD
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             char buf[16];
             sprintf(buf, "%d.%ld", (int)(lat / 100000), abs(lat) % 100000);
@@ -334,7 +355,7 @@ private:
             }
             lcd.setCursor(50, 27);
             lcd.printInt(gps.satellites());
-
+#endif
         }
         lastGPSDataTime = dataTime;
     }
@@ -351,7 +372,9 @@ private:
         char buf[20];
         accel_t_gyro_union data;
         MPU6050_readout(&data);
-
+#if DISPLAY_DASHBOARD
+        plotG.displayValue((int16_t)data.value.x_accel/160, (int16_t)data.value.y_accel/160);
+#else        
         lcd.setFontSize(FONT_SIZE_SMALL);
 
         sprintf(buf, "%3d", data.value.x_accel / 160);
@@ -373,7 +396,7 @@ private:
         sprintf(buf, "%3d", data.value.z_gyro / 256);
         lcd.setCursor(281, 26);
         lcd.print(buf);
-
+#endif
         // log x/y/z of accelerometer
         logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
         // log x/y/z of gyro meter
@@ -407,11 +430,13 @@ private:
         if ((dataSize >> 10) != lastFileSize) {
             flushFile();
             // display logged data size
+#if !DISPLAY_DASHBOARD
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(250, 8);
             lcd.printInt((unsigned int)(dataSize >> 10));
             lcd.setFontSize(FONT_SIZE_SMALL);
             lcd.print(" KB");
+#endif
             lastFileSize = dataSize >> 10;
         }
 #endif
@@ -497,6 +522,22 @@ private:
     }
     void showSensorData(byte pid, int value)
     {
+#if DISPLAY_DASHBOARD
+		switch (pid) {
+        case PID_RPM:
+            plotRPM.displayValue((int16_t)value / 10);
+            break;
+        case PID_SPEED:
+            plotSpeed.displayValue((int16_t)value % 1000);
+            break;
+        case PID_COOLANT_TEMP:
+            plotTempCoolant.displayValue((int16_t)value % 1000);
+            break;
+        case PID_THROTTLE:
+            plotThrottle.displayValue((int16_t)value % 100);
+            break;
+        }
+#else
         char buf[8];
         switch (pid) {
         case PID_RPM:
@@ -531,10 +572,16 @@ private:
             }
             break;
         }
+#endif
     }
     void initScreen()
     {
         lcd.clear();
+
+#if DISPLAY_DASHBOARD
+        initDashboard();
+
+#else
         lcd.draw4bpp(frame0[0], 78, 58);
         lcd.setXY(164, 0);
         lcd.draw4bpp(frame0[0], 78, 58);
@@ -593,6 +640,7 @@ private:
         lcd.setCursor(112, 4);
         lcd.print("C");
         */
+#endif
     }
 };
 

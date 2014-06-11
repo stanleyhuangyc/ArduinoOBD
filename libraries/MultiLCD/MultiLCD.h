@@ -118,12 +118,12 @@ public:
     }
     byte getLines() { return 53; }
     byte getCols() { return 30; }
-private:
     void setXY(uint16_t x0,uint16_t x1,uint16_t y0,uint16_t y1);
-    void writeDigit(byte n);
-    void clearPixels(uint16_t pixels);
     void WriteData(uint16_t c);
     void WriteData(byte l, byte h);
+private:
+    void writeDigit(byte n);
+    void clearPixels(uint16_t pixels);
     void WriteCommandData(uint16_t cmd,uint16_t dat);
     void Enable();
     void Disable();
