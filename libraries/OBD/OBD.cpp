@@ -313,6 +313,11 @@ bool COBD::init(byte protocol)
 	return true;
 }
 
+void COBD::uninit()
+{
+	m_state = OBD_DISCONNECTED;
+}
+
 #ifdef DEBUG
 void COBD::debugOutput(const char *s)
 {
