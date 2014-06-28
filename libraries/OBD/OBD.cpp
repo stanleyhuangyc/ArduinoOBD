@@ -168,6 +168,12 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_FUEL_INJECTION_TIMING:
 		result = ((int32_t)getLargeValue(data) - 26880) / 128;
 		break;
+	case PID_CATALYST_TEMP_B1S1:
+	case PID_CATALYST_TEMP_B2S1:
+	case PID_CATALYST_TEMP_B1S2:
+	case PID_CATALYST_TEMP_B2S2:
+		result = getLargeValue(data) / 10 - 40;
+		break;
 	default:
 		result = getSmallValue(data);
 	}
