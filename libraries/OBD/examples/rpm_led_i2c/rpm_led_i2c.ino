@@ -1,8 +1,8 @@
 /*************************************************************************
 * Sample sketch based on OBD-II library for Arduino
 * Distributed under GPL v2.0
-* Copyright (c) 2012-2013 Stanley Huang <stanleyhuangyc@gmail.com>
-* All rights reserved.
+* Visit http://freematics.com for more information
+* (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
