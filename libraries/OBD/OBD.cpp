@@ -104,6 +104,7 @@ int COBD::normalizeData(byte pid, char* data)
 	int result;
 	switch (pid) {
 	case PID_RPM:
+	case PID_EVAP_SYS_VAPOR_PRESSURE:
 		result = getLargeValue(data) >> 2;
 		break;
 	case PID_FUEL_PRESSURE:
@@ -116,10 +117,19 @@ int COBD::normalizeData(byte pid, char* data)
 		result = getTemperatureValue(data);
 		break;
 	case PID_THROTTLE:
+	case PID_COMMANDED_EGR:
+	case PID_COMMANDED_EVAPORATIVE_PURGE:
+	case PID_FUEL_LEVEL_INPUT:
+	case PID_RELATIVE_THROTTLE_POS:
+	case PID_ABSOLUTE_THROTTLE_POS_B:
+	case PID_ABSOLUTE_THROTTLE_POS_C:
+	case PID_ACC_PEDAL_POS_D:
+	case PID_ACC_PEDAL_POS_E:
+	case PID_ACC_PEDAL_POS_F:
+	case PID_COMMANDED_THROTTLE_ACTUATOR:
 	case PID_ENGINE_LOAD:
-	case PID_FUEL_LEVEL:
 	case PID_ABSOLUTE_ENGINE_LOAD:
-	case PID_ETHANOL_PERCENTAGE:
+	case PID_ETHANOL_FUEL:
 	case PID_HYBRID_BATTERY_PERCENTAGE:
 		result = getPercentageValue(data);
 		break;
@@ -130,6 +140,9 @@ int COBD::normalizeData(byte pid, char* data)
 		result = (int)(getSmallValue(data) / 2) - 64;
 		break;
 	case PID_DISTANCE: // km
+	case PID_DISTANCE_WITH_MIL: // km
+	case PID_TIME_WITH_MIL: // minute
+	case PID_TIME_SINCE_CODES_CLEARED: // minute
 	case PID_RUNTIME: // second
 	case PID_FUEL_RAIL_PRESSURE: // kPa
 	case PID_ENGINE_REF_TORQUE: // Nm
@@ -141,8 +154,19 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_ENGINE_FUEL_RATE: // L/h
 		result = getLargeValue(data) / 20;
 		break;
+	case PID_ENGINE_TORQUE_DEMANDED: // %
 	case PID_ENGINE_TORQUE_PERCENTAGE: // %
 		result = (int)getSmallValue(data) - 125;
+		break;
+	case PID_SHORT_TERM_FUEL_TRIM_1:
+	case PID_LONG_TERM_FUEL_TRIM_1:
+	case PID_SHORT_TERM_FUEL_TRIM_2:
+	case PID_LONG_TERM_FUEL_TRIM_2:
+	case PID_EGR_ERROR:
+		result = ((int)getSmallValue(data) - 128) * 100 / 128;
+		break;
+	case PID_FUEL_INJECTION_TIMING:
+		result = ((int32_t)getLargeValue(data) - 26880) / 128;
 		break;
 	default:
 		result = getSmallValue(data);
@@ -458,54 +482,4 @@ void COBDI2C::loadData()
 	dataIdleLoop();
 	Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)0);
 	Wire.readBytes((char*)obdInfo, MAX_PAYLOAD_SIZE);
-}
-
-uint16_t COBDI2C::getData(byte pid, int& result)
-{
-	byte n;
-	for (n = 0; n < MAX_PIDS && obdPid[n] != pid; n++);
-	if (n == MAX_PIDS)
-		return -1;
-
-	PID_INFO* pi = obdInfo + n;
-	switch (pid) {
-	case PID_RPM:
-		result = pi->value >> 2;
-		break;
-	case PID_FUEL_PRESSURE:
-		result = (int)pi->value * 3;
-		break;
-	case PID_COOLANT_TEMP:
-	case PID_INTAKE_TEMP:
-	case PID_AMBIENT_TEMP:
-	case PID_ENGINE_OIL_TEMP:
-		result = (int)pi->value - 40;
-		break;
-	case PID_THROTTLE:
-	case PID_ENGINE_LOAD:
-	case PID_FUEL_LEVEL:
-	case PID_ABSOLUTE_ENGINE_LOAD:
-	case PID_ETHANOL_PERCENTAGE:
-	case PID_HYBRID_BATTERY_PERCENTAGE:
-		result = pi->value * 100 / 255; // %
-		break;
-	case PID_MAF_FLOW:
-		result = pi->value / 100;
-		break;
-	case PID_TIMING_ADVANCE:
-		result = (int)pi->value / 2 - 64;
-		break;
-	case PID_CONTROL_MODULE_VOLTAGE: // V
-		result = pi->value / 1000;
-		break;
-	case PID_ENGINE_FUEL_RATE: // L/h
-		result = pi->value / 20;
-		break;
-	case PID_ENGINE_TORQUE_PERCENTAGE: // %
-		result = (int)pi->value - 125;
-		break;
-	default:
-		result = pi->value;
-	}
-	return result;
 }
