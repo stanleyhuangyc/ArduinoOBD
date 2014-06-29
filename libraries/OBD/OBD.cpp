@@ -75,6 +75,12 @@ bool COBD::read(byte pid, int& result)
 	return getResult(pid, result);
 }
 
+void COBD::clearDTC()
+{
+	write("04\r");
+	receive(0, 1000);
+}
+
 bool COBD::available()
 {
 	return OBDUART.available();
@@ -119,7 +125,7 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_THROTTLE:
 	case PID_COMMANDED_EGR:
 	case PID_COMMANDED_EVAPORATIVE_PURGE:
-	case PID_FUEL_LEVEL_INPUT:
+	case PID_FUEL_LEVEL:
 	case PID_RELATIVE_THROTTLE_POS:
 	case PID_ABSOLUTE_THROTTLE_POS_B:
 	case PID_ABSOLUTE_THROTTLE_POS_C:

@@ -44,7 +44,7 @@
 #define PID_COMMANDED_EGR 0x2C
 #define PID_EGR_ERROR 0x2D
 #define PID_COMMANDED_EVAPORATIVE_PURGE 0x2E
-#define PID_FUEL_LEVEL_INPUT 0x2F
+#define PID_FUEL_LEVEL 0x2F
 #define PID_WARMS_UPS 0x30
 #define PID_DISTANCE 0x31
 #define PID_EVAP_SYS_VAPOR_PRESSURE 0x32
@@ -89,23 +89,38 @@ public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	/*
        Serial baudrate is only adjustable for Arduino OBD-II Adapters V2
-       Check out http://arduinodev.com/hardware/obd-kit/
+       Check out http://freematics.com/pages/products/arduino-obd-adapter
 	*/
 	virtual void begin(unsigned long baudrate = 0);
+	// initialize OBD-II connection
 	virtual bool init(byte protocol = 0);
+	// un-initialize OBD-II connection
 	virtual void uninit();
-	virtual bool read(byte pid, int& result);
-	virtual void sleep();
-	virtual void wakeup();
-	virtual void setProtocol(byte h = -1);
-	// Query and GetResponse for advanced usage only
-	virtual void sendQuery(byte pid);
-	virtual bool getResult(byte& pid, int& result);
-	bool isValidPID(byte pid);
+	// get connection state
 	byte getState() { return m_state; }
+	// read specified OBD-II PID value
+	virtual bool read(byte pid, int& result);
+	// set device into 
+	virtual void sleep();
+	// wake up device from previous sleep
+	virtual void wakeup();
+	// set working protocol (default auto)
+	virtual void setProtocol(byte h = -1);
+	// clear diagnostic trouble code
+	virtual void clearDTC();
+	// send query for specified PID
+	virtual void sendQuery(byte pid);
+	// retrive and parse the response of specifie PID 
+	virtual bool getResult(byte& pid, int& result);
+	// determine if the PID is supported
+	bool isValidPID(byte pid);
+	// set current PID mode
 	byte dataMode;
+	// occurrence of errors
 	byte errors;
+	// bit map of supported PIDs
 	byte pidmap[4 * 4];
+	// current VIN
 	byte vin[17];
 protected:
 	virtual char* getResponse(byte& pid, char* buffer);
