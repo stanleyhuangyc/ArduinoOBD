@@ -265,7 +265,7 @@ private:
         }
         state &= ~STATE_SLEEPING;
         fileIndex++;
-        write('\r');
+        recover();
         setup();
     }
     byte state;
