@@ -11,11 +11,12 @@
 #include <Wire.h>
 #endif
 #include <OBD.h>
+#include <SPI.h>
 #include <SD.h>
 #include <MultiLCD.h>
 #include <TinyGPS.h>
 #include <MPU6050.h>
-#include <SPI.h>
+#include <Narcoleptic.h>
 #include "config.h"
 #include "images.h"
 #if ENABLE_DATA_OUT && USE_SOFTSERIAL
@@ -445,6 +446,8 @@ private:
             int value;
             if (read(PID_RPM, value) && value > 0)
                 break;
+
+            Narcoleptic.delay(2000);
         }
         lcd.backlight(true);
         state |= STATE_OBD_READY;
