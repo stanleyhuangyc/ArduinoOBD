@@ -72,7 +72,7 @@ public:
 
 #if ENABLE_DATA_LOG
         uint16_t index = openFile();
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(86, 0);
         if (index) {
             lcd.write('[');
@@ -120,7 +120,7 @@ public:
         // display distance travelled (GPS)
         char buf[10];
         sprintf(buf, "%4ukm", (uint16_t)(distance / 1000));
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(92, 6);
         lcd.print(buf);
 
@@ -138,7 +138,7 @@ public:
             // display logged data size
             char buf[7];
             sprintf(buf, "%4uKB", (int)(dataSize >> 10));
-            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setFontSize(FONT_SIZE_SMALL);
             lcd.setCursor(92, 7);
             lcd.print(buf);
         }
@@ -246,7 +246,7 @@ private:
         closeFile();
 #endif
         lcd.clear();
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting");
         startTime = millis();
         state &= ~(STATE_OBD_READY | STATE_ACC_READY);
@@ -277,7 +277,7 @@ private:
     // screen layout related stuff
     void showStates()
     {
-        lcd.setFont(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(0, 4);
         lcd.print("OBD ");
         showTickCross(state & STATE_OBD_READY);
@@ -291,26 +291,26 @@ private:
         switch (pid) {
         case PID_RPM:
             lcd.setCursor(64, 0);
-            lcd.setFont(FONT_SIZE_XLARGE);
+            lcd.setFontSize(FONT_SIZE_XLARGE);
             lcd.printInt((unsigned int)value % 10000, 4);
             break;
         case PID_SPEED:
             if (lastSpeed != value) {
                 lcd.setCursor(0, 0);
-                lcd.setFont(FONT_SIZE_XLARGE);
+                lcd.setFontSize(FONT_SIZE_XLARGE);
                 lcd.printInt((unsigned int)value % 1000, 3);
                 lastSpeed = value;
             }
             break;
         case PID_THROTTLE:
             lcd.setCursor(24, 5);
-            lcd.setFont(FONT_SIZE_SMALL);
+            lcd.setFontSize(FONT_SIZE_SMALL);
             lcd.printInt(value % 100, 3);
             break;
         case PID_INTAKE_TEMP:
             if (value < 1000) {
                 lcd.setCursor(102, 5);
-                lcd.setFont(FONT_SIZE_SMALL);
+                lcd.setFontSize(FONT_SIZE_SMALL);
                 lcd.printInt(value, 3);
             }
             break;
@@ -349,7 +349,7 @@ private:
     {
         lcd.clear();
         lcd.backlight(true);
-        lcd.setFont(FONT_SIZE_SMALL);
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(24, 3);
         lcd.print("km/h");
         lcd.setCursor(110, 3);
@@ -366,14 +366,14 @@ static COBDLogger logger;
 void setup()
 {
     lcd.begin();
-    lcd.setFont(FONT_SIZE_MEDIUM);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.println("NanoLogger");
 
     logger.begin();
     logger.initSender();
 
 #if ENABLE_DATA_LOG
-    lcd.setFont(FONT_SIZE_MEDIUM);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setCursor(0, 2);
     logger.checkSD();
 #endif

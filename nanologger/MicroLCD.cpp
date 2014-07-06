@@ -292,8 +292,6 @@ void LCD_SSD1306::setCursor(byte column, byte line)
 
 size_t LCD_SSD1306::write(uint8_t c)
 {
-    uint8_t twbrbackup = TWBR;
-    TWBR = 18; // upgrade to 400KHz!
     if (c == '\n') {
         setCursor(0, m_row + ((m_font == FONT_SIZE_SMALL) ? 1 : 2));
         return 1;
@@ -301,6 +299,10 @@ size_t LCD_SSD1306::write(uint8_t c)
         m_col = 0;
         return 1;
     }
+#ifdef TWBR
+    uint8_t twbrbackup = TWBR;
+    TWBR = 18; // upgrade to 400KHz!
+#endif
 #ifndef MEMORY_SAVING
     if (m_font == FONT_SIZE_SMALL) {
 #endif
@@ -385,14 +387,18 @@ size_t LCD_SSD1306::write(uint8_t c)
         }
     }
 #endif
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
     return 1;
 }
 
 void LCD_SSD1306::writeDigit(byte n)
 {
+#ifdef TWBR
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
+#endif
     if (m_font == FONT_SIZE_SMALL) {
         Wire.beginTransmission(_i2caddr);
         Wire.write(0x40);
@@ -542,7 +548,9 @@ void LCD_SSD1306::writeDigit(byte n)
         }
         m_col += (m_flags & FLAG_PIXEL_DOUBLE_H) ? 30 : 16;
     }
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
 }
 
 void LCD_SSD1306::draw(const PROGMEM byte* buffer, byte width, byte height)
@@ -551,13 +559,13 @@ void LCD_SSD1306::draw(const PROGMEM byte* buffer, byte width, byte height)
     ssd1306_command(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
     ssd1306_command(SSD1306_SETSTARTLINE | 0x0); // line #0
 
-    // save I2C bitrate
-    uint8_t twbrbackup = TWBR;
-    TWBR = 18; // upgrade to 400KHz!
-
     const PROGMEM byte *p = buffer;
     height >>= 3;
     width >>= 3;
+#ifdef TWBR
+    uint8_t twbrbackup = TWBR;
+    TWBR = 18; // upgrade to 400KHz!
+#endif
     for (byte i = 0; i < height; i++) {
       // send a bunch of data in one xmission
         ssd1306_command(0xB0 + i + m_row);//set page address
@@ -573,8 +581,10 @@ void LCD_SSD1306::draw(const PROGMEM byte* buffer, byte width, byte height)
             Wire.endTransmission();
         }
     }
-    TWBR = twbrbackup;
     m_col += width;
+#ifdef TWBR
+    TWBR = twbrbackup;
+#endif
 }
 
 void LCD_SSD1306::clearLine(byte line)
@@ -583,9 +593,10 @@ void LCD_SSD1306::clearLine(byte line)
     ssd1306_command(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
     ssd1306_command(SSD1306_SETSTARTLINE | 0x0); // line #0
 
-    // save I2C bitrate
+#ifdef TWBR
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
+#endif
 
     // send a bunch of data in one xmission
     ssd1306_command(0xB0 + line);//set page address
@@ -600,8 +611,9 @@ void LCD_SSD1306::clearLine(byte line)
         }
         Wire.endTransmission();
     }
-
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
 }
 
 void LCD_SSD1306::clear(byte x, byte y, byte width, byte height)
@@ -610,13 +622,13 @@ void LCD_SSD1306::clear(byte x, byte y, byte width, byte height)
     ssd1306_command(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
     ssd1306_command(SSD1306_SETSTARTLINE | 0x0); // line #0
 
-    // save I2C bitrate
-    uint8_t twbrbackup = TWBR;
-    TWBR = 18; // upgrade to 400KHz!
-
     height >>= 3;
     width >>= 3;
     y >>= 3;
+#ifdef TWBR
+    uint8_t twbrbackup = TWBR;
+    TWBR = 18; // upgrade to 400KHz!
+#endif
     for (byte i = 0; i < height; i++) {
       // send a bunch of data in one xmission
         ssd1306_command(0xB0 + i + y);//set page address
@@ -632,7 +644,14 @@ void LCD_SSD1306::clear(byte x, byte y, byte width, byte height)
             Wire.endTransmission();
         }
     }
-
-    setCursor(0, 0);
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
+    setCursor(0, 0);
+}
+
+void LCD_SSD1306::setContrast(byte Contrast)
+{
+    ssd1306_command(SSD1306_SETCONTRAST);
+	ssd1306_command(Contrast);
 }

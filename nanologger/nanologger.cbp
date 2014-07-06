@@ -98,42 +98,6 @@
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
-			<Target title="Arduino Esplora">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega32U4__" />
-					<Add option="-DUSB_VID=0x2341" />
-					<Add option="-DUSB_PID=0x8037" />
-					<Add option="-Os" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/leonardo" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Arduino Esplora" />
-					<Variable name="BOARD_ID" value="esplora" />
-					<Variable name="MCU" value="atmega32u4" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="57600" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
 			<Target title="Arduino Micro">
 				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
@@ -204,40 +168,6 @@
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
-			<Target title="Arduino Duemilanove (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega168__" />
-					<Add option="-Os" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/standard" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Arduino Duemilanove (168)" />
-					<Variable name="BOARD_ID" value="duemilanove168" />
-					<Variable name="MCU" value="atmega168" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="19200" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
 			<Target title="Arduino Nano (328)">
 				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
@@ -269,40 +199,6 @@
 					<Variable name="MCU" value="atmega328p" />
 					<Variable name="MCU_CLOCK" value="16" />
 					<Variable name="UPLOAD_BAUDRATE" value="57600" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
-			<Target title="Arduino Nano (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega168__" />
-					<Add option="-Os" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/eightanaloginputs" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Arduino Nano (168)" />
-					<Variable name="BOARD_ID" value="nano168" />
-					<Variable name="MCU" value="atmega168" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="19200" />
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
@@ -340,40 +236,6 @@
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
-			<Target title="Arduino Mini (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega168__" />
-					<Add option="-Os" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/eightanaloginputs" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Arduino Mini (168)" />
-					<Variable name="BOARD_ID" value="mini168" />
-					<Variable name="MCU" value="atmega168" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="19200" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
 			<Target title="Arduino Pro Mini (328)">
 				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
 				<Option type="1" />
@@ -405,40 +267,6 @@
 					<Variable name="MCU" value="atmega328p" />
 					<Variable name="MCU_CLOCK" value="16" />
 					<Variable name="UPLOAD_BAUDRATE" value="57600" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
-			<Target title="Arduino Pro Mini (168)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega168__" />
-					<Add option="-Os" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/standard" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Arduino Pro Mini (168)" />
-					<Variable name="BOARD_ID" value="promini168" />
-					<Variable name="MCU" value="atmega168" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="19200" />
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
@@ -510,74 +338,6 @@
 					<Variable name="UPLOAD_PORT" value="" />
 				</Environment>
 			</Target>
-			<Target title="Arduino Mega 8">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega328P__" />
-					<Add option="-Os" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/standard" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Arduino Mega 8" />
-					<Variable name="BOARD_ID" value="mega8" />
-					<Variable name="MCU" value="atmega8" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="19200" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
-			<Target title="Microduino Core+ (644P)">
-				<Option output="bin/Release/obdlogger_${BOARD_ID}.elf" prefix_auto="1" extension_auto="0" />
-				<Option type="1" />
-				<Option compiler="avrgcc" />
-				<Compiler>
-					<Add option="-O3" />
-					<Add option="-x c++" />
-					<Add option="-mmcu=$(MCU)" />
-					<Add option="-DF_CPU=16000000L" />
-					<Add option="-D__AVR_ATmega644P__" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
-					<Add directory="$(ARDUINO_DIR)/libraries" />
-					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/plus" />
-				</Compiler>
-				<Linker>
-					<Add option="-mmcu=$(MCU)" />
-					<Add option='&quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option='&quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-				</Linker>
-				<ExtraCommands>
-					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)bin/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)bin/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add after='avr-objcopy -O ihex -R .eeprom -R .eesafe &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).hex&quot;' />
-					<Add after='avr-objcopy --no-change-warnings -j .eeprom --change-section-lma .eeprom=0 -O ihex &quot;$(TARGET_OUTPUT_FILE)&quot; &quot;$(TARGET_OUTPUT_FILE).eep.hex&quot;' />
-					<Add after='avr-size --mcu=$(MCU) --format=avr &quot;$(TARGET_OUTPUT_FILE)&quot;' />
-				</ExtraCommands>
-				<Environment>
-					<Variable name="BOARD" value="Microduino Core+ (644P)" />
-					<Variable name="BOARD_ID" value="uduino644p" />
-					<Variable name="MCU" value="atmega644p" />
-					<Variable name="MCU_CLOCK" value="16" />
-					<Variable name="UPLOAD_BAUDRATE" value="115200" />
-					<Variable name="UPLOAD_PORT" value="" />
-				</Environment>
-			</Target>
 		</Build>
 		<Compiler>
 			<Add directory="." />
@@ -595,6 +355,7 @@
 		<Extensions>
 			<code_completion />
 			<debugger />
+			<envvars />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>
