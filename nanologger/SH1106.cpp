@@ -35,13 +35,13 @@ void LCD_SH1106::clear(byte x, byte y, byte width, byte height)
     WriteCommand(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
     WriteCommand(SSD1306_SETSTARTLINE | 0x0); // line #0
 
-    // save I2C bitrate
-    uint8_t twbrbackup = TWBR;
-    TWBR = 18; // upgrade to 400KHz!
-
     height >>= 3;
     width >>= 3;
     y >>= 3;
+#ifdef TWBR
+    uint8_t twbrbackup = TWBR;
+    TWBR = 18; // upgrade to 400KHz!
+#endif
     for (byte i = 0; i < height; i++) {
       // send a bunch of data in one xmission
         WriteCommand(0xB0 + i + y);//set page address
@@ -57,9 +57,10 @@ void LCD_SH1106::clear(byte x, byte y, byte width, byte height)
             Wire.endTransmission();
         }
     }
-
-    setCursor(0, 0);
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
+    setCursor(0, 0);
 }
 
 size_t LCD_SH1106::write(uint8_t c)
@@ -72,8 +73,10 @@ size_t LCD_SH1106::write(uint8_t c)
         return 1;
     }
 
+#ifdef TWBR
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
+#endif
 #ifndef MEMORY_SAVING
     if (m_font == FONT_SIZE_SMALL) {
 #endif
@@ -158,15 +161,18 @@ size_t LCD_SH1106::write(uint8_t c)
         }
     }
 #endif
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
     return 1;
 }
 
 void LCD_SH1106::writeDigit(byte n)
 {
+#ifdef TWBR
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
-
+#endif
     if (m_font == FONT_SIZE_SMALL) {
         Wire.beginTransmission(I2C_ADDR);
         Wire.write(0x40);
@@ -316,13 +322,17 @@ void LCD_SH1106::writeDigit(byte n)
         }
         m_col += (m_flags & FLAG_PIXEL_DOUBLE_H) ? 30 : 16;
     }
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
 }
 
 void LCD_SH1106::draw(const PROGMEM byte* buffer, byte width, byte height)
 {
+#ifdef TWBR
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
+#endif
 
     WriteCommand(SSD1306_SETLOWCOLUMN | 0x0);  // low col = 0
     WriteCommand(SSD1306_SETHIGHCOLUMN | 0x0);  // hi col = 0
@@ -346,7 +356,9 @@ void LCD_SH1106::draw(const PROGMEM byte* buffer, byte width, byte height)
             Wire.endTransmission();
         }
     }
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
     m_col += width;
 }
 

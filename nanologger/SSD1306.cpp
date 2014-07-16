@@ -1,5 +1,5 @@
 #include <avr/pgmspace.h>
-#include <util/delay.h>
+//#include <util/delay.h>
 #include <stdlib.h>
 #include <Wire.h>
 #include "SSD1306.h"
@@ -238,8 +238,10 @@ void SSD1306::fill(unsigned char dat)
     ssd1306_command(0x10);//set higher column address
     ssd1306_command(0xB0);//set page address
 
+#ifdef TWBR
     uint8_t twbrbackup = TWBR;
     TWBR = 18; // upgrade to 400KHz!
+#endif
     for (byte i=0; i<(SSD1306_LCDHEIGHT/8); i++)
     {
         // send a bunch of data in one xmission
@@ -256,7 +258,9 @@ void SSD1306::fill(unsigned char dat)
             Wire.endTransmission();
         }
     }
+#ifdef TWBR
     TWBR = twbrbackup;
+#endif
 }
 
 void SSD1306::draw8x8(byte* buffer, uint8_t x, uint8_t y)
