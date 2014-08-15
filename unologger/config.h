@@ -2,47 +2,60 @@
 #define CONFIG_H_INCLUDED
 
 /**************************************
-* OBD-II options
+* Choose model of OBD-II Adapter
 **************************************/
+// OBD_MODEL_I2C for I2C version
+// OBD_MODEL_UART for UART version
 #define OBD_MODEL OBD_MODEL_UART
 #define OBD_PROTOCOL 0 /* 0 for auto */
 
 /**************************************
-* Data logging/streaming out
+* Data logging options
 **************************************/
+// enable(1)/disable(0) data logging (if SD card is present)
+#define ENABLE_DATA_LOG 1
+#define SD_CS_PIN 10
+
+/**************************************
+* Data streaming options
+**************************************/
+// enable(1)/disable(0) data streaming
 #define ENABLE_DATA_OUT 0
-#define ENABLE_DATA_LOG 0
+
+// uses software(1)/hardware(0) serial for data streaming
 #define USE_SOFTSERIAL 0
-//this defines the format of log file
-#define LOG_FORMAT FORMAT_CSV
+
+// this defines the format of data streaming
+// FORMAT_BIN is required by Freematics OBD iOS App
 #define STREAM_FORMAT FORMAT_CSV
-#define STREAM_BAUDRATE 115200
+
+/* Default streaming baudrates:
+   9600bps for BLE
+   38400bps for BT 2.1
+*/
+#define STREAM_BAUDRATE 9600
+
+// outputs debug information
+#define VERBOSE 0
 
 /**************************************
-* Default working mode
+* Accelerometer & Gyro
 **************************************/
-#define MODE_DEFAULT MODE_LOGGER /* MODE_LOGGER/MODE_TIMER */
-//#define MODE_SWITCH_PIN 8
+#define USE_MPU6050 1
+#define ACC_DATA_RATIO 160
+#define GYRO_DATA_RATIO 256
 
 /**************************************
-* Choose SD pin here
+* Timeout/interval options
 **************************************/
-//#define SD_CS_PIN SS // generic
-//#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 7 // microduino
-#define SD_CS_PIN 10 // SD breakout
+#define OBD_MIN_INTERVAL 20 /* ms */
+#define ACC_DATA_INTERVAL 200 /* ms */
+#define GPS_DATA_TIMEOUT 2000 /* ms */
 
 /**************************************
-* Choose LCD model here
+* LCD module (uncomment only one)
 **************************************/
-LCD_ILI9341 lcd;
+LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
 //LCD_Null lcd;
 
-/**************************************
-* Other options
-**************************************/
-#define USE_MPU6050 0
-//#define DEBUG Serial
-#define DEBUG_BAUDRATE 9600
-
-#endif // CONFIG_H_INCLUDED
+#endif

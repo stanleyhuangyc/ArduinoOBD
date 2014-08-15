@@ -70,7 +70,6 @@ public:
 
         showStates();
 
-        lcd.clear();
         benchmark();
         delay(5000);
 
