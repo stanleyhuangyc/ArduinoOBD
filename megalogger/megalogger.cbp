@@ -12,20 +12,20 @@
 				<Option type="1" />
 				<Option compiler="avrgcc" />
 				<Compiler>
+					<Add option="-O2" />
 					<Add option="-x c++" />
 					<Add option="-mmcu=$(MCU)" />
 					<Add option="-DF_CPU=16000000L" />
 					<Add option="-D__AVR_ATmega2560__" />
-					<Add option="-O2" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/cores/arduino" />
 					<Add directory="$(ARDUINO_DIR)/libraries" />
 					<Add directory="$(ARDUINO_DIR)/hardware/arduino/variants/mega" />
 				</Compiler>
 				<Linker>
+					<Add option="-s" />
 					<Add option="-mmcu=$(MCU)" />
 					<Add option='&quot;$(PROJECT_DIR)${TARGET_OUTPUT_DIR}/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
 					<Add option='&quot;$(PROJECT_DIR)${TARGET_OUTPUT_DIR}/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
-					<Add option="-s" />
 				</Linker>
 				<ExtraCommands>
 					<Add before='$(TARGET_COMPILER_DIR)ArduinoUploader &quot;$(PROJECT_DIR).&quot; $(BOARD_ID) - $(MCU_CLOCK) 0 &quot;$(PROJECT_DIR)${TARGET_OUTPUT_DIR}/lib_${BOARD_ID}_${MCU_CLOCK}.a&quot; &quot;$(PROJECT_DIR)${TARGET_OUTPUT_DIR}/core_${BOARD_ID}_${MCU_CLOCK}.a&quot;' />
@@ -82,6 +82,8 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
+		<Unit filename="Narcoleptic.cpp" />
+		<Unit filename="Narcoleptic.h" />
 		<Unit filename="config.h" />
 		<Unit filename="datalogger.h" />
 		<Unit filename="images.h" />
