@@ -2,7 +2,7 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="obdlogger" />
+		<Option title="pbox" />
 		<Option pch_mode="2" />
 		<Option compiler="avrgcc" />
 		<Build>
@@ -582,19 +582,17 @@
 		<Compiler>
 			<Add directory="." />
 		</Compiler>
-		<Unit filename="MicroLCD.cpp" />
-		<Unit filename="MicroLCD.h" />
-		<Unit filename="SH1106.cpp" />
 		<Unit filename="config.h" />
 		<Unit filename="datalogger.h" />
 		<Unit filename="images.h" />
-		<Unit filename="obdlogger.ino">
+		<Unit filename="pbox.ino">
 			<Option compile="1" />
 			<Option link="1" />
 		</Unit>
 		<Extensions>
 			<code_completion />
 			<debugger />
+			<envvars />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>
