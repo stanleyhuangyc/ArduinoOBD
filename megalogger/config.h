@@ -27,7 +27,7 @@
 
 // this defines the format of data streaming
 // FORMAT_BIN is required by Freematics OBD iOS App
-#define STREAM_FORMAT FORMAT_CSV
+#define STREAM_FORMAT FORMAT_BIN
 
 /* Default streaming baudrates:
    9600bps for BLE
