@@ -16,7 +16,7 @@
 #include <MultiLCD.h>
 #include <TinyGPS.h>
 #include <MPU6050.h>
-#include <Narcoleptic.h>
+#include "Narcoleptic.h"
 #include "config.h"
 #include "images.h"
 #if ENABLE_DATA_OUT && USE_SOFTSERIAL
@@ -335,17 +335,17 @@ private:
         data.value.x_gyro /= GYRO_DATA_RATIO;
         data.value.y_gyro /= GYRO_DATA_RATIO;
         data.value.z_gyro /= GYRO_DATA_RATIO;
-        
+
         sprintf(buf, "%3d", data.value.x_accel);
-        setColorByValue(data.value.x_accel, 50, 100, 200); 
+        setColorByValue(data.value.x_accel, 50, 100, 200);
         lcd.setCursor(197, 20);
         lcd.print(buf);
         sprintf(buf, "%3d", data.value.y_accel);
-        setColorByValue(data.value.y_accel, 50, 100, 200); 
+        setColorByValue(data.value.y_accel, 50, 100, 200);
         lcd.setCursor(239, 20);
         lcd.print(buf);
         sprintf(buf, "%3d", data.value.z_accel);
-        setColorByValue(data.value.z_accel, 50, 100, 200); 
+        setColorByValue(data.value.z_accel, 50, 100, 200);
         lcd.setCursor(281, 20);
         lcd.print(buf);
 
@@ -501,7 +501,7 @@ private:
           byte n = (uint32_t)(threshold3 - value) * 255 / (threshold3 - threshold2);
           lcd.setColor(255, n, 0);
         } else {
-          lcd.setColor(255, 0, 0); 
+          lcd.setColor(255, 0, 0);
         }
     }
     void showSensorData(byte pid, int value)
@@ -551,7 +551,7 @@ private:
             lcd.setFontSize(FONT_SIZE_MEDIUM);
             lcd.setCursor(250, 8);
             lcd.printInt(value);
-            break;        
+            break;
         }
         lcd.setColor(RGB16_WHITE);
     }
