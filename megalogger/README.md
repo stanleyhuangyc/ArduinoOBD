@@ -5,23 +5,24 @@ MegaLogger is a sketch developed for Arduino Telematics Kits based on Arduino ME
 
 The sketch utilize following custom Arduino libraries:
 
- OBD-II Library
- TinyGPS Library
- MPU6050 Library
- MultiLCD Library
+    OBD-II Library
+    TinyGPS Library
+    MPU6050 Library
+    MultiLCD Library
+
 
 Configuration
 -------------
 
 MegaLogger has several configurable options all stay in the config.h file. Major options include:
 
- OBD_MODEL - defines the model of OBD-II Adapter (UART or I2C)
- USE_GPS - defines whether GPS is used
- USE_MPU6050 - defines whether
- MPU6050 (accelerometer & gyro) is used
- ENABLE_DATA_LOG - toggles data logging on microSD card
- ENABLE_DATA_OUT - toggles data streaming (to mobile devices via Bluetooth)
- STREAM_FORMAT - sets streaming data format (binary or text)
+    OBD_MODEL - defines the model of OBD-II Adapter (UART or I2C)
+    USE_GPS - defines whether GPS is used
+    USE_MPU6050 - defines whether
+    MPU6050 (accelerometer & gyro) is used
+    ENABLE_DATA_LOG - toggles data logging on microSD card
+    ENABLE_DATA_OUT - toggles data streaming (to mobile devices via Bluetooth)
+    STREAM_FORMAT - sets streaming data format (binary or text)
 
 OBD-II
 ------
@@ -48,27 +49,27 @@ The data is logged in a simple CSV text format.Each line represents a record wit
 
 Time Elapsed is the time elapsed in milliseconds since previous data record. Data Type is the OBD-II PID which is defined in the OBD-II library (e.g. 0x10C is engine RPM). Here is an example data clip:
 
- 169,10D,0
- 171,111,12
- 170,143,21
- 165,10B,30
- 175,10C,705
- 169,10D,0
- 170,111,12
- ...
+    169,10D,0
+    171,111,12
+    170,143,21
+    165,10B,30
+    175,10C,705
+    169,10D,0
+    170,111,12
+    ...
 
 GPS and motion sensor data are defined as special PID which OBD-II standard does not use and are defined in datalogger.h file.
 
- #define PID_GPS_LATITUDE 0xA
- #define PID_GPS_LONGITUDE 0xB
- #define PID_GPS_ALTITUDE 0xC
- #define PID_GPS_SPEED 0xD
- #define PID_GPS_HEADING 0xE
- #define PID_GPS_SAT_COUNT 0xF
- #define PID_GPS_TIME 0x10
- #define PID_GPS_DATE 0x11
- #define PID_ACC 0x20
- #define PID_GYRO 0x21
+    #define PID_GPS_LATITUDE 0xA
+    #define PID_GPS_LONGITUDE 0xB
+    #define PID_GPS_ALTITUDE 0xC
+    #define PID_GPS_SPEED 0xD
+    #define PID_GPS_HEADING 0xE
+    #define PID_GPS_SAT_COUNT 0xF
+    #define PID_GPS_TIME 0x10
+    #define PID_GPS_DATE 0x11
+    #define PID_ACC 0x20
+    #define PID_GYRO 0x21
 
 Data Streaming
 --------------
