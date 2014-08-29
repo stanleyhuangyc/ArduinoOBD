@@ -75,10 +75,23 @@
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
 
+typedef enum {
+    PROTO_AUTO = 0,
+    PROTO_ISO_9141_2 = 3,
+    PROTO_KWP2000_5KBPS = 4,
+    PROTO_KWP2000_FAST = 5,
+    PROTO_CAN_11B_500K = 6,
+    PROTO_CAN_29B_500K = 7,
+    PROTO_CAN_29B_250K = 8,
+    PROTO_CAN_11B_250K = 9,
+} OBD_PROTOCOLS;
+
 // states
-#define OBD_DISCONNECTED 0
-#define OBD_CONNECTING 1
-#define OBD_CONNECTED 2
+typedef enum {
+    OBD_DISCONNECTED = 0,
+    OBD_CONNECTING = 1,
+    OBD_CONNECTED = 2
+} OBD_STATES;
 
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
@@ -97,20 +110,20 @@ public:
 	// un-initialize OBD-II connection
 	virtual void uninit();
 	// get connection state
-	byte getState() { return m_state; }
+	OBD_STATES getState() { return m_state; }
 	// read specified OBD-II PID value
 	virtual bool read(byte pid, int& result);
-	// set device into 
+	// set device into
 	virtual void sleep();
 	// wake up device from previous sleep
 	virtual void wakeup();
 	// set working protocol (default auto)
-	virtual void setProtocol(byte h = -1);
+	virtual void setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
-	// retrive and parse the response of specifie PID 
+	// retrive and parse the response of specifie PID
 	virtual bool getResult(byte& pid, int& result);
 	// determine if the PID is supported
 	bool isValidPID(byte pid);
@@ -133,7 +146,7 @@ protected:
 	void recover();
 	void debugOutput(const char* s);
 	int normalizeData(byte pid, char* data);
-	byte m_state;
+	OBD_STATES m_state;
 private:
 	virtual uint8_t getPercentageValue(char* data)
 	{

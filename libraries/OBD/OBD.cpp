@@ -218,9 +218,9 @@ bool COBD::getResult(byte& pid, int& result)
 	return true;
 }
 
-void COBD::setProtocol(byte h)
+void COBD::setProtocol(OBD_PROTOCOLS h)
 {
-	if (h == -1) {
+	if (h == PROTO_AUTO) {
 		write("ATSP00\r");
 	} else {
 		char cmd[8];
