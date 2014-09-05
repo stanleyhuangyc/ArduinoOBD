@@ -210,7 +210,6 @@ public:
     bool init(byte protocol = 0);
     bool read(byte pid, int& result);
     void write(const char* s);
-    void setProtocol(bool auto, byte h);
     // Asynchronized access API
     void setPID(byte pid);
     void applyPIDs();
