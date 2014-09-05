@@ -218,25 +218,50 @@ bool COBD::getResult(byte& pid, int& result)
 	return true;
 }
 
-void COBD::setProtocol(OBD_PROTOCOLS h)
+bool COBD::setProtocol(OBD_PROTOCOLS h)
 {
+    char buf[OBD_RECV_BUF_SIZE];
 	if (h == PROTO_AUTO) {
 		write("ATSP00\r");
 	} else {
-		char cmd[8];
-		sprintf(cmd, "ATSP%d\r", h);
-		write(cmd);
+		sprintf(buf, "ATSP%d\r", h);
+		write(buf);
 	}
+	if (receive(buf, 3000) > 0 && strstr(buf, "OK"))
+        return true;
+    else
+        return false;
 }
 
 void COBD::sleep()
 {
 	write("ATLP\r");
+	receive();
 }
 
 void COBD::wakeup()
 {
 	write('\r');
+	receive();
+}
+
+unsigned int COBD::getVoltage()
+{
+    char buf[OBD_RECV_BUF_SIZE];
+    write("ATRV\r");
+    byte n = receive(buf, 100);
+    if (n > 0) {
+        for (byte i = 0; i < n; i++) {
+            if (buf[i] >= '0' && buf[i] <= '9') {
+                int v1 = atoi(buf);
+                int v2 = 0;
+                char *p = strchr(buf, '.');
+                if (p) v2 = atoi(p + 1);
+                return (unsigned int)v1 * 1000 + v2;
+            }
+        }
+    }
+    return 0;
 }
 
 bool COBD::isValidPID(byte pid)

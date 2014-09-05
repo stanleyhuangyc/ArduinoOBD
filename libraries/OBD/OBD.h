@@ -118,9 +118,11 @@ public:
 	// wake up device from previous sleep
 	virtual void wakeup();
 	// set working protocol (default auto)
-	virtual void setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
+	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
+	// get battery voltage (in mV, 12500 for 12.5V, works without ECU)
+	virtual unsigned int getVoltage();
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
