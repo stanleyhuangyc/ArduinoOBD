@@ -50,12 +50,14 @@ static uint8_t lastFileSize = 0;
 static uint32_t lastGPSDataTime = 0;
 static uint32_t lastACCDataTime = 0;
 static uint32_t lastRefreshTime = 0;
-static uint16_t startDistance = 0;
+static uint32_t distance = 0;
 static uint32_t startTime = 0;
+static uint16_t lastSpeed = 0;
+static uint32_t lastSpeedTime = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE, PID_DISTANCE};
+static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE};
 
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
@@ -122,8 +124,7 @@ public:
 
         initScreen();
 
-        read(PID_DISTANCE, (int&)startDistance);
-
+        startTime = millis();
         lastRefreshTime = millis();
     }
     void loop()
@@ -161,6 +162,14 @@ public:
               lcd.printInt((uint16_t)t);
             }
             lastRefreshTime = dataTime;
+
+            // get display voltage
+            unsigned int v = getVoltage();
+            lcd.setFontSize(FONT_SIZE_SMALL);
+            lcd.setCursor(108, 12);
+            lcd.printInt(v / 1000);
+            lcd.write('.');
+            lcd.printInt((v % 1000) / 100);
         }
 
         if (errors >= 3) {
@@ -388,6 +397,24 @@ private:
         // log data to SD card
         logData(0x100 | pid, value);
 
+        if (pid == PID_SPEED) {
+            if (lastSpeedTime) {
+                // estimate distance travelled since last speed update
+                distance += (uint32_t)(value + lastSpeed) * (dataTime - lastSpeedTime) / 2 / 3600;
+                // display speed
+                lcd.setFontSize(FONT_SIZE_MEDIUM);
+                lcd.setCursor(250, 5);
+                lcd.printInt(distance / 1000);
+                lcd.write('.');
+                lcd.printInt(((uint16_t)distance % 1000) / 100);
+                // calculate and display average speed
+                int avgSpeed = (unsigned long)distance * 1000 / (millis() - startTime) * 36 / 10;
+                lcd.setCursor(250, 8);
+                lcd.printInt(avgSpeed);
+            }
+            lastSpeed = value;
+            lastSpeedTime = dataTime;
+        }
 #if ENABLE_DATA_LOG
         // flush SD data every 1KB
         if ((dataSize >> 10) != lastFileSize) {
@@ -450,12 +477,15 @@ private:
             Narcoleptic.delay(2000);
         }
         lcd.backlight(true);
+        // re-initialize
         state |= STATE_OBD_READY;
+        startTime = millis();
+        lastSpeedTime = 0;
+        distance = 0;
 #if ENABLE_DATA_LOG
         openFile();
 #endif
         initScreen();
-        read(PID_DISTANCE, (int&)startDistance);
     }
     byte state;
 
@@ -506,12 +536,11 @@ private:
     }
     void showSensorData(byte pid, int value)
     {
-        static int lastSpeed;
         char buf[8];
         switch (pid) {
         case PID_RPM:
             lcd.setFontSize(FONT_SIZE_XLARGE);
-            lcd.setCursor(34, 7);
+            lcd.setCursor(34, 6);
             if (value >= 10000) break;
             setColorByValue(value, 2500, 3500, 5000);
             lcd.printInt(value, 4);
@@ -524,32 +553,22 @@ private:
             lcd.printInt((unsigned int)value % 1000, 3);
             break;
         case PID_THROTTLE:
-            lcd.setFontSize(FONT_SIZE_MEDIUM);
-            lcd.setCursor(42, 11);
+            lcd.setFontSize(FONT_SIZE_SMALL);
+            lcd.setCursor(38, 10);
             if (value >= 100) value = 99;
             setColorByValue(value, 50, 75, 90);
             lcd.printInt(value, 2);
             break;
         case PID_ENGINE_LOAD:
-            lcd.setFontSize(FONT_SIZE_MEDIUM);
-            lcd.setCursor(116, 11);
+            lcd.setFontSize(FONT_SIZE_SMALL);
+            lcd.setCursor(108, 10);
             if (value >= 100) value = 99;
             setColorByValue(value, 50, 75, 90);
             lcd.printInt(value, 2);
             break;
-        case PID_DISTANCE:
-            if ((unsigned int)value >= startDistance) {
-                uint16_t distance = (uint16_t)value - startDistance;
-                if (distance < 1000) {
-                  lcd.setFontSize(FONT_SIZE_MEDIUM);
-                  lcd.setCursor(250, 5);
-                  lcd.printInt(distance);
-                }
-            }
-            break;
         case PID_ENGINE_FUEL_RATE:
-            lcd.setFontSize(FONT_SIZE_MEDIUM);
-            lcd.setCursor(250, 8);
+            lcd.setFontSize(FONT_SIZE_SMALL);
+            lcd.setCursor(38, 12);
             lcd.printInt(value);
             break;
         }
@@ -566,16 +585,20 @@ private:
         lcd.setXY(164, 124);
         lcd.draw4bpp(frame0[0], 78, 58);
 
-        //lcd.setColor(RGB16(0x7f, 0x7f, 0x7f));
+        lcd.setColor(RGB16_CYAN);
         lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(110, 4);
         lcd.print("km/h");
-        lcd.setCursor(110, 8);
+        lcd.setCursor(110, 7);
         lcd.print("rpm");
-        lcd.setCursor(15, 12);
+        lcd.setCursor(8, 10);
         lcd.print("THR:    %");
-        lcd.setCursor(84, 12);
-        lcd.print("LOAD:    %");
+        lcd.setCursor(78, 10);
+        lcd.print("LOAD:   %");
+        lcd.setCursor(8, 12);
+        lcd.print("FUEL:   L/h");
+        lcd.setCursor(78, 12);
+        lcd.print("BATT:     V");
 
         //lcd.setFont(FONT_SIZE_MEDIUM);
         lcd.setColor(RGB16_CYAN);
@@ -586,9 +609,9 @@ private:
         lcd.setCursor(185, 6);
         lcd.print("(km)");
         lcd.setCursor(185, 8);
-        lcd.print("FUEL CSM:");
+        lcd.print("AVG SPEED:");
         lcd.setCursor(185, 9);
-        lcd.print("(L/h)");
+        lcd.print("(km/h)");
         lcd.setCursor(185, 11);
         lcd.print("OBD TIME:");
         lcd.setCursor(185, 12);
@@ -656,7 +679,6 @@ void setup()
 
     logger.begin();
     logger.initSender();
-    delay(500);
 
     logger.checkSD();
     logger.setup();

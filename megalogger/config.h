@@ -7,7 +7,7 @@
 // OBD_MODEL_I2C for I2C version
 // OBD_MODEL_UART for UART version
 #define OBD_MODEL OBD_MODEL_I2C
-#define OBD_PROTOCOL 0 /* 0 for auto */
+#define OBD_PROTOCOL PROTO_AUTO
 
 /**************************************
 * Data logging options
