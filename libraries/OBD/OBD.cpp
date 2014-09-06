@@ -245,7 +245,7 @@ void COBD::wakeup()
 	receive();
 }
 
-unsigned int COBD::getVoltage()
+int COBD::getVoltage()
 {
     char buf[OBD_RECV_BUF_SIZE];
     write("ATRV\r");
@@ -256,16 +256,16 @@ unsigned int COBD::getVoltage()
                 int v1 = atoi(buf);
                 int v2 = 0;
                 char *p = strchr(buf, '.');
-                if (p) v2 = atoi(p + 1);
-                if (v2 < 10)
-                    v2 *= 100;
-                else if (v2 <100)
-                    v2 *= 10;
-                return (unsigned int)v1 * 1000 + v2;
+                if (p++) {
+                    if (*p >= '0' && *p <= '9') {
+                        v2 = *p - '0';
+                    }
+                }
+                return v1 * 10 + v2;
             }
         }
     }
-    return 0;
+    return -1;
 }
 
 bool COBD::isValidPID(byte pid)
