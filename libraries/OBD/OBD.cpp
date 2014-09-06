@@ -257,6 +257,10 @@ unsigned int COBD::getVoltage()
                 int v2 = 0;
                 char *p = strchr(buf, '.');
                 if (p) v2 = atoi(p + 1);
+                if (v2 < 10)
+                    v2 *= 100;
+                else if (v2 <100)
+                    v2 *= 10;
                 return (unsigned int)v1 * 1000 + v2;
             }
         }
