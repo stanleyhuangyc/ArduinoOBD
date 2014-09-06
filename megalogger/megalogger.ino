@@ -144,6 +144,16 @@ public:
                 if (isValidPID(pidTier3[index3]))
                     logOBDData(pidTier3[index3]);
                 index3 = (index3 + 1) % TIER_NUM3;
+                if (index3 == 0) {
+                    // get and display voltage
+                    int v = getVoltage();
+                    lcd.setFontSize(FONT_SIZE_SMALL);
+                    lcd.setCursor(108, 12);
+                    lcd.printInt(v / 10);
+                    lcd.write('.');
+                    lcd.printInt(v % 10);
+                    logData(PID_VOLTAGE, v);
+                }
             } else {
                 if (isValidPID(pidTier2[index2]))
                     logOBDData(pidTier2[index2++]);
@@ -162,14 +172,6 @@ public:
               lcd.printInt((uint16_t)t);
             }
             lastRefreshTime = dataTime;
-
-            // get display voltage
-            unsigned int v = getVoltage();
-            lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(108, 12);
-            lcd.printInt(v / 1000);
-            lcd.write('.');
-            lcd.printInt((v % 1000) / 100);
         }
 
         if (errors >= 3) {
