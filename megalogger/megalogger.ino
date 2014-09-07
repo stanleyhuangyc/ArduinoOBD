@@ -141,11 +141,11 @@ public:
             index = 0;
             if (index2 == TIER_NUM2) {
                 index2 = 0;
-                if (isValidPID(pidTier3[index3]))
+                if (isValidPID(pidTier3[index3])) {
                     logOBDData(pidTier3[index3]);
+                }
                 index3 = (index3 + 1) % TIER_NUM3;
                 if (index3 == 0) {
-                    // get and display voltage
                     int v = getVoltage();
                     lcd.setFontSize(FONT_SIZE_SMALL);
                     lcd.setCursor(108, 12);
@@ -155,8 +155,10 @@ public:
                     logData(PID_VOLTAGE, v);
                 }
             } else {
-                if (isValidPID(pidTier2[index2]))
-                    logOBDData(pidTier2[index2++]);
+                if (isValidPID(pidTier2[index2])) {
+                    logOBDData(pidTier2[index2]);
+                }
+                index2++;
             }
         }
 
