@@ -44,6 +44,9 @@
 #define USE_GPS 1
 #define GPSUART Serial2
 #define MAX_GPS_PROCESS_TIME 50 /* ms */
+
+// 38400bps for G6010 5Hz GPS receiver
+// 115200bps for G7020 10Hz GPS receiver
 #define GPS_BAUDRATE 38400 /* bps */
 //#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
