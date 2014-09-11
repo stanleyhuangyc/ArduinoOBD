@@ -571,9 +571,11 @@ private:
             lcd.printInt(value, 2);
             break;
         case PID_ENGINE_FUEL_RATE:
-            lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(38, 12);
-            lcd.printInt(value);
+            if (value < 1000) {
+                lcd.setFontSize(FONT_SIZE_SMALL);
+                lcd.setCursor(38, 12);
+                lcd.printInt(value);
+            }
             break;
         }
         lcd.setColor(RGB16_WHITE);
