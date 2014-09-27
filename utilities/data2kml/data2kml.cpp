@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "logdata.h"
+#include "kmlhead.h"
 
 typedef struct {
 	uint32_t timestamp;
@@ -114,7 +115,7 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 			fprintf(kd->fp, "T%02u:%02u:%02u.%03uZ", kd->curTime / 10000000, (kd->curTime / 100000) % 100, (kd->curTime / 1000) % 100, kd->curTime % 1000);
 		}
 		fprintf(kd->fp, "</when>");
-		fprintf(kd->fp, "<gx:coord>%f %f %f</gx:coord>", kd->datas.lon, kd->datas.lat, kd->datas.alt);
+		fprintf(kd->fp, "<gx:coord>%f %f %d</gx:coord>", kd->datas.lon, kd->datas.lat, kd->datas.alt);
 
 		kd->datas.timestamp = timestamp;
 		kd->dataset = (DATASET*)realloc(kd->dataset, sizeof(DATASET) * (kd->datacount + 1));
@@ -284,6 +285,7 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 	KML_DATA* kd = (KML_DATA*)calloc(1, sizeof(KML_DATA));
 	kd->fp = fopen(kmlfile, "w");
 	
+	//fprintf(kd->fp, "%s", kmlhead);
 	AppendFile(kd->fp, "kmlhead.txt");	
 
 	int elapsed;
@@ -328,6 +330,7 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 	
 	WriteKMLTail(kd);
 	Cleanup(kd);
+	fclose(fp);
 	return 0;
 }
 
