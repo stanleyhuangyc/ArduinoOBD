@@ -468,7 +468,11 @@ private:
         //digitalWrite(SD_CS_PIN, LOW);
         for (uint16_t i = 0; ; i++) {
             if (i == 3) {
-                lcd.backlight(false);
+                // fade out backlight
+                for (int n = 254; n >= 0; n--) {
+                    lcd.setBackLight(n);
+                    delay(20);
+                }
                 lcd.clear();
             }
             if ((getState() != OBD_CONNECTED || errors > 1) && !init())
@@ -480,7 +484,6 @@ private:
 
             Narcoleptic.delay(2000);
         }
-        lcd.backlight(true);
         // re-initialize
         state |= STATE_OBD_READY;
         startTime = millis();
@@ -490,6 +493,11 @@ private:
         openFile();
 #endif
         initScreen();
+        // fade in backlight
+        for (int n = 1; n <= 255; n++) {
+            lcd.setBackLight(n);
+            delay(10);
+        }
     }
     byte state;
 
@@ -665,10 +673,14 @@ void setup()
 {
     lcd.begin();
     lcd.setFontSize(FONT_SIZE_MEDIUM);
-    lcd.backlight(true);
     lcd.setColor(0xFFE0);
     lcd.print("MEGA LOGGER - OBD-II/GPS/G-FORCE");
     lcd.setColor(RGB16_WHITE);
+
+    for (int n = 0; n <= 255; n++) {
+        lcd.setBackLight(n);
+        delay(10);
+    }
 
 #if USE_GPS
 #ifdef GPS_OPEN_BAUDRATE
