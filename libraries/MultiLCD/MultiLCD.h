@@ -1,12 +1,13 @@
 /*************************************************************************
-* Arduino Text Display Library for Multiple LCDs
+* Arduino Text & Bitmap Display Library for color LCDs
 * Distributed under GPL v2.0
-* Copyright (c) 2013 Stanley Huang <stanleyhuangyc@live.com>
-* All rights reserved.
+* Developed by Stanley Huang <stanleyhuangyc@gmail.com>
+* For more information, please visit http://arduinodev.com
 *************************************************************************/
+
 #include <UTFT.h>
 
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
+#if defined(__AVR_ATmega168P__)
 #define MEMORY_SAVING
 #endif
 
@@ -50,7 +51,7 @@ public:
     LCD_Common():m_font(FONT_SIZE_SMALL),m_flags(0) {}
     void setFontSize(FONT_SIZE size) { m_font = size; }
     void setFlags(byte flags) { m_flags = flags; }
-    virtual void backlight(bool on) {}
+    virtual void setBackLight(byte brightness) {}
     virtual void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height) {}
     virtual void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0) {}
     virtual void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height) {}
@@ -180,7 +181,7 @@ public:
     void fill(uint16_t XL,uint16_t XR,uint16_t YU,uint16_t YD,uint16_t color = 0);
     void clear(void);
     size_t write(uint8_t);
-    void backlight(bool on);
+    void setBackLight(byte brightness);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
 private:
@@ -246,6 +247,7 @@ public:
     {
         //clear(0, line * TFT_LINE_HEIGHT, 320, 8);
     }
+    void setBackLight(byte brightness);
 private:
     void setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
     void writeDigit(byte n);

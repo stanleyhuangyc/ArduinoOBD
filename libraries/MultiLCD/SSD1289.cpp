@@ -1,8 +1,8 @@
 /*************************************************************************
-* Arduino Text Display Library for Multiple LCDs
+* Arduino Text & Bitmap Display Library for color LCDs
 * Distributed under GPL v2.0
-* Copyright (c) 2013 Stanley Huang <stanleyhuangyc@live.com>
-* All rights reserved.
+* Developed by Stanley Huang <stanleyhuangyc@gmail.com>
+* For more information, please visit http://arduinodev.com
 *************************************************************************/
 
 #include <Arduino.h>
@@ -17,11 +17,7 @@ Define zone
 #define CS 57
 #define RST 56
 
-#define T_CLK 55
-#define T_CS 60
-#define T_DIN 54
-#define T_DOUT 8
-#define T_IRQ 9
+#define PIN_BACKLIGHT 8
 
 #define X_CONST 240
 #define Y_CONST 320
@@ -130,6 +126,9 @@ void LCD_SSD1289::begin()
 	sbi (P_CS, B_CS);
 
 	clear();
+
+	pinMode(PIN_BACKLIGHT, OUTPUT);
+	digitalWrite(PIN_BACKLIGHT, HIGH);
 }
 
 void LCD_SSD1289::setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
@@ -146,6 +145,11 @@ void LCD_SSD1289::setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 	LCD_Write_COM_DATA(0x4e,x1);
 	LCD_Write_COM_DATA(0x4f,y1);
 	LCD_Write_COM(0x22);
+}
+
+void LCD_SSD1289::setBackLight(byte brightness)
+{
+    analogWrite(PIN_BACKLIGHT, brightness);
 }
 
 void LCD_SSD1289::Enable()
