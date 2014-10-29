@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "Narcoleptic.h"
+
+#ifndef __SAM3X8E__
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/common.h>
@@ -23,7 +27,6 @@
 
 #include <avr/wdt.h>
 #include <avr/sleep.h>
-#include "Narcoleptic.h"
 
 SIGNAL(WDT_vect) {
   wdt_disable();
@@ -53,5 +56,13 @@ void NarcolepticClass::delay(int milliseconds) {
   if (milliseconds >= 32)      { sleep(WDTO_30MS); milliseconds -= 30; }
   if (milliseconds >= 16)      { sleep(WDTO_15MS); milliseconds -= 15; }
 }
+
+#else
+
+void NarcolepticClass::delay(int milliseconds) {
+  delay(milliseconds);
+}
+
+#endif
 
 NarcolepticClass Narcoleptic;
