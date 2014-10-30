@@ -22,14 +22,14 @@ uint32_t start;
 uint32_t distance = 0;
 int speed = 0;
 byte sat = 0;
-uint16_t records = 0;
+uint32_t records = 0;
 char heading[2];
 bool acc = false;
-byte displayMode = 1;
 
 float curLat = 0;
 float curLon = 0;
-long alt = 0;
+int16_t alt = 0;
+int16_t startAlt = 32767;
 long lastLat = 0;
 long lastLon = 0;
 uint32_t time;
@@ -91,10 +91,14 @@ void processGPS()
     if (speed < 1000) speed = 0;
     logger.logData(PID_GPS_SPEED, speed);
 
+    /*
     if (sat >= 3 && gps.satellites() < 3) {
         initScreen();
     }
+    */
+
     sat = gps.satellites();
+    if (sat > 100) sat = 0;
 
     long lat, lon;
     gps.get_position(&lat, &lon, 0);
@@ -132,12 +136,22 @@ void processGPS()
         }
         lastTime = logger.dataTime;
 
+#if ENABLE_DATA_LOG
         // flush file every several seconds
         logger.flushFile();
+#endif
     }
 
-    alt = gps.altitude();
-    logger.logData(PID_GPS_ALTITUDE, (float)alt);
+    alt = gps.altitude() / 100;
+    if (alt > -10000 && alt < 10000) {
+        logger.logData(PID_GPS_ALTITUDE, alt);
+        if (sat > 5 && startAlt == 32767) {
+            // save start altitude
+            startAlt = alt;
+        }
+    } else {
+        alt = 0;
+    }
 
     records++;
 }
@@ -147,10 +161,7 @@ bool CheckSD()
     Sd2Card card;
     SdVolume volume;
 
-    lcd.setCursor(0, 0);
-    lcd.setFont(FONT_SIZE_MEDIUM);
     pinMode(SS, OUTPUT);
-
     if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
         const char* type;
         char buf[20];
@@ -169,11 +180,10 @@ bool CheckSD()
             type = "SDx";
         }
 
-        lcd.clear();
         lcd.print(type);
         lcd.write(' ');
         if (!volume.init(card)) {
-            lcd.print("No FAT!");
+            lcd.println("No FAT!");
             return false;
         }
 
@@ -182,17 +192,15 @@ bool CheckSD()
         volumesize *= volume.clusterCount();
         volumesize >>= 10;
 
-        sprintf(buf, "%dGB", (int)((volumesize + 511) / 1000));
-        lcd.print(buf);
+        lcd.print((int)((volumesize + 511) / 1000));
+        lcd.println("GB");
     } else {
-        lcd.clear();
-        lcd.print("SD");
+        lcd.println("SD Error");
         return false;
     }
 
     if (!SD.begin(SD_CS_PIN)) {
-        lcd.setCursor(0, 0);
-        lcd.print("Bad SD");
+        lcd.println("Bad SD");
         return false;
     }
     return true;
@@ -201,52 +209,50 @@ bool CheckSD()
 void initScreen()
 {
     lcd.clear();
-    switch (displayMode) {
-    case 0:
-        lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(48, 1);
-        lcd.write('.');
-        lcd.setCursor(48, 6);
-        lcd.write('.');
-        lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setCursor(110, 0);
-        lcd.write(':');
-        lcd.setCursor(110, 3);
-        lcd.print("kph");
-        lcd.setCursor(64, 3);
-        lcd.print("km/h");
-        lcd.setCursor(76, 7);
-        lcd.print("km");
-        break;
-    default:
-        lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(48, 0);
-        lcd.write(':');
-        lcd.setCursor(48, 3);
-        lcd.write('.');
-        lcd.setCursor(48, 6);
-        lcd.write('.');
-        lcd.setFont(FONT_SIZE_SMALL);
-        lcd.setCursor(88, 1);
-        lcd.write('.');
-        lcd.setCursor(76, 4);
-        lcd.print("kph");
-        lcd.setCursor(76, 7);
-        lcd.print("km");
-    }
-    //lcd.setCursor(104, 6);
-    //lcd.print("S:");
+    lcd.setColor(RGB16_CYAN);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.setCursor(32, 0);
+    lcd.print("Speed");
+    lcd.setCursor(120, 0);
+    lcd.print("Distance");
+    lcd.setCursor(32, 8);
+    lcd.print("Watts");
+    lcd.setCursor(120, 8);
+    lcd.print("Calories");
+    lcd.setCursor(40, 16);
+    lcd.print("Time");
+    lcd.setCursor(150, 16);
+    lcd.print("RPM");
+    lcd.setCursor(20, 24);
+    lcd.print("Altitude");
+    lcd.setCursor(120, 24);
+    lcd.print("Alt Gained");
 
-    lcd.setCursor(172, 0);
-    lcd.println("TIME:");
-    lcd.setCursor(172, 2);
+    lcd.setFontSize(FONT_SIZE_SMALL);
+    lcd.setCursor(76, 5);
+    lcd.print("km/h");
+    lcd.setCursor(180, 5);
+    lcd.print("km");
+    lcd.setCursor(72, 28);
+    lcd.print('m');
+    lcd.setCursor(192, 28);
+    lcd.print('m');
+
+    lcd.setFontSize(FONT_SIZE_SMALL);
+    lcd.setCursor(240, 0);
+    lcd.println("UTC:");
+    lcd.setCursor(240, 2);
     lcd.println("LAT:");
-    lcd.setCursor(172, 4);
+    lcd.setCursor(240, 4);
     lcd.println("LON:");
-    lcd.setCursor(172, 6);
+    lcd.setCursor(240, 6);
     lcd.println("ALT:");
-    lcd.setCursor(172, 8);
+    lcd.setCursor(240, 8);
     lcd.println("SAT:");
+    lcd.setCursor(240, 10);
+    lcd.println("PTS:");
+    lcd.setCursor(240, 12);
+    lcd.println("KBs:");
 }
 
 #if USE_MPU6050
@@ -258,7 +264,7 @@ void displayMPU6050()
 
     int temp = (data.value.temperature + 12412) / 340;
     sprintf(buf, "TEMP%3dC", temp);
-    lcd.setFont(FONT_SIZE_SMALL);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setCursor(80, 2);
     lcd.print(buf);
 
@@ -287,17 +293,19 @@ void displayMPU6050()
 void setup()
 {
     lcd.begin();
-    lcd.setFont(FONT_SIZE_MEDIUM);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.setColor(RGB16_YELLOW);
+    lcd.println("Freematics GPS Logger/Meter");
+    lcd.setColor(RGB16_WHITE);
+    lcd.println("\r\nInitializing...");
 
-    // init button
-    pinMode(8, INPUT);
-
+#if ENABLE_DATA_LOG
     CheckSD();
 
-    lcd.setCursor(0, 2);
     int index = logger.openFile();
     lcd.print("File: ");
     lcd.println(index);
+#endif // ENABLE_DATA_LOG
 
 #if USE_MPU6050
     Wire.begin();
@@ -307,47 +315,45 @@ void setup()
     lcd.println(acc ? "YES" : "NO");
 #endif
 
-    lcd.setCursor(0, 6);
-    lcd.print("GPS:");
-
-    GPSUART.begin(GPS_BAUDRATE);
     logger.initSender();
 
-    byte n = 0xff;
-    uint32_t tm = 0;
-    start = millis();
-    char progress[] = {'-', '/', '|', '\\'};
-    do {
-        if (!GPSUART.available()) continue;
-        if (n == 0xff) {
-            lcd.print("YES");
-            lcd.setCursor(0, 6);
-            lcd.print("SAT ");
-            n = 0;
-        }
-        char c = GPSUART.read();
+    GPSUART.begin(GPS_BAUDRATE);
+    delay(1000);
 
-        if (sat == 0 && millis() - tm > 100) {
-            lcd.setCursor(32, 6);
-            lcd.write(progress[n]);
-            n = (n + 1) % 4;
-            tm = millis();
-        }
+    if (GPSUART.available()) {
+        // init GPS
+        lcd.println("GPS:");
+        byte n = 0xff;
+        uint32_t tm = 0;
+        start = millis();
+        char progress[] = {'-', '/', '|', '\\'};
+        do {
+            if (!GPSUART.available()) continue;
+            if (n == 0xff) {
+                lcd.print("YES");
+                lcd.setCursor(0, 10);
+                lcd.print("SAT ");
+                n = 0;
+            }
+            char c = GPSUART.read();
 
-        if (!gps.encode(c)) continue;
+            if (sat == 0 && millis() - tm > 100) {
+                lcd.setCursor(32, 12);
+                lcd.write(progress[n]);
+                n = (n + 1) % 4;
+                tm = millis();
+            }
 
-#if USE_MPU6050
-        if (acc) {
-            displayMPU6050();
-        }
-#endif
-
-        sat = gps.satellites();
-        if (sat < 100) {
-            lcd.setCursor(32, 6);
+            if (!gps.encode(c)) continue;
+            sat = gps.satellites();
+            if (sat > 100) sat = 0;
+            lcd.setCursor(32, 12);
             lcd.printInt(sat);
-        }
-    } while (sat < 3 && millis() - start < 30000);
+        } while (sat < 3 && millis() - start < 30000);
+    } else {
+        lcd.println("No GPS");
+    }
+    delay(1000);
 
     //GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
 
@@ -357,135 +363,106 @@ void setup()
 	start = millis();
 }
 
-void displaySpeedDistance()
-{
-    uint16_t elapsed = (millis() - start) / 1000;
-    uint16_t n;
-
-    // display elapsed time (mm:ss)
-    lcd.setFlags(FLAG_PAD_ZERO);
-    lcd.setFont(FONT_SIZE_SMALL);
-    lcd.setCursor(98, 0);
-    lcd.printInt(n = elapsed / 60, 2);
-    elapsed -= n * 60;
-    lcd.setCursor(116, 0);
-    lcd.printInt(elapsed, 2);
-    lcd.setFlags(0);
-
-    if (sat < 3) return;
-
-    // display speed
-    lcd.setFont(FONT_SIZE_XLARGE);
-    n = speed / 1000;
-    if (n >= 100) {
-        lcd.setCursor(0, 0);
-        lcd.printInt(n, 3);
-    } else {
-        lcd.setCursor(16, 0);
-        lcd.printInt(n, 2);
-    }
-    lcd.setCursor(56, 0);
-    n = speed - n * 1000;
-    lcd.printInt(n / 100);
-
-    // display distance
-    lcd.setCursor(0, 5);
-    lcd.printInt(n = distance / 1000, 3);
-    lcd.setCursor(56, 5);
-    n = distance - n * 1000;
-    lcd.printInt(n / 100);
-
-    // display average speed
-    if (elapsed > 60) {
-        uint16_t avgSpeed = distance * 36 / elapsed / 10;
-        lcd.setFont(FONT_SIZE_MEDIUM);
-        lcd.setCursor(102, 1);
-        lcd.printInt(avgSpeed, 3);
-    }
-}
-
-#if DISPLAY_MODES > 1
 void displayTimeSpeedDistance()
 {
     uint32_t elapsed = millis() - start;
     uint16_t n;
 
     // display elapsed time (mm:ss:mm)
+    lcd.setColor(RGB16_WHITE);
+    lcd.setFontSize(FONT_SIZE_XLARGE);
     n = elapsed / 60000;
-    if (n >= 100) {
-        lcd.setCursor(0, 0);
-        lcd.printInt(n, 3);
-    } else {
-        lcd.setCursor(16, 0);
-        lcd.printInt(n, 2);
-    }
+    lcd.setCursor(0, 18);
+    lcd.printInt(n, 2);
+    lcd.write(':');
     elapsed -= n * 60000;
     lcd.setFlags(FLAG_PAD_ZERO);
-    lcd.setCursor(56, 0);
     lcd.printInt(n = elapsed / 1000, 2);
+    lcd.write('.');
     elapsed -= n * 1000;
-    lcd.setCursor(96, 1);
-    lcd.setFont(FONT_SIZE_SMALL);
-    lcd.printInt(n = elapsed / 10, 2);
-    lcd.setFlags(0);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.write(elapsed / 100 + '0');
+    //if (sat < 3) return;
 
-    if (sat < 3) return;
+
+    lcd.setFlags(0);
+    lcd.setColor(RGB16_WHITE);
+    lcd.setFontSize(FONT_SIZE_XLARGE);
+
+    // display RPM
+    lcd.setCursor(120, 18);
+    lcd.printInt(120, 4);
 
     // display speed
-    lcd.setFont(FONT_SIZE_LARGE);
     n = speed / 1000;
-    if (n >= 100) {
-        lcd.setCursor(0, 3);
-        lcd.printInt(n, 3);
-    } else {
-        lcd.setCursor(16, 3);
-        lcd.printInt(n, 2);
-    }
-    lcd.setCursor(56, 3);
+    lcd.setCursor(0, 3);
+    lcd.printInt(n, 3);
     n = speed - n * 1000;
-    lcd.printInt(n / 100);
+    lcd.write('.');
+    lcd.write(n / 100 + '0');
 
     // display distance
-    lcd.setCursor(0, 6);
+    lcd.setCursor(100, 3);
     lcd.printInt(n = distance / 1000, 3);
-    lcd.setCursor(56, 6);
     n = distance - n * 1000;
-    lcd.printInt(n / 100);
+    lcd.write('.');
+    lcd.write(n / 100 + '0');
+
+    // display watts
+    lcd.setCursor(0, 10);
+    lcd.printInt(123, 4);
+    lcd.setCursor(120, 10);
+    lcd.printInt(234, 4);
+
+    // display altitude
+    lcd.setCursor(0, 26);
+    if (alt >= 0) {
+        lcd.printInt(alt, 4);
+    } else {
+        lcd.print(" -");
+        lcd.printInt(-alt, 3);
+    }
+
+    lcd.setCursor(120, 26);
+    if (startAlt != 32767) {
+        if (alt >= startAlt) {
+            lcd.printInt(alt - startAlt, 4);
+        } else {
+            lcd.print(" -");
+            lcd.printInt(startAlt - alt, 3);
+        }
+    } else {
+        lcd.printInt(0, 4);
+    }
 }
-#endif
 
 void displayExtraInfo()
 {
-    lcd.setFont(FONT_SIZE_SMALL);
-    lcd.setTextColor(RGB16_CYAN);
+    lcd.setFontSize(FONT_SIZE_SMALL);
+    lcd.setColor(RGB16_WHITE);
     lcd.setCursor(0, 0);
     lcd.write(heading[0]);
     lcd.write(heading[1]);
 
     lcd.setFlags(0);
-    lcd.setCursor(98, 7);
-    lcd.printInt(records, 5);
-    /*
-    if (sat < 100) {
-        lcd.setCursor(116, 6);
-        lcd.printInt((uint16_t)sat, 2);
-    }
-    */
-
-    lcd.setCursor(208, 0);
+    lcd.setCursor(266, 0);
     lcd.print(time);
-    lcd.setCursor(208, 2);
+    lcd.setCursor(266, 2);
     lcd.print(curLat, 5);
-    lcd.setCursor(208, 4);
+    lcd.setCursor(266, 4);
     lcd.print(curLon, 5);
-    lcd.setCursor(208, 6);
-    lcd.print((float)alt / 100);
-    lcd.print("m ");
-    if (sat < 100) {
-        lcd.setCursor(208, 8);
-        lcd.print(sat);
-        lcd.print(' ');
-    }
+    lcd.setCursor(266, 6);
+    lcd.print(alt);
+    lcd.print(' ');
+    lcd.setCursor(266, 8);
+    lcd.print(sat);
+    lcd.print(' ');
+
+    lcd.setCursor(266, 10);
+    lcd.printLong(records);
+
+    lcd.setCursor(266, 12);
+    lcd.printInt(logger.dataSize >> 10);
 }
 
 void loop()
@@ -503,27 +480,6 @@ void loop()
     processACC();
 #endif
 
-#if DISPLAY_MODES > 1
-    lcd.setTextColor(RGB16_YELLOW);
-    switch (displayMode) {
-    case 0:
-        displaySpeedDistance();
-        break;
-    default:
-        displayTimeSpeedDistance();
-    }
-
-    if (digitalRead(MODE_SWITCH_PIN) == 0) {
-        delay(100);
-        if (digitalRead(MODE_SWITCH_PIN) == 0) {
-            displayMode = (displayMode + 1) % DISPLAY_MODES;
-            while (digitalRead(MODE_SWITCH_PIN) == 0);
-            initScreen();
-        }
-    }
-#else
-    displaySpeedDistance();
-#endif
-
+    displayTimeSpeedDistance();
     displayExtraInfo();
 }
