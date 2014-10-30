@@ -180,10 +180,10 @@ void LCD_SSD1289::clear()
 size_t LCD_SSD1289::write(uint8_t c)
 {
     if (c == '\n') {
-        m_x += (m_font + 1) << 3;
+        m_y += (m_font + 1) << 3;
         return 0;
     } else if (c == '\r') {
-        m_y = 0;
+        m_x = 0;
         return 0;
     }
     if (m_x >= 320) return 0;
