@@ -237,29 +237,7 @@ size_t LCD_SSD1289::write(uint8_t c)
 void LCD_SSD1289::writeDigit(byte n)
 {
     Enable();
-    if (m_font == FONT_SIZE_SMALL) {
-        setXY(m_x, m_y, m_x + 7, m_y + 7);
-        if (n <= 9) {
-            byte pgm_buffer[8];
-            memcpy_P(pgm_buffer, &digits8x8[n], 8);
-            byte i = 7;
-            do {
-                unsigned char d = pgm_buffer[i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    if (d & 1)
-                        setPixel(fch, fcl);
-                    else
-                        setPixel(bch, bcl);
-                }
-            } while (i--);
-
-        } else {
-            clearPixels(8 * 8);
-        }
-        m_x += 8;
-    } else if (m_font == FONT_SIZE_MEDIUM) {
-        write(n <= 9 ? ('0' + n) : ' ');
-    } else if (m_font == FONT_SIZE_LARGE) {
+    if (m_font == FONT_SIZE_LARGE) {
         setXY(m_x, m_y, m_x + 15, m_y + 15);
         if (n <= 9) {
             byte pgm_buffer[32];
@@ -316,6 +294,8 @@ void LCD_SSD1289::writeDigit(byte n)
             clearPixels(16 * 24);
         }
         m_x += 18;
+    } else {
+        write(n <= 9 ? ('0' + n) : ' ');
     }
     Disable();
 }
