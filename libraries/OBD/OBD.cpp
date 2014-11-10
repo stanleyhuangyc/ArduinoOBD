@@ -278,17 +278,9 @@ bool COBD::isValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-void COBD::begin(unsigned long baudrate)
+void COBD::begin()
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
-	if (baudrate) {
-        OBDUART.print("ATBR1 ");
-        OBDUART.print(baudrate);
-        OBDUART.print('\r');
-        OBDUART.end();
-        delay(100);
-        OBDUART.begin(baudrate);
-	}
 }
 
 byte COBD::receive(char* buffer, int timeout)
@@ -378,9 +370,20 @@ bool COBD::init(byte protocol)
 	return true;
 }
 
-void COBD::uninit()
+void COBD::end()
 {
 	m_state = OBD_DISCONNECTED;
+	OBDUART.end();
+}
+
+void COBD::setBaudRate(long baudrate)
+{
+    OBDUART.print("ATBR1 ");
+    OBDUART.print(baudrate);
+    OBDUART.print('\r');
+    OBDUART.end();
+    delay(100);
+    OBDUART.begin(baudrate);
 }
 
 #ifdef DEBUG
@@ -397,12 +400,16 @@ void COBD::debugOutput(const char *s)
 * OBD-II I2C Adapter
 *************************************************************************/
 
-void COBDI2C::begin(byte addr)
+void COBDI2C::begin()
 {
-	m_addr = addr;
 	Wire.begin();
 	memset(obdPid, 0, sizeof(obdPid));
 	memset(obdInfo, 0, sizeof(obdInfo));
+}
+
+void COBDI2C::end()
+{
+	m_state = OBD_DISCONNECTED;
 }
 
 bool COBDI2C::init(byte protocol)
@@ -439,7 +446,7 @@ bool COBDI2C::read(byte pid, int& result)
 void COBDI2C::write(const char* s)
 {
 	COMMAND_BLOCK cmdblock = {millis(), CMD_SEND_AT_COMMAND};
-	Wire.beginTransmission(m_addr);
+	Wire.beginTransmission(I2C_ADDR);
 	Wire.write((byte*)&cmdblock, sizeof(cmdblock));
 	Wire.write(s);
 	Wire.endTransmission();
@@ -448,7 +455,7 @@ void COBDI2C::write(const char* s)
 bool COBDI2C::sendCommand(byte cmd, uint8_t data, byte* payload, byte payloadBytes)
 {
 	COMMAND_BLOCK cmdblock = {millis(), cmd, data};
-	Wire.beginTransmission(m_addr);
+	Wire.beginTransmission(I2C_ADDR);
 	bool success = Wire.write((byte*)&cmdblock, sizeof(COMMAND_BLOCK)) == sizeof(COMMAND_BLOCK);
 	if (payload) Wire.write(payload, payloadBytes);
 	Wire.endTransmission();
@@ -460,7 +467,7 @@ byte COBDI2C::receive(char* buffer, int timeout)
 	uint32_t start = millis();
 	byte offset = 0;
 	do {
-		Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
+		Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
 
 		bool hasEnd = false;
 		for (byte i = 0; i < MAX_PAYLOAD_SIZE; i++) {
@@ -487,7 +494,7 @@ byte COBDI2C::receive(char* buffer, int timeout)
 bool COBDI2C::gpsQuery(GPS_DATA* gpsdata)
 {
 	if (!sendCommand(CMD_GPS_QUERY, 0)) return false;
-	Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)1);
+	Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
 	Wire.readBytes((char*)gpsdata, MAX_PAYLOAD_SIZE);
 	return true;
 }
@@ -521,6 +528,6 @@ void COBDI2C::loadData()
 {
 	sendCommand(CMD_LOAD_OBD_DATA);
 	dataIdleLoop();
-	Wire.requestFrom((byte)m_addr, (byte)MAX_PAYLOAD_SIZE, (byte)0);
+	Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)0);
 	Wire.readBytes((char*)obdInfo, MAX_PAYLOAD_SIZE);
 }

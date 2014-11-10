@@ -104,13 +104,15 @@ public:
        Serial baudrate is only adjustable for Arduino OBD-II Adapters V2
        Check out http://freematics.com/pages/products/arduino-obd-adapter
 	*/
-	virtual void begin(unsigned long baudrate = 0);
+	virtual void begin();
 	// initialize OBD-II connection
 	virtual bool init(byte protocol = 0);
 	// un-initialize OBD-II connection
-	virtual void uninit();
+	virtual void end();
+	// set serial baud rate
+	virtual void setBaudRate(long baudrate);
 	// get connection state
-	OBD_STATES getState() { return m_state; }
+	virtual OBD_STATES getState() { return m_state; }
 	// read specified OBD-II PID value
 	virtual bool read(byte pid, int& result);
 	// set device into
@@ -128,15 +130,13 @@ public:
 	// retrive and parse the response of specifie PID
 	virtual bool getResult(byte& pid, int& result);
 	// determine if the PID is supported
-	bool isValidPID(byte pid);
+	virtual bool isValidPID(byte pid);
 	// set current PID mode
 	byte dataMode;
 	// occurrence of errors
 	byte errors;
 	// bit map of supported PIDs
 	byte pidmap[4 * 4];
-	// current VIN
-	byte vin[17];
 protected:
 	virtual char* getResponse(byte& pid, char* buffer);
 	virtual byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
@@ -206,7 +206,8 @@ typedef struct {
 
 class COBDI2C : public COBD {
 public:
-    void begin(byte addr = I2C_ADDR);
+    void begin();
+	void end();
     bool init(byte protocol = 0);
     bool read(byte pid, int& result);
     void write(const char* s);
