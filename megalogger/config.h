@@ -2,11 +2,8 @@
 #define CONFIG_H_INCLUDED
 
 /**************************************
-* Choose model of OBD-II Adapter
+* OBD-II Adapter options
 **************************************/
-// OBD_MODEL_I2C for I2C version
-// OBD_MODEL_UART for UART version
-#define OBD_MODEL OBD_MODEL_I2C
 #define OBD_PROTOCOL PROTO_AUTO
 
 /**************************************
@@ -48,7 +45,6 @@
 // 38400bps for G6010 5Hz GPS receiver
 // 115200bps for G7020 10Hz GPS receiver
 #define GPS_BAUDRATE 38400 /* bps */
-//#define GPS_OPEN_BAUDRATE 4800 /* bps */
 
 /**************************************
 * Accelerometer & Gyro
