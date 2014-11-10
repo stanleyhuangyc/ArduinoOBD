@@ -7,9 +7,10 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
 #include <OBD.h>
 #include <SD.h>
-#include "MicroLCD.h"
+#include <MicroLCD.h>
 #include "config.h"
 #if USE_SOFTSERIAL
 #include <SoftwareSerial.h>
@@ -238,9 +239,7 @@ private:
             if (times[2] == 0 && speed >= SPEED_THRESHOLD_3) {
                 times[2] = elapsed / 100;
                 stage = STAGE_IDLE;
-                lcd.clearLine(0);
-                lcd.clearLine(1);
-                lcd.clearLine(2);
+                lcd.clear(0, 0, 128, 24);
                 showTimerResults();
                 lcd.setFontSize(FONT_SIZE_MEDIUM);
                 lcd.setCursor(0, 0);
