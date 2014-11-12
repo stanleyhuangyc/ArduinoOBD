@@ -57,19 +57,19 @@ enum {
 	PID_DEVICE_TEMP,
 };
 
-#define PID_GPS_COORDINATES 0xA
+#define PID_GPS_LATITUDE 0xA
+#define PID_GPS_LONGITUDE 0xB
 #define PID_GPS_ALTITUDE 0xC
 #define PID_GPS_SPEED 0xD
 #define PID_GPS_HEADING 0xE
 #define PID_GPS_SAT_COUNT 0xF
 #define PID_GPS_TIME 0x10
+#define PID_GPS_DATE 0x11
 
 #define PID_ACC 0x20
 #define PID_GYRO 0x21
 
 #define PID_VIDEO_FRAME 0xFF00
-
-#define HEADER_ID ('S' << 24 | 'U' << 16 | 'D' << 8 | 'U')
 
 typedef struct {
 	uint32_t time;

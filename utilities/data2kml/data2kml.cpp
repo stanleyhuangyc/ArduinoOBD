@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include "logdata.h"
-#include "kmlhead.h"
 
 typedef struct {
 	uint32_t timestamp;
@@ -53,12 +52,26 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 {
 	kd->ts = timestamp;
 	switch (pid) {
-	case PID_GPS_COORDINATES:
-		kd->datas.lat = value[0];
-		kd->datas.lon = value[1];
+	case PID_GPS_LATITUDE:
+		kd->datas.lat = value[0] / 100000;
 		if (!kd->startLat) {
 			kd->startLat = kd->datas.lat;
+		}
+		if (kd->datacount > 0) {
+			float diff = kd->datas.lat - kd->dataset[kd->datacount - 1].lat;
+			if (diff > 0.1 || diff < -0.1)
+				kd->datas.lat = 0;	
+		}
+		break;
+	case PID_GPS_LONGITUDE:
+		kd->datas.lon = value[0] / 100000;
+		if (!kd->startLon) {
 			kd->startLon = kd->datas.lon;
+		}
+		if (kd->datacount > 0) {
+			float diff = kd->datas.lon - kd->dataset[kd->datacount - 1].lon;
+			if (diff > 0.1 || diff < -0.1)
+				kd->datas.lon = 0;	
 		}
 		break;
 	case PID_GPS_ALTITUDE:
@@ -93,13 +106,12 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 		kd->datas.acc[1] = (int16_t)value[1];
 		kd->datas.acc[2] = (int16_t)value[2];
 		break;
-	case PID_GPS_TIME: {
-		uint32_t date = (uint32_t)value[1];
-		if (date > 10000 && (kd->curDate == 0 || (date % 100) <= (kd->curDate % 100) + 1)) {
-			kd->curDate = date;
-			kd->curTime = (uint32_t)value[0];
-		}
-		} break;
+	case PID_GPS_DATE:
+		kd->curDate = (uint32_t)value[0];
+		break;
+	case PID_GPS_TIME:
+		kd->curTime = (uint32_t)value[0];
+		break;
 	}
 	if (kd->curTime != kd->lastTime && kd->datas.lat && kd->datas.lon) {
 		fprintf(kd->fp, "<when>");
@@ -112,7 +124,7 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 		}
 		
 		if (kd->curTime) {
-			fprintf(kd->fp, "T%02u:%02u:%02u.%03uZ", kd->curTime / 10000000, (kd->curTime / 100000) % 100, (kd->curTime / 1000) % 100, kd->curTime % 1000);
+			fprintf(kd->fp, "T%02u:%02u:%02u.%03uZ", kd->curTime / 1000000, (kd->curTime / 10000) % 100, (kd->curTime / 100) % 100, (kd->curTime % 100) * 10);
 		}
 		fprintf(kd->fp, "</when>");
 		fprintf(kd->fp, "<gx:coord>%f %f %d</gx:coord>", kd->datas.lon, kd->datas.lat, kd->datas.alt);
@@ -293,11 +305,11 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 
 	while (fscanf(fp, "%d,%X,", &elapsed, &pid) > 0) {
 		char c;
-		char data[32];
+		char data[64];
 		int i = 0;
 		int index = 0;
 		float value[3] = {0};
-		while ((c = fgetc(fp)) != '\n') {
+		while ((c = fgetc(fp)) != '\r') {
 			if (i == sizeof(data)) continue;
 			data[i++] = c;
 			if (c == ' ') {
@@ -340,7 +352,7 @@ int main(int argc, const char* argv[])
 	int endpos = 0;
 	char outfile[256];
 
-	printf("Data2KML (C)2013 ArduinoDev.com Written by Stanley Huang\n\n");
+	printf("Data2KML (C)2013-14 Written by Stanley Huang <http://freematics.com> \n\n");
 	if (argc <= 1) {
 		printf("Usage: %s [Input file] [Output file] [Start Pos] [End Pos]\n\n", argv[0]);
 		printf("Description about the arguments:\n\n\
