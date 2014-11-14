@@ -214,25 +214,27 @@ void initScreen()
     lcd.print("INTAKE:         C");
 
     lcd.setCursor(184, 18);
-    lcd.print("LAT:");
-    lcd.setCursor(280, 18);
-    lcd.print("SAT:");
+    lcd.print("UTC:");
     lcd.setCursor(184, 19);
+    lcd.print("LAT:");
+    lcd.setCursor(280, 19);
+    lcd.print("SAT:");
+    lcd.setCursor(184, 20);
     lcd.print("LON:");
 
     lcd.setFontSize(FONT_SIZE_SMALL);
-    lcd.setCursor(184, 21);
-    lcd.print("ACC:");
     lcd.setCursor(184, 22);
+    lcd.print("ACC:");
+    lcd.setCursor(184, 23);
     lcd.print("GYR:");
 
-    lcd.setCursor(184, 24);
+    lcd.setCursor(184, 25);
     lcd.print("OBD FREQ:");
 
-    lcd.setCursor(184, 25);
+    lcd.setCursor(184, 26);
     lcd.print("GPS FREQ:");
 
-    lcd.setCursor(184, 26);
+    lcd.setCursor(184, 27);
     lcd.print("LOG SIZE:");
 
     //lcd.setColor(0xFFFF);
@@ -358,26 +360,37 @@ void processGPS()
     // show GPS data interval
     lcd.setFontSize(FONT_SIZE_SMALL);
     if (lastGPSDataTime) {
-        lcd.setCursor(242, 25);
+        lcd.setCursor(242, 26);
         lcd.printInt((uint16_t)logger.dataTime - lastGPSDataTime);
-        lcd.print("ms ");
+        lcd.print("ms");
+        lcd.printSpace(2);
     }
 
-
+    // keep current data time as last GPS time
     lastGPSDataTime = logger.dataTime;
 
-    // display GPS data
-    char buf[16];
-    sprintf(buf, "%d.%ld", (int)(lat / 100000), abs(lat) % 100000);
-    lcd.setCursor(214, 18);
-    lcd.print(buf);
-    sprintf(buf, "%d.%ld", (int)(lon / 100000), abs(lon) % 100000);
-    lcd.setCursor(214, 19);
-    lcd.print(buf);
-    lcd.setCursor(280, 19);
-    lcd.printInt(gps.satellites());
+    // display UTC date/time
     lcd.write(' ');
-
+    lcd.setCursor(214, 18);
+    lcd.setFlags(FLAG_PAD_ZERO);
+    lcd.printLong(date, 6);
+    lcd.write(' ');
+    lcd.printLong(time, 8);
+    // display latitude
+    lcd.setCursor(214, 19);
+    lcd.print(lat / 100000);
+    lcd.write('.');
+    lcd.printLong(abs(lat) % 100000, 5);
+    // display longitude
+    lcd.setCursor(214, 20);
+    lcd.print(lon / 100000);
+    lcd.write('.');
+    lcd.printLong(abs(lon) % 100000, 5);
+    // display number of satellites
+    lcd.setCursor(280, 20);
+    lcd.printInt(gps.satellites());
+    lcd.setFlags(0);
+    // display altitude
     int32_t alt = gps.altitude();
     if (alt < 1000000) {
         lcd.setFontSize(FONT_SIZE_MEDIUM);
@@ -385,7 +398,6 @@ void processGPS()
         lcd.printInt(alt / 100);
         lcd.write(' ');
     }
-
     // only log GPS data when satellite status is good
     if (sat >= 3) {
         logger.logData(PID_GPS_TIME, (int32_t)time);
@@ -421,7 +433,7 @@ void processAccelerometer()
     data.value.z_gyro /= GYRO_DATA_RATIO;
 
     // display acc data
-    lcd.setCursor(214, 21);
+    lcd.setCursor(214, 22);
     setColorByValue(data.value.x_accel, 50, 100, 200);
     lcd.print(data.value.x_accel);
     setColorByValue(data.value.y_accel, 50, 100, 200);
@@ -433,7 +445,7 @@ void processAccelerometer()
     lcd.printSpace(8);
 
     // display gyro data
-    lcd.setCursor(214, 22);
+    lcd.setCursor(214, 23);
     lcd.setColor(RGB16_WHITE);
     lcd.print(data.value.x_gyro);
     lcd.write('/');
@@ -496,7 +508,7 @@ void logOBDData(byte pid)
         logger.flushFile();
         // display logged data size
         lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(242, 26);
+        lcd.setCursor(242, 27);
         lcd.print((unsigned int)(logger.dataSize >> 10));
         lcd.print("KB");
         lastFileSize = logger.dataSize >> 10;
@@ -556,7 +568,7 @@ void reconnect()
         if (obd->read(PID_RPM, value) && value > 0)
             break;
 
-        Narcoleptic.delay(2000);
+        Narcoleptic.delay(1000);
     }
     // re-initialize
     state |= STATE_OBD_READY;
@@ -747,7 +759,7 @@ void loop()
         // display OBD time
         if (t < 10000) {
             lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(242, 24);
+            lcd.setCursor(242, 25);
             lcd.printInt((uint16_t)t);
             lcd.print("ms");
             lcd.printSpace(2);
