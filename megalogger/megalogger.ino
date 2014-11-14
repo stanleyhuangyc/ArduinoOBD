@@ -475,7 +475,7 @@ void logOBDData(byte pid)
 
     if (pid == PID_SPEED) {
         // estimate distance travelled since last speed update
-        distance += (uint32_t)(value + lastSpeed) * (logger.dataTime - lastSpeedTime) / 5760;
+        distance += (uint32_t)(value + lastSpeed) * (logger.dataTime - lastSpeedTime) / 6000;
         // display speed
         lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(250, 5);
