@@ -42,8 +42,6 @@ typedef struct {
 
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
     SoftwareSerial SerialBLE(A8, A9); /* for BLE Shield on MEGA*/
-#elif defined(__AVR_ATmega644P__)
-    SoftwareSerial SerialBLE(9, 10); /* for Microduino */
 #else
     SoftwareSerial SerialBLE(A2, A3); /* for BLE Shield on UNO/leonardo*/
 #endif
