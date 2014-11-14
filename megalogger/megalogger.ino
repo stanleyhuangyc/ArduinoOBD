@@ -142,27 +142,29 @@ void showPIDData(byte pid, int value)
         lcd.printInt(value, 3);
         break;
     case PID_THROTTLE:
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
+        lcd.setFontSize(FONT_SIZE_LARGE);
         lcd.setCursor(80, 21);
-        if (value > 100) value = 100;
+        if (value >= 100) value = 99;
         setColorByValue(value, 50, 75, 100);
-        lcd.printInt(value, 3);
+        lcd.printInt(value, 2);
         break;
     case PID_ENGINE_FUEL_RATE:
-        if (value < 1000) {
-            lcd.setFontSize(FONT_SIZE_MEDIUM);
+        if (value < 100) {
+            lcd.setFontSize(FONT_SIZE_LARGE);
             lcd.setCursor(80, 24);
-            lcd.printInt(value, 3);
+            lcd.printInt(value, 2);
         }
         break;
     case PID_INTAKE_TEMP:
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        lcd.setCursor(80, 27);
-        lcd.printInt(value, 3);
+        if (value < 100) {
+            lcd.setFontSize(FONT_SIZE_LARGE);
+            lcd.setCursor(80, 27);
+            lcd.printInt(value, 2);
+        }
         break;
     case PID_VOLTAGE:
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        lcd.setCursor(72, 18);
+        lcd.setFontSize(FONT_SIZE_LARGE);
+        lcd.setCursor(80, 18);
         lcd.printInt(value / 10, 2);
         lcd.write('.');
         lcd.printInt(value % 10);
@@ -205,7 +207,7 @@ void initScreen()
     lcd.print("ALTITUDE:        m");
 
     lcd.setCursor(18, 18);
-    lcd.print("BATTERY:        V");
+    lcd.print("BATTERY:            V");
     lcd.setCursor(18, 21);
     lcd.print("THROTTLE:       %");
     lcd.setCursor(18, 24);
