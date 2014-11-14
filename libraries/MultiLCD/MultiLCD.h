@@ -55,24 +55,23 @@ public:
     virtual void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height) {}
     virtual void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0) {}
     virtual void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height) {}
+    virtual size_t write(uint8_t c) { return 0; }
+    virtual byte getLines() { return 0; }
+    virtual byte getCols() { return 0; }
+    virtual void clearLine(byte line) {}
+    virtual void clear() {}
+    virtual void begin() {}
+    virtual void setCursor(byte column, byte line) {}
     void printInt(uint16_t value, int8_t padding = -1);
     void printLong(uint32_t value, int8_t padding = -1);
+    void printSpace(byte n)
+    {
+        for (byte m = 0; m < n; m++) write(' ');
+    }
 protected:
     virtual void writeDigit(byte n) {}
     byte m_font;
     byte m_flags;
-};
-
-class LCD_Null : public LCD_Common, public Print
-{
-public:
-    byte getLines() { return 0; }
-    byte getCols() { return 0; }
-    void clearLine(byte line) {}
-    void clear() {}
-    void begin() {}
-    void setCursor(byte column, byte line) {}
-    size_t write(uint8_t c) { return 0; }
 };
 
 #define TFT_LINE_HEIGHT 8
