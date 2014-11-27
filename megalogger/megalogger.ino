@@ -55,6 +55,7 @@ static uint32_t startTime = 0;
 static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
 static int gpsSpeed = -1;
+static uint16_t gpsDate = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
@@ -106,7 +107,7 @@ void showPIDData(byte pid, int value)
     switch (pid) {
     case PID_RPM:
         lcd.setFontSize(FONT_SIZE_XLARGE);
-        lcd.setCursor(34, 6);
+        lcd.setCursor(32, 6);
         if (value >= 10000) break;
         setColorByValue(value, 2500, 3500, 5000);
         lcd.printInt(value, 4);
@@ -175,6 +176,11 @@ void showPIDData(byte pid, int value)
 
 void initScreen()
 {
+    // fade out backlight
+    for (int n = 254; n >= 0; n--) {
+        lcd.setBackLight(n);
+        delay(5);
+    }
     lcd.clear();
     lcd.draw4bpp(frame0[0], 78, 58);
     lcd.setXY(164, 0);
@@ -206,14 +212,14 @@ void initScreen()
     lcd.setCursor(184, 11);
     lcd.print("ALTITUDE:        m");
 
-    lcd.setCursor(18, 18);
+    lcd.setCursor(18, 19);
     lcd.print("BATTERY:            V");
-    lcd.setCursor(18, 21);
-    lcd.print("THROTTLE:       %");
-    lcd.setCursor(18, 24);
-    lcd.print("FUEL RATE:      L/h");
-    lcd.setCursor(18, 27);
-    lcd.print("INTAKE:         C");
+    lcd.setCursor(18, 22);
+    lcd.print("THROTTLE:        %");
+    lcd.setCursor(18, 25);
+    lcd.print("FUEL RATE:       L/h");
+    lcd.setCursor(18, 28);
+    lcd.print("INTAKE:          C");
 
     lcd.setCursor(184, 18);
     lcd.print("UTC:");
@@ -250,6 +256,12 @@ void initScreen()
     */
 
     state |= STATE_GUI_ON;
+
+    // fade in backlight
+    for (int n = 1; n <= 255; n++) {
+        lcd.setBackLight(n);
+        delay(10);
+    }
 }
 
 bool connectOBD()
@@ -349,15 +361,17 @@ void processGPS()
     logger.dataTime = millis();
 
     gps.get_datetime(&date, &time, 0);
-
-    gpsSpeed = gps.speed() * 1852 / 100000;
+    if (date != gpsDate) {
+        // log date only if it's changed
+        logger.logData(PID_GPS_DATE, (int32_t)time);
+        gpsDate = date;
+    }
+    logger.logData(PID_GPS_TIME, (int32_t)time);
 
     int32_t lat, lon;
     gps.get_position(&lat, &lon, 0);
 
     byte sat = gps.satellites();
-    // skip bad data
-    if (sat > 100) return;
 
     // show GPS data interval
     lcd.setFontSize(FONT_SIZE_SMALL);
@@ -378,6 +392,7 @@ void processGPS()
     lcd.printLong(date, 6);
     lcd.write(' ');
     lcd.printLong(time, 8);
+
     // display latitude
     lcd.setCursor(214, 19);
     lcd.print(lat / 100000);
@@ -388,27 +403,32 @@ void processGPS()
     lcd.print(lon / 100000);
     lcd.write('.');
     lcd.printLong(abs(lon) % 100000, 5);
+    // log latitude/longitude
+    logger.logData(PID_GPS_LATITUDE, lat);
+    logger.logData(PID_GPS_LONGITUDE, lon);
+
     // display number of satellites
-    lcd.setCursor(280, 20);
-    lcd.printInt(gps.satellites());
-    lcd.setFlags(0);
+    if (sat < 100) {
+        lcd.setCursor(280, 20);
+        lcd.printInt(sat);
+    }
     // display altitude
     int32_t alt = gps.altitude();
-    if (alt < 1000000) {
+    lcd.setFlags(0);
+    if (alt > -1000000 && alt < 1000000) {
         lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(250, 11);
-        lcd.printInt(alt / 100);
+        lcd.print(alt / 100);
         lcd.write(' ');
-    }
-    // only log GPS data when satellite status is good
-    if (sat >= 3) {
-        logger.logData(PID_GPS_TIME, (int32_t)time);
-        logger.logData(PID_GPS_SPEED, gpsSpeed);
-        logger.logData(PID_GPS_LATITUDE, lat);
-        logger.logData(PID_GPS_LONGITUDE, lon);
-        logger.logData(PID_GPS_ALTITUDE, (int)(gps.altitude() / 100));
+        // log altitude
+        logger.logData(PID_GPS_ALTITUDE, (int)(alt / 100));
     }
 
+    // only log these data when satellite status is good
+    if (sat >= 3) {
+        gpsSpeed = gps.speed() * 1852 / 100000;
+        logger.logData(PID_GPS_SPEED, gpsSpeed);
+    }
 }
 #endif
 
@@ -643,11 +663,6 @@ void setup()
     lcd.setColor(RGB16_WHITE);
 
     Wire.begin();
-
-    for (int n = 0; n <= 255; n++) {
-        lcd.setBackLight(n);
-        delay(5);
-    }
 
 #if USE_GPS
 #ifdef GPS_OPEN_BAUDRATE
