@@ -1,0 +1,17 @@
+{
+  "name": "OBD",
+  "keywords": "obd, vehicle",
+  "description": "The library for Arduino OBD-II/OBD2 Adapter",
+  "include": "libraries/OBD",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/stanleyhuangyc/ArduinoOBD.git"
+  },
+  "frameworks": "arduino",
+  "platforms": 
+  [
+    "atmelavr",
+    "atmelsam"
+  ]
+}
