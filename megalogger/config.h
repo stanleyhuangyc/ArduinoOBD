@@ -4,6 +4,7 @@
 /**************************************
 * OBD-II Adapter options
 **************************************/
+#define OBD_ADAPTER_MODEL OBD_MODEL_I2C
 #define OBD_PROTOCOL PROTO_AUTO
 
 /**************************************
@@ -31,9 +32,6 @@
    38400bps for BT 2.1
 */
 #define STREAM_BAUDRATE 9600
-
-// outputs debug information
-#define VERBOSE 0
 
 /**************************************
 * GPS configuration

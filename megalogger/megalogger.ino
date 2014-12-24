@@ -30,6 +30,10 @@
 #define STATE_ACC_READY 0x10
 #define STATE_GUI_ON 0x20
 
+// adapter type
+#define OBD_ADAPTER_I2C 0
+#define OBD_ADAPTER_UART 1
+
 #if USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
 #define GPSUART Serial2
@@ -66,7 +70,7 @@ static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, P
 #define TIER_NUM3 sizeof(pidTier3)
 
 byte state = 0;
-COBD* obd = 0;
+
 CDataLogger logger;
 
 class CMyOBD : public COBD
@@ -84,6 +88,12 @@ class CMyOBDI2C : public COBDI2C
         doIdleTasks();
     }
 };
+
+#if OBD_ADAPTER_MODEL == OBD_MODEL_I2C
+CMyOBDI2C obd;
+#else
+CMyOBD obd;
+#endif
 
 void setColorByValue(int value, int threshold1, int threshold2, int threshold3)
 {
@@ -266,25 +276,18 @@ void initScreen()
 
 bool connectOBD()
 {
-    lcd.setCursor(60, 8);
-    lcd.print("UART");
-    obd = new CMyOBD;
-    obd->begin();
-    if (obd->init(OBD_PROTOCOL))
+    obd.begin();
+    if (obd.init(OBD_PROTOCOL))
         return true;
-    obd->end();
-    delete obd;
 
-    lcd.setCursor(60, 8);
-    lcd.print("I2C ");
-    obd = (COBD*)new CMyOBDI2C;
-    obd->begin();
-    if (obd->init(OBD_PROTOCOL))
-        return true;
-    obd->end();
-    delete obd;
-
-    obd = 0;
+    for (byte proto = (byte)PROTO_ISO_9141_2; proto <= PROTO_CAN_11B_250K; proto++) {
+        lcd.setCursor(60, 8);
+        lcd.print("Protocol ");
+        lcd.print(proto);
+        if (obd.init((OBD_PROTOCOLS)proto))
+            return true;
+    }
+    obd.end();
     return false;
 }
 
@@ -492,11 +495,11 @@ void logOBDData(byte pid)
     int value;
 
     // send query for OBD-II PID
-    obd->sendQuery(pid);
+    obd.sendQuery(pid);
     // let PID parsed from response
     pid = 0;
     // read responded PID and data
-    if (!obd->getResult(pid, value)) {
+    if (!obd.getResult(pid, value)) {
         return;
     }
 
@@ -557,7 +560,7 @@ void showECUCap()
         for (byte j = 0; j < 2; j++) {
             lcd.printSpace(2);
             lcd.print((int)pidlist[i + j] | 0x100, HEX);
-            bool valid = obd->isValidPID(pidlist[i + j]);
+            bool valid = obd.isValidPID(pidlist[i + j]);
             if (valid) {
                 lcd.setColor(RGB16_GREEN);
                 lcd.draw(tick, 16, 16);
@@ -583,11 +586,11 @@ void reconnect()
     state &= ~(STATE_OBD_READY | STATE_GUI_ON);
     //digitalWrite(SD_CS_PIN, LOW);
     for (;;) {
-        if (!obd->init())
+        if (!obd.init())
             continue;
 
         int value;
-        if (obd->read(PID_RPM, value) && value > 0)
+        if (obd.read(PID_RPM, value) && value > 0)
             break;
 
         Narcoleptic.delay(1000);
@@ -748,17 +751,17 @@ void loop()
         index = 0;
         if (index2 == TIER_NUM2) {
             index2 = 0;
-            if (obd->isValidPID(pidTier3[index3])) {
+            if (obd.isValidPID(pidTier3[index3])) {
                 logOBDData(pidTier3[index3]);
             }
             index3 = (index3 + 1) % TIER_NUM3;
             if (index3 == 0) {
-                int v = obd->getVoltage();
+                int v = obd.getVoltage();
                 showPIDData(PID_VOLTAGE, v);
                 logger.logData(PID_VOLTAGE, v);
             }
         } else {
-            if (obd->isValidPID(pidTier2[index2])) {
+            if (obd.isValidPID(pidTier2[index2])) {
                 logOBDData(pidTier2[index2]);
             }
             index2++;
@@ -784,7 +787,7 @@ void loop()
         lastRefreshTime = logger.dataTime;
     }
 
-    if (obd->errors >= 3) {
+    if (obd.errors >= 3) {
         reconnect();
     }
 
