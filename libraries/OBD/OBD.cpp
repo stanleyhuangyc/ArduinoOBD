@@ -8,8 +8,7 @@
 #include <Arduino.h>
 #include "OBD.h"
 
-//#define DEBUG Serial
-//#define REDIRECT Serial
+#define DEBUG Serial
 
 uint16_t hex2uint16(const char *p)
 {
@@ -89,8 +88,8 @@ bool COBD::available()
 char COBD::read()
 {
 	char c = OBDUART.read();
-#ifdef REDIRECT
-    REDIRECT.write(c);
+#ifdef DEBUG
+    DEBUG.write(c);
 #endif
 	return c;
 }
@@ -281,6 +280,9 @@ bool COBD::isValidPID(byte pid)
 void COBD::begin()
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
+#ifdef DEBUG
+    DEBUG.begin(115200);
+#endif
 }
 
 byte COBD::receive(char* buffer, int timeout)
@@ -321,7 +323,7 @@ void COBD::recover()
 	while (available()) read();
 }
 
-bool COBD::init(byte protocol)
+bool COBD::init(OBD_PROTOCOLS protocol)
 {
 	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r"};
 	char buffer[OBD_RECV_BUF_SIZE];
@@ -331,22 +333,25 @@ bool COBD::init(byte protocol)
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
-	    debugOutput(initcmd[i]);
+		debugOutput(initcmd[i]);
 #endif
-	    write(initcmd[i]);
+		write(initcmd[i]);
 		if (receive(buffer) == 0) {
-	        return false;
+			m_state = OBD_DISCONNECTED;
+			return false;
 		}
 		delay(50);
 	}
-	if (protocol) {
-	        write("ATSP");
-	        write('0' + protocol);
-	        write('\r');
-	        receive(buffer);
-	        delay(50);
-	}
 	while (available()) read();
+
+	if (protocol != PROTO_AUTO) {
+		setProtocol(protocol);
+	}
+    int value;
+	if (!read(PID_RPM, value)) {
+		m_state = OBD_DISCONNECTED;
+		return false;
+	}
 
 	// load pid map
 	memset(pidmap, 0, sizeof(pidmap));
@@ -405,6 +410,9 @@ void COBDI2C::begin()
 	Wire.begin();
 	memset(obdPid, 0, sizeof(obdPid));
 	memset(obdInfo, 0, sizeof(obdInfo));
+#ifdef DEBUG
+    DEBUG.begin(115200);
+#endif
 }
 
 void COBDI2C::end()
@@ -412,8 +420,9 @@ void COBDI2C::end()
 	m_state = OBD_DISCONNECTED;
 }
 
-bool COBDI2C::init(byte protocol)
+bool COBDI2C::init(OBD_PROTOCOLS protocol)
 {
+	bool success = false;
 	m_state = OBD_CONNECTING;
 	sendCommand(CMD_QUERY_STATUS);
 
@@ -426,14 +435,19 @@ bool COBDI2C::init(byte protocol)
 	}
 	if (recvbuf[4] == 'Y') {
 		memcpy(pidmap, recvbuf + 16, sizeof(pidmap));
-		int value;
-		if (read(PID_RPM, value)) {
-			m_state = OBD_CONNECTED;
-			return true;
+		if (protocol != PROTO_AUTO) {
+			setProtocol(protocol);
 		}
+        int value;
+        success = read(PID_RPM, value);
 	}
-	m_state = OBD_DISCONNECTED;
-	return false;
+	if (success) {
+		return true;
+		m_state = OBD_CONNECTED;
+	} else {
+		m_state = OBD_DISCONNECTED;
+		return false;
+	}
 }
 
 bool COBDI2C::read(byte pid, int& result)
@@ -470,8 +484,10 @@ byte COBDI2C::receive(char* buffer, int timeout)
 		Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
 
 		bool hasEnd = false;
-		for (byte i = 0; i < MAX_PAYLOAD_SIZE; i++) {
-			if ((buffer[offset + i] = Wire.read()) == 0)
+		for (byte i = 0; i < MAX_PAYLOAD_SIZE && Wire.available(); i++) {
+            char c = Wire.read();
+            buffer[offset + i] = c;
+			if (c == 0)
 				hasEnd = true;
 		}
 
