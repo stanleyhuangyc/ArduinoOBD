@@ -8,7 +8,7 @@
 #include <Arduino.h>
 #include "OBD.h"
 
-#define DEBUG Serial
+//#define DEBUG Serial
 
 uint16_t hex2uint16(const char *p)
 {
