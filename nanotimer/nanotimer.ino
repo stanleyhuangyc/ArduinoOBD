@@ -43,7 +43,11 @@ static byte stage = STAGE_IDLE;
 
 static uint16_t times[4] = {0};
 
+#if ENABLE_DATA_LOG
 class COBDLogger : public COBD, public CDataLogger
+#else
+class COBDLogger : public COBD
+#endif
 {
 public:
     COBDLogger():state(0) {}
@@ -180,12 +184,15 @@ private:
     {
         uint32_t elapsed = millis() - startTime;
         uint16_t n;
-
+#if !ENABLE_DATA_LOG
+        uint32_t dataTime;
+#endif
         int speed;
         if (!read(PID_SPEED, speed))
             return;
 
         dataTime = millis();
+#if ENABLE_DATA_LOG
         logData(0x100 | PID_SPEED, speed);
 
         int rpm = 0;
@@ -193,6 +200,7 @@ private:
             dataTime = millis();
             logData(0x100 | PID_RPM, rpm);
         }
+#endif
 
         lcd.setFontSize(FONT_SIZE_XLARGE);
         // estimate distance
@@ -211,11 +219,13 @@ private:
                 stage = STAGE_MEASURING;
                 startTime = lastSpeedTime;
 
+#if ENABLE_DATA_LOG
                 uint32_t t = dataTime;
                 dataTime = lastSpeedTime;
                 logData(0x100 | PID_SPEED, lastSpeed);
                 dataTime = t;
                 logData(0x100 | PID_SPEED, speed);
+#endif
 
                 lastSpeed = 0;
                 distance = 0;
@@ -267,6 +277,7 @@ private:
                     lcd.printInt(distance, 3);
                 }
             }
+#if ENABLE_DATA_LOG
             // log speed data
             logData(0x100 | PID_SPEED, speed);
             // log additional data
@@ -275,6 +286,7 @@ private:
                 dataTime = millis();
                 logData(0x100 | PID_RPM, rpm);
             }
+#endif
         } else {
             if (speed == 0) {
                 stage = STAGE_WAIT_START;
@@ -380,9 +392,8 @@ void setup()
     lcd.println("PerformanceBox");
 
     logger.begin();
-    logger.initSender();
-
 #if ENABLE_DATA_LOG
+    logger.initSender();
     logger.checkSD();
 #endif
     logger.setup();
