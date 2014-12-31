@@ -280,6 +280,7 @@ bool connectOBD()
     if (obd.init(OBD_PROTOCOL))
         return true;
 
+#if 0
     for (byte proto = (byte)PROTO_ISO_9141_2; proto <= PROTO_CAN_11B_250K; proto++) {
         lcd.setCursor(60, 8);
         lcd.print("Protocol ");
@@ -287,6 +288,8 @@ bool connectOBD()
         if (obd.init((OBD_PROTOCOLS)proto))
             return true;
     }
+#endif
+
     obd.end();
     return false;
 }
