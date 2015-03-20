@@ -3,7 +3,7 @@
 // index = ASCII - 32
 #include <avr/pgmspace.h>
 
-unsigned char  font6_8[][6] PROGMEM =
+const unsigned char  font6_8[][6] PROGMEM =
 {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // sp
     { 0x00, 0x00, 0x00, 0x2f, 0x00, 0x00 },   // !
