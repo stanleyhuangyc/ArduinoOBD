@@ -8,6 +8,7 @@ The sketch utilize following custom Arduino libraries:
     OBD-II Library
     TinyGPS Library
     MPU6050 Library
+    MPU9150 Library
     MultiLCD Library
 
 
@@ -16,13 +17,13 @@ Configuration
 
 MegaLogger has several configurable options all stay in the config.h file. Major options include:
 
-    OBD_MODEL - defines the model of OBD-II Adapter (UART or I2C)
+    OBD_MODEL - defines the model of OBD-II Adapter (OBD_MODEL_UART or OBD_MODEL_I2C)
     USE_GPS - defines whether GPS is used
-    USE_MPU6050 - defines whether
-    MPU6050 (accelerometer & gyro) is used
+    USE_MPU6050 - defines whether MPU-6050 is used
+    USE_MPU9150 - defines whether MPU-9150 is used
     ENABLE_DATA_LOG - toggles data logging on microSD card
     ENABLE_DATA_OUT - toggles data streaming (to mobile devices via Bluetooth)
-    STREAM_FORMAT - sets streaming data format (binary or text)
+    STREAM_FORMAT - sets streaming data format (FORMAT_BIN for binary format or FORMAT_CSV for text format)
 
 OBD-II
 ------
@@ -33,10 +34,10 @@ GPS
 ---
 The kit comes with optional GPS receiver which should be connected at Serial2. The incoming NMEA data stream is parsed by TinyGPS library.
 
-Motion Sensor
--------------
+MEMS Sensors
+------------
 
-Motion sensor (accelerometer & gyro) are embedded in I2C version of OBD-II Adapter. They are accessed via I2C by MPU6050 library.
+MEMS Sensors (MPU-6050 or MPU-9150) are embedded in I2C version of OBD-II Adapter. They are accessed via I2C by MPU6050/MPU9150 library.
 
 Data Logging
 ------------
@@ -70,6 +71,9 @@ GPS and motion sensor data are defined as special PID which OBD-II standard does
     #define PID_GPS_DATE 0x11
     #define PID_ACC 0x20
     #define PID_GYRO 0x21
+    #define PID_COMPASS 0x22
+    #define PID_MEMS_TEMP 0x23
+    #define PID_BATTERY_VOLTAGE 0x24
 
 Data Streaming
 --------------
