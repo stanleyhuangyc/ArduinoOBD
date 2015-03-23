@@ -1,7 +1,7 @@
 /*************************************************************************
-* Arduino GPS/OBD-II/G-Force Data Logger
+* Arduino GPS/OBD-II/9-Axis Data Logger
 * Distributed under GPL v2.0
-* Copyright (c) 2013-2014 Stanley Huang <stanleyhuangyc@gmail.com>
+* Copyright (c) 2013-2015 Stanley Huang <stanleyhuangyc@gmail.com>
 * All rights reserved.
 * Visit http://freematics.com for more information
 *************************************************************************/
@@ -13,7 +13,8 @@
 #include <SD.h>
 #include <MultiLCD.h>
 #include <TinyGPS.h>
-#include <MPU6050.h>
+#include <I2Cdev.h>
+#include <MPU9150.h>
 #include "Narcoleptic.h"
 #include "config.h"
 #include "images.h"
@@ -27,7 +28,7 @@
 #define STATE_OBD_READY 0x2
 #define STATE_GPS_CONNECTED 0x4
 #define STATE_GPS_READY 0x8
-#define STATE_ACC_READY 0x10
+#define STATE_MEMS_READY 0x10
 #define STATE_GUI_ON 0x20
 
 // adapter type
@@ -48,11 +49,15 @@ TinyGPS gps;
 
 #endif
 
+#if USE_MPU6050 || USE_MPU9150
+MPU6050 accelgyro;
+static uint32_t lastMemsDataTime = 0;
+#endif
+
 void doIdleTasks();
 
 static uint8_t lastFileSize = 0;
 static uint32_t lastGPSDataTime = 0;
-static uint32_t lastACCDataTime = 0;
 static uint32_t lastRefreshTime = 0;
 static uint32_t distance = 0;
 static uint32_t startTime = 0;
@@ -245,14 +250,16 @@ void initScreen()
     lcd.print("ACC:");
     lcd.setCursor(184, 23);
     lcd.print("GYR:");
-
-    lcd.setCursor(184, 25);
-    lcd.print("OBD FREQ:");
+    lcd.setCursor(184, 24);
+    lcd.print("MAG:");
 
     lcd.setCursor(184, 26);
-    lcd.print("GPS FREQ:");
+    lcd.print("OBD FREQ:");
 
     lcd.setCursor(184, 27);
+    lcd.print("GPS FREQ:");
+
+    lcd.setCursor(184, 28);
     lcd.print("LOG SIZE:");
 
     //lcd.setColor(0xFFFF);
@@ -382,7 +389,7 @@ void processGPS()
     // show GPS data interval
     lcd.setFontSize(FONT_SIZE_SMALL);
     if (lastGPSDataTime) {
-        lcd.setCursor(242, 26);
+        lcd.setCursor(242, 27);
         lcd.printInt((uint16_t)logger.dataTime - lastGPSDataTime);
         lcd.print("ms");
         lcd.printSpace(2);
@@ -440,54 +447,78 @@ void processGPS()
 
 void processAccelerometer()
 {
-#if USE_MPU6050
-    logger.dataTime = millis();
+#if USE_MPU6050 || USE_MPU9150
+    int16_t ax, ay, az;
+    int16_t gx, gy, gz;
+#if USE_MPU9150
+    int16_t mx, my, mz;
+#endif
 
-    if (logger.dataTime - lastACCDataTime < ACC_DATA_INTERVAL) {
+    if (logger.dataTime - lastMemsDataTime < ACC_DATA_INTERVAL) {
         return;
     }
 
-    char buf[8];
-    accel_t_gyro_union data;
-    MPU6050_readout(&data);
+#if USE_MPU9150
+    accelgyro.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
+#else
+    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+#endif
+
+    logger.dataTime = millis();
 
     lcd.setFontSize(FONT_SIZE_SMALL);
 
-    data.value.x_accel /= ACC_DATA_RATIO;
-    data.value.y_accel /= ACC_DATA_RATIO;
-    data.value.z_accel /= ACC_DATA_RATIO;
-    data.value.x_gyro /= GYRO_DATA_RATIO;
-    data.value.y_gyro /= GYRO_DATA_RATIO;
-    data.value.z_gyro /= GYRO_DATA_RATIO;
+    ax /= ACC_DATA_RATIO;
+    ay /= ACC_DATA_RATIO;
+    az /= ACC_DATA_RATIO;
+    gx /= GYRO_DATA_RATIO;
+    gy /= GYRO_DATA_RATIO;
+    gz /= GYRO_DATA_RATIO;
 
     // display acc data
     lcd.setCursor(214, 22);
-    setColorByValue(data.value.x_accel, 50, 100, 200);
-    lcd.print(data.value.x_accel);
-    setColorByValue(data.value.y_accel, 50, 100, 200);
+    setColorByValue(ax, 50, 100, 200);
+    lcd.print(ax);
+    setColorByValue(ay, 50, 100, 200);
     lcd.write('/');
-    lcd.print(data.value.y_accel);
-    setColorByValue(data.value.z_accel, 50, 100, 200);
+    lcd.print(ay);
+    setColorByValue(az, 50, 100, 200);
     lcd.write('/');
-    lcd.print(data.value.z_accel);
+    lcd.print(az);
     lcd.printSpace(8);
 
     // display gyro data
     lcd.setCursor(214, 23);
     lcd.setColor(RGB16_WHITE);
-    lcd.print(data.value.x_gyro);
+    lcd.print(gx);
     lcd.write('/');
-    lcd.print(data.value.y_gyro);
+    lcd.print(gy);
     lcd.write('/');
-    lcd.print(data.value.z_gyro);
+    lcd.print(gz);
     lcd.printSpace(8);
 
-    // log x/y/z of accelerometer
-    logger.logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
-    // log x/y/z of gyro meter
-    logger.logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+#if USE_MPU9150
+    // display compass data
+    lcd.setCursor(214, 24);
+    lcd.setColor(RGB16_WHITE);
+    lcd.print(mx);
+    lcd.write('/');
+    lcd.print(my);
+    lcd.write('/');
+    lcd.print(mz);
+    lcd.printSpace(8);
+#endif
 
-    lastACCDataTime = logger.dataTime;
+    // log x/y/z of accelerometer
+    logger.logData(PID_ACC, ax, ay, az);
+    // log x/y/z of gyro meter
+    logger.logData(PID_GYRO, gx, gy, gz);
+#if USE_MPU9150
+    // log x/y/z of compass
+    logger.logData(PID_COMPASS, mx, my, mz);
+#endif
+
+    lastMemsDataTime = logger.dataTime;
 #endif
 }
 
@@ -536,7 +567,7 @@ void logOBDData(byte pid)
         logger.flushFile();
         // display logged data size
         lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(242, 27);
+        lcd.setCursor(242, 28);
         lcd.print((unsigned int)(logger.dataSize >> 10));
         lcd.print("KB");
         lastFileSize = logger.dataSize >> 10;
@@ -621,19 +652,19 @@ void showStates()
     lcd.setFontSize(FONT_SIZE_MEDIUM);
 
     lcd.setCursor(0, 8);
-    lcd.print("OBD ");
+    lcd.print("OBD  ");
     lcd.setColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
     lcd.draw((state & STATE_OBD_READY) ? tick : cross, 16, 16);
     lcd.setColor(RGB16_WHITE);
 
     lcd.setCursor(0, 10);
-    lcd.print("ACC ");
-    lcd.setColor((state & STATE_ACC_READY) ? RGB16_GREEN : RGB16_RED);
-    lcd.draw((state & STATE_ACC_READY) ? tick : cross, 16, 16);
+    lcd.print("MEMS ");
+    lcd.setColor((state & STATE_MEMS_READY) ? RGB16_GREEN : RGB16_RED);
+    lcd.draw((state & STATE_MEMS_READY) ? tick : cross, 16, 16);
     lcd.setColor(RGB16_WHITE);
 
     lcd.setCursor(0, 12);
-    lcd.print("GPS ");
+    lcd.print("GPS  ");
     if (state & STATE_GPS_CONNECTED) {
         lcd.setColor(RGB16_GREEN);
         lcd.draw(tick, 16, 16);
@@ -649,7 +680,7 @@ void doIdleTasks()
     if (!(state & STATE_GUI_ON))
         return;
 
-    if (state & STATE_ACC_READY) {
+    if (state & STATE_MEMS_READY) {
         processAccelerometer();
     }
 #if USE_GPS
@@ -667,8 +698,6 @@ void setup()
     lcd.setColor(0xFFE0);
     lcd.print("MEGA LOGGER - OBD-II/GPS/MEMS");
     lcd.setColor(RGB16_WHITE);
-
-    Wire.begin();
 
 #if USE_GPS
 #ifdef GPS_OPEN_BAUDRATE
@@ -688,8 +717,10 @@ void setup()
 
     checkSD();
 
-#if USE_MPU6050
-    if (MPU6050_init() == 0) state |= STATE_ACC_READY;
+#if USE_MPU6050 || USE_MPU9150
+    Wire.begin();
+    accelgyro.initialize();
+    if (accelgyro.testConnection()) state |= STATE_MEMS_READY;
 #endif
     showStates();
 
@@ -782,7 +813,7 @@ void loop()
         // display OBD time
         if (t < 10000) {
             lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(242, 25);
+            lcd.setCursor(242, 26);
             lcd.printInt((uint16_t)t);
             lcd.print("ms");
             lcd.printSpace(2);
