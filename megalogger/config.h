@@ -53,6 +53,7 @@
 //#define USE_MPU9150 1
 #define ACC_DATA_RATIO 160
 #define GYRO_DATA_RATIO 256
+#define COMPASS_DATA_RATIO 8
 
 /**************************************
 * Timeout/interval options

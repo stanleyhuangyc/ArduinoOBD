@@ -475,7 +475,11 @@ void processAccelerometer()
     gx /= GYRO_DATA_RATIO;
     gy /= GYRO_DATA_RATIO;
     gz /= GYRO_DATA_RATIO;
-
+#if USE_MPU9150
+    mx /= COMPASS_DATA_RATIO;
+    my /= COMPASS_DATA_RATIO;
+    mz /= COMPASS_DATA_RATIO;
+#endif
     // display MEMS data
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(214, 22);
