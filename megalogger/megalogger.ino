@@ -178,7 +178,7 @@ void showPIDData(byte pid, int value)
             lcd.printInt(value, 2);
         }
         break;
-    case PID_VOLTAGE:
+    case PID_BATTERY_VOLTAGE:
         lcd.setFontSize(FONT_SIZE_LARGE);
         lcd.setCursor(80, 18);
         lcd.printInt(value / 10, 2);
@@ -453,6 +453,7 @@ void processAccelerometer()
 #if USE_MPU9150
     int16_t mx, my, mz;
 #endif
+    int temp;
 
     if (logger.dataTime - lastMemsDataTime < ACC_DATA_INTERVAL) {
         return;
@@ -466,7 +467,7 @@ void processAccelerometer()
 
     logger.dataTime = millis();
 
-    lcd.setFontSize(FONT_SIZE_SMALL);
+    temp = accelgyro.getTemperature();
 
     ax /= ACC_DATA_RATIO;
     ay /= ACC_DATA_RATIO;
@@ -475,7 +476,8 @@ void processAccelerometer()
     gy /= GYRO_DATA_RATIO;
     gz /= GYRO_DATA_RATIO;
 
-    // display acc data
+    // display MEMS data
+    lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(214, 22);
     setColorByValue(ax, 50, 100, 200);
     lcd.print(ax);
@@ -517,6 +519,7 @@ void processAccelerometer()
     // log x/y/z of compass
     logger.logData(PID_COMPASS, mx, my, mz);
 #endif
+    logger.logData(PID_MEMS_TEMP, temp);
 
     lastMemsDataTime = logger.dataTime;
 #endif
@@ -791,8 +794,8 @@ void loop()
             index3 = (index3 + 1) % TIER_NUM3;
             if (index3 == 0) {
                 int v = obd.getVoltage();
-                showPIDData(PID_VOLTAGE, v);
-                logger.logData(PID_VOLTAGE, v);
+                showPIDData(PID_BATTERY_VOLTAGE, v);
+                logger.logData(PID_BATTERY_VOLTAGE, v);
             }
         } else {
             if (obd.isValidPID(pidTier2[index2])) {

@@ -31,8 +31,8 @@ typedef struct {
 #define PID_ACC 0x20
 #define PID_GYRO 0x21
 #define PID_COMPASS 0x22
-#define PID_TEMP 0x23
-#define PID_VOLTAGE 0x24
+#define PID_MEMS_TEMP 0x23
+#define PID_BATTERY_VOLTAGE 0x24
 
 #define FILE_NAME_FORMAT "/DAT%05d.CSV"
 
