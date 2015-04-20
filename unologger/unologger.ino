@@ -10,18 +10,15 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-#include <MPU6050.h>
+#include <I2Cdev.h>
+#include <MPU9150.h>
 #include "MultiLCD.h"
-#include "images.h"
 #include "config.h"
-#if USE_SOFTSERIAL
-#include <SoftwareSerial.h>
-#endif
 #include "datalogger.h"
 
 #define STATE_SD_READY 0x1
 #define STATE_OBD_READY 0x2
-#define STATE_ACC_READY 0x10
+#define STATE_MEMS_READY 0x10
 #define STATE_SLEEPING 0x20
 
 #define OBD_MODEL_UART 0
@@ -35,6 +32,10 @@ static uint32_t startTime = 0;
 static uint16_t elapsed = 0;
 static uint8_t lastPid = 0;
 static int lastValue = 0;
+
+#if USE_MPU6050 || USE_MPU9150
+MPU6050 accelgyro;
+#endif
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_INTAKE_MAP};
 static byte pidTier2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL, PID_DISTANCE};
@@ -54,12 +55,10 @@ public:
     {
         showStates();
 
-#if USE_MPU6050
+#if USE_MPU6050 || USE_MPU9150
         Wire.begin();
-        if (MPU6050_init() == 0) {
-            state |= STATE_ACC_READY;
-            showStates();
-        }
+        accelgyro.initialize();
+        if (accelgyro.testConnection()) state |= STATE_MEMS_READY;
 #endif
 
         do {
@@ -92,9 +91,6 @@ public:
             }
         }
 #endif
-
-        showECUCap();
-        delay(3000);
 
         initScreen();
     }
@@ -143,7 +139,7 @@ public:
         }
 
 #if USE_MPU6050
-        if (state & STATE_ACC_READY) {
+        if (state & STATE_MEMS_READY) {
             processAccelerometer();
         }
 #endif
@@ -191,8 +187,7 @@ public:
             lcd.print((int)((volumesize + 511) / 1000));
             lcd.print("GB");
         } else {
-            lcd.print("SD  ");
-            showTickCross(false);
+            lcd.print("SD: No");
             digitalWrite(SD_CS_PIN, HIGH);
             return false;
         }
@@ -243,13 +238,30 @@ private:
 #if USE_MPU6050
     void processAccelerometer()
     {
-        accel_t_gyro_union data;
-        MPU6050_readout(&data);
-        dataTime = millis();
-        // log x/y/z of accelerometer
-        logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
-        // log x/y/z of gyro meter
-        logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
+#if USE_MPU6050 || USE_MPU9150
+    int16_t ax, ay, az;
+    int16_t gx, gy, gz;
+#if USE_MPU9150
+    int16_t mx, my, mz;
+#endif
+    
+#if USE_MPU9150
+    accelgyro.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
+#else
+    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+#endif
+    
+    dataTime = millis();
+
+    // log x/y/z of accelerometer
+    logData(PID_ACC, ax, ay, az);
+    // log x/y/z of gyro meter
+    logData(PID_GYRO, gx, gy, gz);
+#if USE_MPU9150
+    // log x/y/z of compass
+    logData(PID_COMPASS, mx, my, mz);
+#endif
+#endif
     }
 #endif
     void logOBDData(byte pid)
@@ -270,24 +282,6 @@ private:
             return;
         }
     }
-    void showECUCap()
-    {
-        lcd.clear();
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        byte pid = 0;
-        uint16_t col;
-        uint8_t row;
-        for (byte i = 0; ; pid++) {
-            if (pid % 0x20 == 0) continue;
-            col = (i / 15) * 52;
-            row = (i % 15) << 1;
-            i++;
-            if (col > 280) break;
-            lcd.setCursor(col, row);
-            lcd.print(0x100 | pid, HEX);
-            showTickCross(isValidPID(pid));
-        }
-    }
     void reconnect()
     {
 #if ENABLE_DATA_LOG
@@ -297,12 +291,12 @@ private:
         lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.print("Reconnecting");
         startTime = millis();
-        state &= ~(STATE_OBD_READY | STATE_ACC_READY);
+        state &= ~(STATE_OBD_READY | STATE_MEMS_READY);
         state |= STATE_SLEEPING;
         //digitalWrite(SD_CS_PIN, LOW);
         for (uint16_t i = 0; ; i++) {
             if (i == 5) {
-                lcd.backlight(false);
+                lcd.setBackLight(0);
                 lcd.clear();
             }
             if (init()) {
@@ -313,14 +307,8 @@ private:
         }
         state &= ~STATE_SLEEPING;
         fileIndex++;
-        lcd.backlight(true);
+        lcd.setBackLight(255);
         setup();
-    }
-    void showTickCross(bool yes)
-    {
-        lcd.setColor(yes ? RGB16_GREEN : RGB16_RED);
-        lcd.draw(yes ? tick : cross, 16, 16);
-        lcd.setColor(RGB16_WHITE);
     }
     // screen layout related stuff
     void showStates()
@@ -328,11 +316,11 @@ private:
         lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(0, 6);
         lcd.print("OBD ");
-        showTickCross(state & STATE_OBD_READY);
-#if USE_MPU6050
+        if (state & STATE_OBD_READY) lcd.print("OK");
+#if USE_MPU6050 || USE_MPU9150
         lcd.setCursor(0, 8);
-        lcd.print("ACC ");
-        showTickCross(state & STATE_ACC_READY);
+        lcd.print("MEMS ");
+        if (state & STATE_MEMS_READY) lcd.print("OK");
 #endif
     }
     void showData(byte pid, int value)
@@ -392,7 +380,7 @@ private:
     void initLoggerScreen()
     {
         lcd.clear();
-        lcd.backlight(true);
+        lcd.setBackLight(255);
         lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setColor(RGB16_CYAN);
         lcd.setCursor(4, 0);

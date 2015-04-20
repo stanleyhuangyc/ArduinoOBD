@@ -30,6 +30,9 @@ typedef struct {
 
 #define PID_ACC 0x20
 #define PID_GYRO 0x21
+#define PID_COMPASS 0x22
+#define PID_MEMS_TEMP 0x23
+#define PID_BATTERY_VOLTAGE 0x24
 
 #define FILE_NAME_FORMAT "/DAT%05d.CSV"
 
@@ -39,8 +42,6 @@ typedef struct {
 
 #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
     SoftwareSerial SerialBLE(A8, A9); /* for BLE Shield on MEGA*/
-#elif defined(__AVR_ATmega644P__)
-    SoftwareSerial SerialBLE(9, 10); /* for Microduino */
 #else
     SoftwareSerial SerialBLE(A2, A3); /* for BLE Shield on UNO/leonardo*/
 #endif
@@ -151,7 +152,7 @@ public:
     {
         uint16_t fileIndex;
         char filename[24] = "/FRMATICS";
-        
+
         dataSize = 0;
         if (SD.exists(filename)) {
             for (fileIndex = 1; fileIndex; fileIndex++) {

@@ -7,7 +7,7 @@
 // OBD_MODEL_I2C for I2C version
 // OBD_MODEL_UART for UART version
 #define OBD_MODEL OBD_MODEL_UART
-#define OBD_PROTOCOL 0 /* 0 for auto */
+#define OBD_PROTOCOL PROTO_AUTO
 
 /**************************************
 * Data logging options
@@ -19,38 +19,19 @@
 /**************************************
 * Data streaming options
 **************************************/
-// enable(1)/disable(0) data streaming
+// data streaming is not supported on Arduino UNO
 #define ENABLE_DATA_OUT 0
-
-// uses software(1)/hardware(0) serial for data streaming
-#define USE_SOFTSERIAL 0
-
-// this defines the format of data streaming
-// FORMAT_BIN is required by Freematics OBD iOS App
-#define STREAM_FORMAT FORMAT_CSV
-
-/* Default streaming baudrates:
-   9600bps for BLE
-   38400bps for BT 2.1
-*/
-#define STREAM_BAUDRATE 9600
-
-// outputs debug information
-#define VERBOSE 0
 
 /**************************************
 * Accelerometer & Gyro
 **************************************/
-#define USE_MPU6050 1
-#define ACC_DATA_RATIO 160
-#define GYRO_DATA_RATIO 256
+//#define USE_MPU6050 1
+//#define USE_MPU9150 1
 
 /**************************************
 * Timeout/interval options
 **************************************/
 #define OBD_MIN_INTERVAL 20 /* ms */
-#define ACC_DATA_INTERVAL 200 /* ms */
-#define GPS_DATA_TIMEOUT 2000 /* ms */
 
 /**************************************
 * LCD module (uncomment only one)
