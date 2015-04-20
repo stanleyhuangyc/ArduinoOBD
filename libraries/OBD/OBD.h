@@ -139,13 +139,13 @@ public:
 	byte pidmap[4 * 4];
 protected:
 	virtual char* getResponse(byte& pid, char* buffer);
+	virtual byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
 	virtual void dataIdleLoop() {}
 	void recover();
 	void debugOutput(const char* s);
 	int normalizeData(byte pid, char* data);
 	OBD_STATES m_state;
 private:
-	virtual byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
 	virtual bool available();
 	virtual char read();
 	virtual void write(const char* s);
