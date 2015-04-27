@@ -41,6 +41,7 @@
 #define USE_GPS 1
 #define GPSUART Serial2
 #define MAX_GPS_PROCESS_TIME 50 /* ms */
+#define GPS_DATA_TIMEOUT 2000 /* ms */
 
 // 38400bps for G6010 5Hz GPS receiver
 // 115200bps for G7020 10Hz GPS receiver
@@ -60,7 +61,6 @@
 **************************************/
 #define OBD_MIN_INTERVAL 20 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
-#define GPS_DATA_TIMEOUT 2000 /* ms */
 
 /**************************************
 * LCD module (uncomment only one)

@@ -88,6 +88,32 @@ class CMyOBD : public COBD
 
 class CMyOBDI2C : public COBDI2C
 {
+public:
+    void test()
+    {
+        const char* cmds[] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
+        char buf[OBD_RECV_BUF_SIZE];
+        lcd.setFontSize(FONT_SIZE_SMALL);
+        lcd.setCursor(0, 12);
+
+        for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
+            lcd.print("Sending ");
+            lcd.println(cmds[i]);
+            write(cmds[i]);
+            if (receive(buf) > 0) {
+                char *p = strstr(buf, cmds[i]);
+                if (p)
+                    p += strlen(cmds[i]);
+                else
+                    p = buf;
+                lcd.println(p);
+            } else {
+                lcd.println("Timeout");
+            }
+            delay(1000);
+        }
+    }
+private:
     void dataIdleLoop()
     {
         doIdleTasks();
@@ -182,6 +208,7 @@ void showPIDData(byte pid, int value)
         lcd.setFontSize(FONT_SIZE_LARGE);
         lcd.setCursor(80, 18);
         lcd.printInt(value / 10, 2);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.write('.');
         lcd.printInt(value % 10);
         break;
@@ -189,13 +216,25 @@ void showPIDData(byte pid, int value)
     lcd.setColor(RGB16_WHITE);
 }
 
-void initScreen()
+void fadeOutScreen()
 {
     // fade out backlight
     for (int n = 254; n >= 0; n--) {
         lcd.setBackLight(n);
         delay(5);
     }
+}
+
+void fadeInScreen()
+{
+    for (int n = 1; n <= 255; n++) {
+        lcd.setBackLight(n);
+        delay(10);
+    }
+}
+
+void initScreen()
+{
     lcd.clear();
     lcd.draw4bpp(frame0[0], 78, 58);
     lcd.setXY(164, 0);
@@ -228,13 +267,13 @@ void initScreen()
     lcd.print("ALTITUDE:        m");
 
     lcd.setCursor(18, 19);
-    lcd.print("BATTERY:            V");
+    lcd.print("BATTERY:           V");
     lcd.setCursor(18, 22);
-    lcd.print("THROTTLE:        %");
+    lcd.print("THROTTLE:       %");
     lcd.setCursor(18, 25);
-    lcd.print("FUEL RATE:       L/h");
+    lcd.print("FUEL RATE:      L/h");
     lcd.setCursor(18, 28);
-    lcd.print("INTAKE:          C");
+    lcd.print("INTAKE:         C");
 
     lcd.setCursor(184, 18);
     lcd.print("UTC:");
@@ -274,11 +313,7 @@ void initScreen()
 
     state |= STATE_GUI_ON;
 
-    // fade in backlight
-    for (int n = 1; n <= 255; n++) {
-        lcd.setBackLight(n);
-        delay(10);
-    }
+    fadeInScreen();
 }
 
 bool connectOBD()
@@ -301,14 +336,13 @@ bool connectOBD()
     return false;
 }
 
+#if ENABLE_DATA_LOG
 bool checkSD()
 {
-#if ENABLE_DATA_LOG
     Sd2Card card;
     SdVolume volume;
     state &= ~STATE_SD_READY;
     pinMode(SS, OUTPUT);
-    lcd.setCursor(0, 4);
 
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     if (card.init(SPI_HALF_SPEED, SD_CS_PIN)) {
@@ -342,22 +376,19 @@ bool checkSD()
         lcd.print((int)volumesize);
         lcd.print("MB");
     } else {
-        lcd.print("No SD Card");
+        lcd.println("No SD Card");
         return false;
     }
 
-    lcd.setCursor(0, 6);
     if (!SD.begin(SD_CS_PIN)) {
-        lcd.print("Bad SD");
+        lcd.println("Bad SD");
         return false;
     }
 
     state |= STATE_SD_READY;
     return true;
-#else
-    return false;
-#endif
 }
+#endif
 
 #if USE_GPS
 void processGPS()
@@ -424,6 +455,7 @@ void processGPS()
     if (sat < 100) {
         lcd.setCursor(280, 20);
         lcd.printInt(sat);
+        lcd.write(' ');
     }
     // display altitude
     int32_t alt = gps.altitude();
@@ -615,11 +647,7 @@ void showECUCap()
 
 void reconnect()
 {
-    // fade out backlight
-    for (int n = 254; n >= 0; n--) {
-        lcd.setBackLight(n);
-        delay(20);
-    }
+    fadeOutScreen();
 #if ENABLE_DATA_LOG
     logger.closeFile();
 #endif
@@ -646,32 +674,21 @@ void reconnect()
     logger.openFile();
 #endif
     initScreen();
-    // fade in backlight
-    for (int n = 1; n <= 255; n++) {
-        lcd.setBackLight(n);
-        delay(10);
-    }
 }
 
 // screen layout related stuff
 void showStates()
 {
     lcd.setFontSize(FONT_SIZE_MEDIUM);
-
-    lcd.setCursor(0, 8);
-    lcd.print("OBD  ");
-    lcd.setColor((state & STATE_OBD_READY) ? RGB16_GREEN : RGB16_RED);
-    lcd.draw((state & STATE_OBD_READY) ? tick : cross, 16, 16);
     lcd.setColor(RGB16_WHITE);
-
-    lcd.setCursor(0, 10);
+    lcd.setCursor(0, 8);
     lcd.print("MEMS ");
     lcd.setColor((state & STATE_MEMS_READY) ? RGB16_GREEN : RGB16_RED);
     lcd.draw((state & STATE_MEMS_READY) ? tick : cross, 16, 16);
-    lcd.setColor(RGB16_WHITE);
 
-    lcd.setCursor(0, 12);
-    lcd.print("GPS  ");
+    lcd.setColor(RGB16_WHITE);
+    lcd.setCursor(60, 8);
+    lcd.print(" GPS ");
     if (state & STATE_GPS_CONNECTED) {
         lcd.setColor(RGB16_GREEN);
         lcd.draw(tick, 16, 16);
@@ -703,16 +720,11 @@ void setup()
     lcd.begin();
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setColor(0xFFE0);
-    lcd.print("MEGA LOGGER - OBD-II/GPS/MEMS");
+    lcd.println("MEGA LOGGER - OBD-II/GPS/MEMS");
+    lcd.println();
     lcd.setColor(RGB16_WHITE);
 
 #if USE_GPS
-#ifdef GPS_OPEN_BAUDRATE
-    GPSUART.begin(GPS_OPEN_BAUDRATE);
-    delay(10);
-    GPSUART.println(PMTK_SET_BAUDRATE);
-    GPSUART.end();
-#endif
     GPSUART.begin(GPS_BAUDRATE);
     // switching to 10Hz mode, effective only for MTK3329
     //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
@@ -722,7 +734,18 @@ void setup()
 
     logger.initSender();
 
-    checkSD();
+#if ENABLE_DATA_LOG
+    if (checkSD()) {
+        uint16_t index = logger.openFile();
+        lcd.println();
+        if (index > 0) {
+            lcd.print("File ID:");
+            lcd.println(index);
+        } else {
+            lcd.print("No Log File");
+        }
+    }
+#endif
 
 #if USE_MPU6050 || USE_MPU9150
     Wire.begin();
@@ -742,35 +765,25 @@ void setup()
     showStates();
 #endif
 
-    delay(1000);
+    // this will send a bunch of commands and display response
+    obd.test();
 
     while (!connectOBD());
     state |= STATE_OBD_READY;
 
-    showStates();
+    lcd.setColor(RGB16_YELLOW);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.print("OBD READY!");
+    lcd.setColor(RGB16_WHITE);
 
     //lcd.setFont(FONT_SIZE_MEDIUM);
     //lcd.setCursor(0, 14);
     //lcd.print("VIN: XXXXXXXX");
 
-    // open file for logging
-    if (!(state & STATE_SD_READY)) {
-        if (checkSD()) {
-            state |= STATE_SD_READY;
-            showStates();
-        }
-    }
-
-#if ENABLE_DATA_LOG
-    uint16_t index = logger.openFile();
-    lcd.setCursor(0, 16);
-    lcd.print("File ID:");
-    lcd.println(index);
-#endif
-
     showECUCap();
     delay(2000);
 
+    fadeOutScreen();
     initScreen();
 
     startTime = millis();
