@@ -140,16 +140,16 @@ public:
 protected:
 	virtual char* getResponse(byte& pid, char* buffer);
 	virtual byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
+	virtual bool available();
+	virtual char read();
+	virtual void write(const char* s);
+	virtual void write(char c);
 	virtual void dataIdleLoop() {}
 	void recover();
 	void debugOutput(const char* s);
 	int normalizeData(byte pid, char* data);
 	OBD_STATES m_state;
 private:
-	virtual bool available();
-	virtual char read();
-	virtual void write(const char* s);
-	virtual void write(char c);
 	virtual uint8_t getPercentageValue(char* data)
 	{
 		return (uint16_t)hex2uint8(data) * 100 / 255;
@@ -208,7 +208,6 @@ class COBDI2C : public COBD {
 public:
     void begin();
 	void end();
-    bool init(OBD_PROTOCOLS protocol = PROTO_AUTO);
     bool read(byte pid, int& result);
     void write(const char* s);
     // Asynchronized access API
@@ -216,12 +215,9 @@ public:
     void applyPIDs();
     void loadData();
     uint16_t getData(byte pid, int& result);
-    // GPS API
-    bool gpsQuery(GPS_DATA* gpsdata);
-    void gpsSetup(uint32_t baudrate, const char* cmds = 0);
 protected:
     bool sendCommand(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
-    byte receive(char* buffer, int timeout = OBD_TIMEOUT_SHORT);
+    byte receive(char* buffer, int timeout = OBD_TIMEOUT_LONG);
     byte m_addr;
     PID_INFO obdInfo[MAX_PIDS];
     byte obdPid[MAX_PIDS];

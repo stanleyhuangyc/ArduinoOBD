@@ -420,36 +420,6 @@ void COBDI2C::end()
 	m_state = OBD_DISCONNECTED;
 }
 
-bool COBDI2C::init(OBD_PROTOCOLS protocol)
-{
-	bool success = false;
-	m_state = OBD_CONNECTING;
-	sendCommand(CMD_QUERY_STATUS);
-
-	char recvbuf[MAX_PAYLOAD_SIZE];
-	for (byte n = 0; n < 3; n++) {
-		memset(recvbuf, 0, sizeof(recvbuf));
-		receive(recvbuf);
-		if (!memcmp(recvbuf, "OBD ", 4))
-			break;
-	}
-	if (recvbuf[4] == 'Y') {
-		memcpy(pidmap, recvbuf + 16, sizeof(pidmap));
-		if (protocol != PROTO_AUTO) {
-			setProtocol(protocol);
-		}
-        int value;
-        success = read(PID_RPM, value);
-	}
-	if (success) {
-		return true;
-		m_state = OBD_CONNECTED;
-	} else {
-		m_state = OBD_DISCONNECTED;
-		return false;
-	}
-}
-
 bool COBDI2C::read(byte pid, int& result)
 {
 	sendQuery(pid);
@@ -503,21 +473,8 @@ byte COBDI2C::receive(char* buffer, int timeout)
 		}
 
 		return offset;
-	} while(millis() - start < OBD_TIMEOUT_LONG);
+	} while(millis() - start < timeout);
 	return 0;
-}
-
-bool COBDI2C::gpsQuery(GPS_DATA* gpsdata)
-{
-	if (!sendCommand(CMD_GPS_QUERY, 0)) return false;
-	Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
-	Wire.readBytes((char*)gpsdata, MAX_PAYLOAD_SIZE);
-	return true;
-}
-
-void COBDI2C::gpsSetup(uint32_t baudrate, const char* cmds)
-{
-	sendCommand(CMD_GPS_SETUP, baudrate / 1200, (byte*)cmds, cmds ? strlen(cmds) : 0);
 }
 
 void COBDI2C::setPID(byte pid)
