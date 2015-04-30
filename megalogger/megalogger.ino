@@ -80,6 +80,32 @@ CDataLogger logger;
 
 class CMyOBD : public COBD
 {
+public:
+    void test()
+    {
+        const char* cmds[] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
+        char buf[OBD_RECV_BUF_SIZE];
+        lcd.setFontSize(FONT_SIZE_SMALL);
+        lcd.setCursor(0, 12);
+
+        for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
+            lcd.print("Sending ");
+            lcd.println(cmds[i]);
+            write(cmds[i]);
+            if (receive(buf) > 0) {
+                char *p = strstr(buf, cmds[i]);
+                if (p)
+                    p += strlen(cmds[i]);
+                else
+                    p = buf;
+                lcd.println(p);
+            } else {
+                lcd.println("Timeout");
+            }
+            delay(1000);
+        }
+    }
+private:
     void dataIdleLoop()
     {
         doIdleTasks();
@@ -89,6 +115,7 @@ class CMyOBD : public COBD
 class CMyOBDI2C : public COBDI2C
 {
 public:
+
     void test()
     {
         const char* cmds[] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
@@ -198,7 +225,7 @@ void showPIDData(byte pid, int value)
         }
         break;
     case PID_INTAKE_TEMP:
-        if (value < 100) {
+        if (value >=0 && value < 100) {
             lcd.setFontSize(FONT_SIZE_LARGE);
             lcd.setCursor(80, 27);
             lcd.printInt(value, 2);
@@ -314,26 +341,6 @@ void initScreen()
     state |= STATE_GUI_ON;
 
     fadeInScreen();
-}
-
-bool connectOBD()
-{
-    obd.begin();
-    if (obd.init(OBD_PROTOCOL))
-        return true;
-
-#if 0
-    for (byte proto = (byte)PROTO_ISO_9141_2; proto <= PROTO_CAN_11B_250K; proto++) {
-        lcd.setCursor(60, 8);
-        lcd.print("Protocol ");
-        lcd.print(proto);
-        if (obd.init((OBD_PROTOCOLS)proto))
-            return true;
-    }
-#endif
-
-    obd.end();
-    return false;
 }
 
 #if ENABLE_DATA_LOG
@@ -765,10 +772,14 @@ void setup()
     showStates();
 #endif
 
+    obd.begin();
+
     // this will send a bunch of commands and display response
     obd.test();
 
-    while (!connectOBD());
+    // initialize the OBD until success
+    while (!obd.init(OBD_PROTOCOL));
+
     state |= STATE_OBD_READY;
 
     lcd.setColor(RGB16_YELLOW);
