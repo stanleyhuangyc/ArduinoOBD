@@ -93,6 +93,17 @@ typedef enum {
     OBD_CONNECTED = 2
 } OBD_STATES;
 
+typedef struct {
+    uint32_t date;
+    uint32_t time;
+    int32_t lat;
+    int32_t lon;
+    int alt;
+    float speed;
+    int heading;
+    int sat;
+} GPS_DATA;
+
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
 
@@ -110,7 +121,7 @@ public:
 	// un-initialize OBD-II connection
 	virtual void end();
 	// set serial baud rate
-	virtual void setBaudRate(long baudrate);
+	virtual bool setBaudRate(unsigned long baudrate);
 	// get connection state
 	virtual OBD_STATES getState() { return m_state; }
 	// read specified OBD-II PID value
@@ -121,16 +132,21 @@ public:
 	virtual void wakeup();
 	// set working protocol (default auto)
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
+	virtual byte sendCommand(const char* cmd, char* buf);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
-	virtual int getVoltage();
+	virtual float getVoltage();
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
 	virtual bool getResult(byte& pid, int& result);
 	// determine if the PID is supported
 	virtual bool isValidPID(byte pid);
+	// init GPS module
+	virtual bool initGPS(unsigned long baudrate = 38400);
+	// parse GPS data
+	virtual bool getGPSData(GPS_DATA* gdata);
 	// set current PID mode
 	byte dataMode;
 	// occurrence of errors
@@ -190,19 +206,6 @@ typedef struct {
     uint8_t message;
     uint8_t data;
 } COMMAND_BLOCK;
-
-typedef struct {
-    uint32_t time;
-    uint32_t date;
-    float lat;
-    float lon;
-    float speed;
-    float alt;
-    uint8_t sat;
-    uint8_t state;
-    uint16_t age;
-    uint8_t reserved[4];
-} GPS_DATA;
 
 class COBDI2C : public COBD {
 public:

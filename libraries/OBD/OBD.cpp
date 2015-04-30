@@ -56,6 +56,12 @@ byte hex2uint8(const char *p)
 *************************************************************************/
 #include <Wire.h>
 
+byte COBD::sendCommand(const char* cmd, char* buf)
+{
+    write(cmd);
+    return receive(buf);
+}
+
 void COBD::sendQuery(byte pid)
 {
 	char cmd[8];
@@ -244,27 +250,15 @@ void COBD::wakeup()
 	receive();
 }
 
-int COBD::getVoltage()
+float COBD::getVoltage()
 {
     char buf[OBD_RECV_BUF_SIZE];
     write("ATRV\r");
     byte n = receive(buf, 100);
     if (n > 0) {
-        for (byte i = 0; i < n; i++) {
-            if (buf[i] >= '0' && buf[i] <= '9') {
-                int v1 = atoi(buf);
-                int v2 = 0;
-                char *p = strchr(buf, '.');
-                if (p++) {
-                    if (*p >= '0' && *p <= '9') {
-                        v2 = *p - '0';
-                    }
-                }
-                return v1 * 10 + v2;
-            }
-        }
+        return atof(buf);
     }
-    return -1;
+    return 0;
 }
 
 bool COBD::isValidPID(byte pid)
@@ -381,14 +375,73 @@ void COBD::end()
 	OBDUART.end();
 }
 
-void COBD::setBaudRate(long baudrate)
+bool COBD::setBaudRate(unsigned long baudrate)
 {
-    OBDUART.print("ATBR1 ");
-    OBDUART.print(baudrate);
-    OBDUART.print('\r');
-    OBDUART.end();
-    delay(100);
-    OBDUART.begin(baudrate);
+    char buf[OBD_RECV_BUF_SIZE];
+    sprintf(buf, "ATBR2 %lu\r", baudrate);
+    OBDUART.print(buf);
+    if (receive(buf) && strstr(buf, "OK")) {
+        OBDUART.end();
+        OBDUART.begin(baudrate);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool COBD::initGPS(unsigned long baudrate)
+{
+    char buf[OBD_RECV_BUF_SIZE];
+    sprintf(buf, "ATBR2 %lu\r", baudrate);
+    write(buf);
+    return (receive(buf) && strstr(buf, "OK"));
+}
+
+bool COBD::getGPSData(GPS_DATA* gdata)
+{
+    char buf[OBD_RECV_BUF_SIZE];
+    char *p;
+    write("ATGPS\r");
+    if (receive(buf) == 0 || !(p = strstr(buf, "$GPS")))
+        return false;
+
+    byte index = 0;
+    char *s = buf;
+    s = p + 5;
+    for (p = s; *p; p++) {
+        char c = *p;
+        if (c == ',' || c == '>' || c <= 0x0d) {
+            switch (index) {
+            case 0:
+                gdata->date = (uint32_t)atol(s);
+                break;
+            case 1:
+                gdata->time = (uint32_t)atol(s);
+                break;
+            case 2:
+                gdata->lat = atol(s);
+                break;
+            case 3:
+                gdata->lon = atol(s);
+                break;
+            case 4:
+                gdata->alt = atoi(s);
+                break;
+            case 5:
+                gdata->speed = atof(s);
+                break;
+            case 6:
+                gdata->heading = atoi(s);
+                break;
+            case 7:
+                gdata->sat = atoi(s);
+                break;
+            }
+            index++;
+            s = p + 1;
+        }
+    }
+    return index > 7;
 }
 
 #ifdef DEBUG
