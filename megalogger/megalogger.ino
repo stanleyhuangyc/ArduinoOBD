@@ -38,23 +38,13 @@
 #if USE_GPS
 // GPS logging can only be enabled when there is additional hardware serial UART
 #define GPSUART Serial2
-
-#define PMTK_SET_NMEA_UPDATE_1HZ "$PMTK220,1000*1F"
-#define PMTK_SET_NMEA_UPDATE_5HZ "$PMTK220,200*2C"
-#define PMTK_SET_NMEA_UPDATE_10HZ "$PMTK220,100*2F"
-#define PMTK_SET_NMEA_OUTPUT_ALLDATA "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28"
-#define PMTK_SET_BAUDRATE "$PMTK251,115200*1F"
-
 TinyGPS gps;
-
 #endif
 
 #if USE_MPU6050 || USE_MPU9150
 MPU6050 accelgyro;
 static uint32_t lastMemsDataTime = 0;
 #endif
-
-void doIdleTasks();
 
 static uint8_t lastFileSize = 0;
 static uint32_t lastGPSDataTime = 0;
@@ -66,9 +56,9 @@ static uint32_t lastSpeedTime = 0;
 static int gpsSpeed = -1;
 static uint16_t gpsDate = 0;
 
-static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
-static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE};
+static const byte PROGMEM pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
+static const byte PROGMEM pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
+static const byte PROGMEM pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE};
 
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
@@ -76,74 +66,46 @@ static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, P
 
 byte state = 0;
 
+void processAccelerometer();
+void processGPS();
+
 CDataLogger logger;
 
 class CMyOBD : public COBD
 {
 public:
-    void test()
-    {
-        const char* cmds[] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
-        char buf[OBD_RECV_BUF_SIZE];
-        lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(0, 12);
-
-        for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
-            lcd.print("Sending ");
-            lcd.println(cmds[i]);
-            write(cmds[i]);
-            if (receive(buf) > 0) {
-                char *p = strstr(buf, cmds[i]);
-                if (p)
-                    p += strlen(cmds[i]);
-                else
-                    p = buf;
-                lcd.println(p);
-            } else {
-                lcd.println("Timeout");
-            }
-            delay(1000);
-        }
-    }
-private:
     void dataIdleLoop()
     {
-        doIdleTasks();
+        if (!(state & STATE_GUI_ON)) return;
+
+        if (state & STATE_MEMS_READY) {
+            processAccelerometer();
+        }
+#if USE_GPS
+        uint32_t t = millis();
+        while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
+            processGPS();
+        }
+#endif
     }
 };
 
 class CMyOBDI2C : public COBDI2C
 {
 public:
-
-    void test()
-    {
-        const char* cmds[] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
-        char buf[OBD_RECV_BUF_SIZE];
-        lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(0, 12);
-
-        for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
-            lcd.print("Sending ");
-            lcd.println(cmds[i]);
-            write(cmds[i]);
-            if (receive(buf) > 0) {
-                char *p = strstr(buf, cmds[i]);
-                if (p)
-                    p += strlen(cmds[i]);
-                else
-                    p = buf;
-                lcd.println(p);
-            } else {
-                lcd.println("Timeout");
-            }
-            delay(1000);
-        }
-    }
-private:
     void dataIdleLoop()
     {
-        doIdleTasks();
+        if (!(state & STATE_GUI_ON)) return;
+
+        if (state & STATE_MEMS_READY) {
+            processAccelerometer();
+        }
+#if USE_GPS
+        uint32_t t = millis();
+        while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
+            processGPS();
+        }
+#endif
     }
 };
 
@@ -231,16 +193,16 @@ void showPIDData(byte pid, int value)
             lcd.printInt(value, 2);
         }
         break;
-    case PID_BATTERY_VOLTAGE:
-        lcd.setFontSize(FONT_SIZE_LARGE);
-        lcd.setCursor(80, 18);
-        lcd.printInt(value / 10, 2);
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        lcd.write('.');
-        lcd.printInt(value % 10);
-        break;
     }
     lcd.setColor(RGB16_WHITE);
+}
+
+void ShowVoltage(float v)
+{
+    lcd.setFontSize(FONT_SIZE_LARGE);
+    lcd.setCursor(80, 18);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.print(v);
 }
 
 void fadeOutScreen()
@@ -623,14 +585,14 @@ void logOBDData(byte pid)
     // if OBD response is very fast, go on processing other data for a while
 #ifdef OBD_MIN_INTERVAL
     while (millis() - start < OBD_MIN_INTERVAL) {
-        doIdleTasks();
+        obd.dataIdleLoop();
     }
 #endif
 }
 
 void showECUCap()
 {
-    byte pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_MAF_FLOW, PID_THROTTLE, PID_AUX_INPUT,
+    static const byte PROGMEM pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_MAF_FLOW, PID_THROTTLE, PID_AUX_INPUT,
         PID_EGR_ERROR, PID_COMMANDED_EVAPORATIVE_PURGE, PID_FUEL_LEVEL, PID_CONTROL_MODULE_VOLTAGE, PID_ABSOLUTE_ENGINE_LOAD, PID_AMBIENT_TEMP, PID_COMMANDED_THROTTLE_ACTUATOR, PID_ETHANOL_FUEL,
         PID_FUEL_RAIL_PRESSURE, PID_HYBRID_BATTERY_PERCENTAGE, PID_ENGINE_OIL_TEMP, PID_FUEL_INJECTION_TIMING, PID_ENGINE_FUEL_RATE, PID_ENGINE_TORQUE_DEMANDED, PID_ENGINE_TORQUE_PERCENTAGE};
 
@@ -638,9 +600,10 @@ void showECUCap()
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i += 2) {
         lcd.setCursor(184, i + 4);
         for (byte j = 0; j < 2; j++) {
+            byte pid = pgm_read_byte(pidlist + i + j);
             lcd.printSpace(2);
-            lcd.print((int)pidlist[i + j] | 0x100, HEX);
-            bool valid = obd.isValidPID(pidlist[i + j]);
+            lcd.print((int)pid | 0x100, HEX);
+            bool valid = obd.isValidPID(pid);
             if (valid) {
                 lcd.setColor(RGB16_GREEN);
                 lcd.draw(tick, 16, 16);
@@ -706,20 +669,30 @@ void showStates()
     lcd.setColor(RGB16_WHITE);
 }
 
-void doIdleTasks()
+void testOBD()
 {
-    if (!(state & STATE_GUI_ON))
-        return;
+    static const char PROGMEM cmds[][6] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
+    char buf[OBD_RECV_BUF_SIZE];
+    lcd.setFontSize(FONT_SIZE_SMALL);
+    lcd.setCursor(0, 12);
 
-    if (state & STATE_MEMS_READY) {
-        processAccelerometer();
+    for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
+        char cmd[6];
+        memcpy_P(cmd, cmds[i], sizeof(cmd));
+        lcd.print("Sending ");
+        lcd.println(cmd);
+        if (obd.sendCommand(cmd, buf)) {
+            char *p = strstr(buf, cmd);
+            if (p)
+                p += strlen(cmd);
+            else
+                p = buf;
+            lcd.println(p);
+        } else {
+            lcd.println("Timeout");
+        }
+        delay(1000);
     }
-#if USE_GPS
-    uint32_t t = millis();
-    while (GPSUART.available() && millis() - t < MAX_GPS_PROCESS_TIME) {
-        processGPS();
-    }
-#endif
 }
 
 void setup()
@@ -775,7 +748,7 @@ void setup()
     obd.begin();
 
     // this will send a bunch of commands and display response
-    obd.test();
+    testOBD();
 
     // initialize the OBD until success
     while (!obd.init(OBD_PROTOCOL));
@@ -808,26 +781,31 @@ void loop()
     static byte index2 = 0;
     static byte index3 = 0;
     uint32_t t = millis();
+    byte pid;
 
-    logOBDData(pidTier1[index++]);
+    pid = pgm_read_byte(pidTier1 + index);
+    logOBDData(pid);
+    index++;
     t = millis() - t;
 
     if (index == TIER_NUM1) {
         index = 0;
         if (index2 == TIER_NUM2) {
             index2 = 0;
-            if (obd.isValidPID(pidTier3[index3])) {
-                logOBDData(pidTier3[index3]);
+            pid = pgm_read_byte(pidTier3 + index3);
+            if (obd.isValidPID(pid)) {
+                logOBDData(pid);
             }
             index3 = (index3 + 1) % TIER_NUM3;
             if (index3 == 0) {
-                int v = obd.getVoltage();
-                showPIDData(PID_BATTERY_VOLTAGE, v);
-                logger.logData(PID_BATTERY_VOLTAGE, v);
+                float v = obd.getVoltage();
+                ShowVoltage(v);
+                logger.logData(PID_BATTERY_VOLTAGE, (int)(v * 100));
             }
         } else {
-            if (obd.isValidPID(pidTier2[index2])) {
-                logOBDData(pidTier2[index2]);
+            pid = pgm_read_byte(pidTier2 + index2);
+            if (obd.isValidPID(pid)) {
+                logOBDData(pid);
             }
             index2++;
         }
