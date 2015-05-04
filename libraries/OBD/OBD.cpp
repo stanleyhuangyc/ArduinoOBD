@@ -378,8 +378,9 @@ void COBD::end()
 bool COBD::setBaudRate(unsigned long baudrate)
 {
     char buf[OBD_RECV_BUF_SIZE];
-    sprintf(buf, "ATBR2 %lu\r", baudrate);
-    OBDUART.print(buf);
+    OBDUART.print("ATBR1 ");
+    OBDUART.print(baudrate);
+    OBDUART.print('\r');
     if (receive(buf) && strstr(buf, "OK")) {
         OBDUART.end();
         OBDUART.begin(baudrate);
@@ -503,6 +504,7 @@ byte COBDI2C::receive(char* buffer, int timeout)
 {
 	uint32_t start = millis();
 	byte offset = 0;
+	delay(10);
 	do {
 		Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
 
