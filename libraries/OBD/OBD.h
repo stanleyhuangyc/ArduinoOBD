@@ -2,7 +2,7 @@
 * Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
 * Visit http://freematics.com for more information
-* (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
+* (C)2012-2015 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
@@ -132,6 +132,7 @@ public:
 	virtual void wakeup();
 	// set working protocol (default auto)
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
+	// send AT command and receive response
 	virtual byte sendCommand(const char* cmd, char* buf);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
@@ -213,15 +214,18 @@ public:
 	void end();
     bool read(byte pid, int& result);
     void write(const char* s);
+	// API not applicable
+	bool setBaudRate(unsigned long baudrate) { return false; }
     // Asynchronized access API
     void setPID(byte pid);
     void applyPIDs();
     void loadData();
     uint16_t getData(byte pid, int& result);
 protected:
-    bool sendCommand(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
     byte receive(char* buffer, int timeout = OBD_TIMEOUT_LONG);
     byte m_addr;
     PID_INFO obdInfo[MAX_PIDS];
     byte obdPid[MAX_PIDS];
+private:
+    bool sendCommandBlock(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
 };

@@ -2,7 +2,7 @@
 * Arduino Library for OBD-II UART/I2C Adapter
 * Distributed under GPL v2.0
 * Visit http://freematics.com for more information
-* (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
+* (C)2012-2015 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
@@ -377,17 +377,14 @@ void COBD::end()
 
 bool COBD::setBaudRate(unsigned long baudrate)
 {
-    char buf[OBD_RECV_BUF_SIZE];
     OBDUART.print("ATBR1 ");
     OBDUART.print(baudrate);
     OBDUART.print('\r');
-    if (receive(buf) && strstr(buf, "OK")) {
-        OBDUART.end();
-        OBDUART.begin(baudrate);
-        return true;
-    } else {
-        return false;
-    }
+    delay(100);
+    OBDUART.end();
+    OBDUART.begin(baudrate);
+    while (available()) read();
+    return true;
 }
 
 bool COBD::initGPS(unsigned long baudrate)
@@ -490,7 +487,7 @@ void COBDI2C::write(const char* s)
 	Wire.endTransmission();
 }
 
-bool COBDI2C::sendCommand(byte cmd, uint8_t data, byte* payload, byte payloadBytes)
+bool COBDI2C::sendCommandBlock(byte cmd, uint8_t data, byte* payload, byte payloadBytes)
 {
 	COMMAND_BLOCK cmdblock = {millis(), cmd, data};
 	Wire.beginTransmission(I2C_ADDR);
@@ -548,13 +545,13 @@ void COBDI2C::setPID(byte pid)
 
 void COBDI2C::applyPIDs()
 {
-	sendCommand(CMD_APPLY_OBD_PIDS, 0, (byte*)obdPid, sizeof(obdPid));
+	sendCommandBlock(CMD_APPLY_OBD_PIDS, 0, (byte*)obdPid, sizeof(obdPid));
 	delay(200);
 }
 
 void COBDI2C::loadData()
 {
-	sendCommand(CMD_LOAD_OBD_DATA);
+	sendCommandBlock(CMD_LOAD_OBD_DATA);
 	dataIdleLoop();
 	Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)0);
 	Wire.readBytes((char*)obdInfo, MAX_PAYLOAD_SIZE);
