@@ -596,20 +596,18 @@ void showECUCap()
         PID_EGR_ERROR, PID_COMMANDED_EVAPORATIVE_PURGE, PID_FUEL_LEVEL, PID_CONTROL_MODULE_VOLTAGE, PID_ABSOLUTE_ENGINE_LOAD, PID_AMBIENT_TEMP, PID_COMMANDED_THROTTLE_ACTUATOR, PID_ETHANOL_FUEL,
         PID_FUEL_RAIL_PRESSURE, PID_HYBRID_BATTERY_PERCENTAGE, PID_ENGINE_OIL_TEMP, PID_FUEL_INJECTION_TIMING, PID_ENGINE_FUEL_RATE, PID_ENGINE_TORQUE_DEMANDED, PID_ENGINE_TORQUE_PERCENTAGE};
 
+    lcd.setColor(RGB16_WHITE);
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i += 2) {
-        lcd.setCursor(184, i + 4);
         for (byte j = 0; j < 2; j++) {
             byte pid = pgm_read_byte(pidlist + i + j);
-            lcd.printSpace(2);
+            lcd.setCursor(216 + j * 56 , i + 4);
             lcd.print((int)pid | 0x100, HEX);
             bool valid = obd.isValidPID(pid);
             if (valid) {
                 lcd.setColor(RGB16_GREEN);
                 lcd.draw(tick, 16, 16);
                 lcd.setColor(RGB16_WHITE);
-            } else {
-                lcd.printSpace(2);
             }
         }
     }
@@ -669,30 +667,39 @@ void showStates()
     lcd.setColor(RGB16_WHITE);
 }
 
-void testOBD()
+void testOut()
 {
-    static const char PROGMEM cmds[][6] = {"ATZ\r", "ATE0\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r"};
+    static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[OBD_RECV_BUF_SIZE];
     lcd.setFontSize(FONT_SIZE_SMALL);
-    lcd.setCursor(0, 12);
+    lcd.setCursor(0, 11);
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
         char cmd[6];
         memcpy_P(cmd, cmds[i], sizeof(cmd));
+        lcd.setColor(RGB16_WHITE);
         lcd.print("Sending ");
         lcd.println(cmd);
+        lcd.setColor(RGB16_CYAN);
         if (obd.sendCommand(cmd, buf)) {
             char *p = strstr(buf, cmd);
             if (p)
                 p += strlen(cmd);
             else
                 p = buf;
-            lcd.println(p);
+            while (*p == '\r') p++;
+            while (*p) {
+                lcd.write(*p);
+                if (*p == '\r' && *(p + 1) != '\r')
+                    lcd.write('\n');
+                p++;
+            }
         } else {
             lcd.println("Timeout");
         }
         delay(1000);
     }
+    lcd.println();
 }
 
 void setup()
@@ -722,7 +729,7 @@ void setup()
             lcd.print("File ID:");
             lcd.println(index);
         } else {
-            lcd.print("No Log File");
+            lcd.print("No File");
         }
     }
 #endif
@@ -748,24 +755,30 @@ void setup()
     obd.begin();
 
     // this will send a bunch of commands and display response
-    testOBD();
+    testOut();
 
     // initialize the OBD until success
     while (!obd.init(OBD_PROTOCOL));
 
     state |= STATE_OBD_READY;
 
-    lcd.setColor(RGB16_YELLOW);
+    lcd.setColor(RGB16_GREEN);
     lcd.setFontSize(FONT_SIZE_MEDIUM);
-    lcd.print("OBD READY!");
-    lcd.setColor(RGB16_WHITE);
+    lcd.println("OBD READY!");
+    lcd.setColor(RGB16_YELLOW);
+
+    char buf[OBD_RECV_BUF_SIZE];
+    if (obd.getVIN(buf)) {
+        lcd.print("VIN:");
+        lcd.print(buf);
+    }
 
     //lcd.setFont(FONT_SIZE_MEDIUM);
     //lcd.setCursor(0, 14);
     //lcd.print("VIN: XXXXXXXX");
 
     showECUCap();
-    delay(2000);
+    delay(3000);
 
     fadeOutScreen();
     initScreen();
