@@ -138,6 +138,8 @@ public:
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
 	virtual float getVoltage();
+	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
+	virtual bool getVIN(char* buffer);
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID

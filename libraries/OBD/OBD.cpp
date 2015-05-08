@@ -261,6 +261,26 @@ float COBD::getVoltage()
     return 0;
 }
 
+bool COBD::getVIN(char* buffer)
+{
+    if (sendCommand("0902\r", buffer)) {
+        char *p = strstr(buffer, "0: 49 02");
+        if (p) {
+            char *q = buffer;
+            p += 10;
+            do {
+                for (++p; *p == ' '; p += 3) {
+                    if (*q = hex2uint8(p + 1)) q++;
+                }
+                p = strchr(p, ':');
+            } while(p);
+            *q = 0;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool COBD::isValidPID(byte pid)
 {
 	if (pid >= 0x7f)
@@ -380,7 +400,7 @@ bool COBD::setBaudRate(unsigned long baudrate)
     OBDUART.print("ATBR1 ");
     OBDUART.print(baudrate);
     OBDUART.print('\r');
-    delay(100);
+    delay(50);
     OBDUART.end();
     OBDUART.begin(baudrate);
     while (available()) read();
