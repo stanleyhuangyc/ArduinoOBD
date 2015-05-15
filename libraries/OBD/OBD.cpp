@@ -403,6 +403,8 @@ bool COBD::setBaudRate(unsigned long baudrate)
     delay(50);
     OBDUART.end();
     OBDUART.begin(baudrate);
+    OBDUART.print('ATV\r');
+    delay(50);
     while (available()) read();
     return true;
 }
