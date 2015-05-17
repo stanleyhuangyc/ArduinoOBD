@@ -21,6 +21,17 @@
 #define STATE_MEMS_READY 1
 #define STATE_INIT_DONE 2
 
+typedef struct {
+  uint16_t left;
+  uint16_t right;
+  uint16_t bottom;
+  uint16_t height;
+  uint16_t pos;
+} CHART_DATA;
+
+CHART_DATA chartRPM = {24, 319, 239, 100, 24};
+void chartUpdate(CHART_DATA* chart, int value);
+
 void(* resetFunc) (void) = 0; //declare reset function at address 0
 
 static uint32_t lastFileSize = 0;
@@ -46,6 +57,19 @@ static const byte PROGMEM pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_A
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
 #define TIER_NUM3 sizeof(pidTier3)
+
+void chartUpdate(CHART_DATA* chart, int value)
+{
+  if (value > chart->height) value = chart->height;
+  for (uint16_t n = 0; n < value; n++) {
+    byte b = n * 255 / chart->height;
+    lcd.setPixel(chart->pos, chart->bottom - n, RGB16(0, 0, b));
+  }
+  if (chart->pos++ == chart->right) {
+    chart->pos = chart->left;
+  }
+  lcd.fill(chart->pos, chart->pos, 239 - chart->height, chart->bottom);
+}
 
 #if OBD_MODEL == OBD_MODEL_UART
 class COBDDevice : public COBD, public CDataLogger
@@ -125,8 +149,6 @@ public:
           lcd.print("\nVIN:");
           lcd.setColor(RGB16_YELLOW);
           lcd.println(buf);
-      } else {
-          lcd.println("error");
       }
     }
     void showECUCap()
@@ -163,7 +185,7 @@ public:
         uint32_t elapsed;
         char buf[OBD_RECV_BUF_SIZE];
         uint16_t count = 0;
-        for (elapsed = 0; elapsed < 10000; ) {
+        for (elapsed = 0; elapsed < OBD_BENCHMARK_TIME * 1000; ) {
           lcd.setCursor(0, 4);
           for (byte n = 0; n < TIER_NUM1; n++) {
               byte pid = pgm_read_byte(pidTier1 + n);
@@ -202,7 +224,7 @@ public:
         lcd.setColor(RGB16_YELLOW);
         lcd.println("\nBenchmarking MEMS...");
         startTime = millis();
-        for (count = 0, elapsed = 0; elapsed < 3000; elapsed = millis() - startTime, count++) {
+        for (count = 0, elapsed = 0; elapsed < MEMS_BENCHMARK_TIME * 1000; elapsed = millis() - startTime, count++) {
           int16_t ax, ay, az;
           int16_t gx, gy, gz;
 #if USE_MPU9150
@@ -389,18 +411,13 @@ public:
     }
     void showChart(int value)
     {
-        #define CHART_HEIGHT 100
-        static uint16_t pos = 0;
         uint16_t height;
-        if (value >= 600) {
-          height = (value - 600) / 64;
-          if (height > CHART_HEIGHT) height = CHART_HEIGHT;
+        if (value >= 560) {
+          height = (value - 500) / 60;
         } else {
           height = 1;
         }
-        lcd.fill(pos, pos, 239 - height, 239, RGB16_CYAN);
-        pos = (pos + 1) % 320;
-        lcd.fill(pos, pos, 239 - CHART_HEIGHT, 239);
+        chartUpdate(&chartRPM, height);
     }
     void initScreen()
     {
@@ -453,6 +470,15 @@ public:
         lcd.print("kpa");
         lcd.setCursor(296, 12);
         lcd.print("V");
+        
+        lcd.setColor(RGB16_CYAN);
+        lcd.setXY(0, 140);
+        lcd.print("6500");
+        lcd.setXY(0, 186);
+        lcd.print("3500");
+        lcd.setXY(0, 232);
+        lcd.print("500");
+
         lcd.setColor(RGB16_WHITE);
     }
     void dataIdleLoop()
@@ -465,7 +491,7 @@ public:
     byte state;
 };
 
-static COBDDevice myOBD;
+COBDDevice myOBD;
 
 void setup()
 {

@@ -22,6 +22,12 @@ LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
 //LCD_Null lcd;
 
 /**************************************
+* Benchmark option
+**************************************/
+#define OBD_BENCHMARK_TIME 5 /* seconds */
+#define MEMS_BENCHMARK_TIME 3 /* seconds */
+
+/**************************************
 * Data streaming options
 **************************************/
 // enable(1)/disable(0) data streaming
