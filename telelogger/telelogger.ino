@@ -441,7 +441,7 @@ private:
                     strcat(p, q + 1);
                 }
                 #endif
-                gprs.httpConnect("http://home.mediacoder.net.au:8000/tick", gprs.response);
+                gprs.httpConnect(SERVER_URL, gprs.response);
             }
             break;
         case HTTP_CONNECTING:

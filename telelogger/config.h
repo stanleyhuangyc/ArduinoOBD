@@ -15,6 +15,9 @@
 #define LOG_FORMAT FORMAT_TEXT
 #define STREAM_FORMAT FORMAT_TEXT
 
+// change this to your own URL
+#define SERVER_URL "http://live.freematics.com/test"
+
 /**************************************
 * Accelerometer & Gyro
 **************************************/
