@@ -1,9 +1,16 @@
-/*************************************************************************
-* Arduino GPS/OBD-II/G-Force Data Logger
+/******************************************************************************
+* Vehicle Telematics Data Transmitter Sketch (SIM900/GPRS)
+* Developed by Stanley Huang <stanleyhuangyc@gmail.com>
 * Distributed under GPL v2.0
-* Copyright (c) 2013 Stanley Huang <stanleyhuangyc@gmail.com>
-* All rights reserved.
-*************************************************************************/
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+* THE SOFTWARE.
+******************************************************************************/
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -520,14 +527,6 @@ private:
     }
     bool logGPSData()
     {
-#if 0
-        char *p;
-        write("ATGPS\r");
-        if (receive(gpsline) == 0 || !(p = strstr(gpsline, "$GPS")))
-            return false;
-        //SerialRF.println(buf);
-        return true;
-#endif
         if (getGPSData(&gd) && gd.lat && gd.lon && gd.time != lastGPSTime) {
             logData(PID_GPS_TIME, gd.time);
             logData(PID_GPS_ALTITUDE, gd.lat);
@@ -567,12 +566,10 @@ private:
 
 static COBDLogger logger;
 
-
 void setup()
 {
     logger.begin();
     logger.initSender();
-
     logger.setup();
 }
 
