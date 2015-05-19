@@ -97,9 +97,9 @@ public:
     {
         char buf[16];
 #if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%d\r", value);
+        sprintf(buf + translatePIDName(pid, buf), "%d\n", value);
 #else
-        sprintf(buf, "%X,%d\r", pid, value);
+        sprintf(buf, "%X,%d\n", pid, value);
 #endif
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
@@ -119,9 +119,9 @@ public:
     {
         char buf[20];
 #if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%ld\r", value);
+        sprintf(buf + translatePIDName(pid, buf), "%ld\n", value);
 #else
-        sprintf(buf, "%X,%ld\r", pid, value);
+        sprintf(buf, "%X,%ld\n", pid, value);
 #endif
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
@@ -141,9 +141,9 @@ public:
     {
         char buf[20];
 #if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%lu\r", value);
+        sprintf(buf + translatePIDName(pid, buf), "%lu\n", value);
 #else
-        sprintf(buf, "%X,%lu\r", pid, value);
+        sprintf(buf, "%X,%lu\n", pid, value);
 #endif
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
@@ -163,9 +163,9 @@ public:
     {
         char buf[24];
 #if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%d,%d,%d\r", value1, value2, value3);
+        sprintf(buf + translatePIDName(pid, buf), "%d,%d,%d\n", value1, value2, value3);
 #else
-        sprintf(buf, "%X,%d,%d,%d\r", pid, value1, value2, value3);
+        sprintf(buf, "%X,%d,%d,%d\n", pid, value1, value2, value3);
 #endif
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN

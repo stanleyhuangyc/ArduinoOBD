@@ -33,6 +33,8 @@ LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
 // enable(1)/disable(0) data streaming
 #define ENABLE_DATA_OUT 1
 
+#define DELAY_AFTER_SENDING 10
+
 // uses software(1)/hardware(0) serial for data streaming
 #define USE_SOFTSERIAL 0
 

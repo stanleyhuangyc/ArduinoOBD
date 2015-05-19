@@ -441,8 +441,6 @@ public:
         lcd.setCursor(164, 7);
         lcd.print("INTAKE MAP");
 
-        lcd.setCursor(260, 7);
-        lcd.print("ELAPSED");
         lcd.setCursor(260, 9);
         lcd.print("BATTERY");
 
