@@ -1,5 +1,5 @@
 /******************************************************************************
-* Vehicle Telematics Data Transmitter Sketch (SIM900/GPRS)
+* Vehicle Telematics Remote Data Logger Sketch (SIM900/GPRS)
 * Developed by Stanley Huang <stanleyhuangyc@gmail.com>
 * Distributed under GPL v2.0
 * 
@@ -15,7 +15,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <OBD.h>
+#if ENABLE_DATA_LOG
 #include <SD.h>
+#endif
 #include <I2Cdev.h>
 #include <MPU9150.h>
 #include "config.h"
