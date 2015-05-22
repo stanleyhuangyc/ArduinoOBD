@@ -6,6 +6,7 @@
 *************************************************************************/
 
 #include <Arduino.h>
+#include <Wire.h>
 #include "OBD.h"
 
 //#define DEBUG Serial
@@ -54,12 +55,12 @@ byte hex2uint8(const char *p)
 /*************************************************************************
 * OBD-II UART Adapter
 *************************************************************************/
-#include <Wire.h>
 
 byte COBD::sendCommand(const char* cmd, char* buf)
 {
-    write(cmd);
-    return receive(buf);
+	write(cmd);
+	dataIdleLoop();
+	return receive(buf);
 }
 
 void COBD::sendQuery(byte pid)
@@ -244,12 +245,6 @@ void COBD::sleep()
 	receive();
 }
 
-void COBD::wakeup()
-{
-	write('\r');
-	receive();
-}
-
 float COBD::getVoltage()
 {
     char buf[OBD_RECV_BUF_SIZE];
@@ -295,46 +290,48 @@ void COBD::begin()
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef DEBUG
-    DEBUG.begin(115200);
+	DEBUG.begin(115200);
 #endif
+	recover();
 }
 
 byte COBD::receive(char* buffer, int timeout)
 {
 	unsigned char n = 0;
-	for (unsigned long startTime = millis();;) {
-	    if (available()) {
-	        char c = read();
-	        if (n > 2 && c == '>') {
-	            // prompt char received
-	            break;
-	        } else if (!buffer) {
-                n++;
-	        } else if (n < OBD_RECV_BUF_SIZE - 1) {
-                if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
-                    n = 0;
-                    timeout = OBD_TIMEOUT_LONG;
-                } else {
-                    buffer[n++] = c;
-                }
-	        }
-	    } else {
-	        if (millis() - startTime > timeout) {
-	            // timeout
-	            return 0;
-	        }
-	        dataIdleLoop();
-	    }
+	unsigned long startTime = millis();
+	for (;;) {
+		if (available()) {
+			char c = read();
+			if (n > 2 && c == '>') {
+				// prompt char received
+				break;
+			} else if (!buffer) {
+			       n++;
+			} else if (n < OBD_RECV_BUF_SIZE - 1) {
+				if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
+					// waiting siginal
+					n = 0;
+					timeout = OBD_TIMEOUT_LONG;
+				} else {
+					buffer[n++] = c;
+				}
+			}
+		} else {
+			if (millis() - startTime > timeout) {
+			    // timeout
+			    break;
+			}
+			dataIdleLoop();
+		}
 	}
-    if (buffer) buffer[n] = 0;
+	if (buffer) buffer[n] = 0;
 	return n;
 }
 
 void COBD::recover()
 {
-	write('\r');
-	delay(100);
-	while (available()) read();
+	write("AT\r");
+	receive(0, 1000);
 }
 
 bool COBD::init(OBD_PROTOCOLS protocol)
@@ -403,9 +400,7 @@ bool COBD::setBaudRate(unsigned long baudrate)
     delay(50);
     OBDUART.end();
     OBDUART.begin(baudrate);
-    OBDUART.print('ATV\r');
-    delay(50);
-    while (available()) read();
+    recover();
     return true;
 }
 
@@ -481,11 +476,10 @@ void COBD::debugOutput(const char *s)
 void COBDI2C::begin()
 {
 	Wire.begin();
-	memset(obdPid, 0, sizeof(obdPid));
-	memset(obdInfo, 0, sizeof(obdInfo));
 #ifdef DEBUG
-    DEBUG.begin(115200);
+	DEBUG.begin(115200);
 #endif
+	recover();
 }
 
 void COBDI2C::end()
@@ -523,35 +517,36 @@ byte COBDI2C::receive(char* buffer, int timeout)
 {
 	uint32_t start = millis();
 	byte offset = 0;
-	delay(10);
 	do {
 		Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
-
-		bool hasEnd = false;
-		for (byte i = 0; i < MAX_PAYLOAD_SIZE && Wire.available(); i++) {
-            char c = Wire.read();
-            buffer[offset + i] = c;
-			if (c == 0)
-				hasEnd = true;
-		}
-
-		if (buffer[0] == 0) {
-			// data not ready
+		int c = Wire.read();
+		if (offset == 0 && (c == 0 || c == -1)) {
+			 // data not ready
 			dataIdleLoop();
-			continue;
+			continue; 
 		}
-
-		offset += MAX_PAYLOAD_SIZE;
-		if (!hasEnd) {
-			continue;
+		if (buffer) buffer[offset++] = c;
+		for (byte i = 1; i < MAX_PAYLOAD_SIZE && Wire.available(); i++) {
+			char c = Wire.read();
+			if (c == '.' && offset > 2 && buffer[offset - 1] == '.' && buffer[offset - 2] == '.') {
+				// waiting signal
+				offset = 0;
+				timeout = OBD_TIMEOUT_LONG;
+			} else if (c == 0 || offset == OBD_RECV_BUF_SIZE - 1) {
+				// string terminator encountered or buffer full
+				if (buffer) buffer[offset] = 0;
+				// discard the remaining data
+				while (Wire.available()) Wire.read();
+				return offset;
+			} else {
+				if (buffer) buffer[offset++] = c;
+			}
 		}
-
-		return offset;
 	} while(millis() - start < timeout);
 	return 0;
 }
 
-void COBDI2C::setPID(byte pid)
+void COBDI2C::setPID(byte pid, byte obdPid[])
 {
 	byte n = 0;
 	for (; n < MAX_PIDS && obdPid[n]; n++) {
@@ -565,16 +560,16 @@ void COBDI2C::setPID(byte pid)
 	obdPid[n] = pid;
 }
 
-void COBDI2C::applyPIDs()
+void COBDI2C::applyPIDs(byte obdPid[])
 {
-	sendCommandBlock(CMD_APPLY_OBD_PIDS, 0, (byte*)obdPid, sizeof(obdPid));
+	sendCommandBlock(CMD_APPLY_OBD_PIDS, 0, (byte*)obdPid, sizeof(obdPid[0])* MAX_PIDS);
 	delay(200);
 }
 
-void COBDI2C::loadData()
+void COBDI2C::loadData(PID_INFO obdInfo[])
 {
 	sendCommandBlock(CMD_LOAD_OBD_DATA);
 	dataIdleLoop();
 	Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)0);
-	Wire.readBytes((char*)obdInfo, MAX_PAYLOAD_SIZE);
+	Wire.readBytes((char*)obdInfo, sizeof(obdInfo[0]) * MAX_PIDS);
 }

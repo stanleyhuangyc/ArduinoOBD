@@ -128,12 +128,10 @@ public:
 	virtual bool read(byte pid, int& result);
 	// set device into
 	virtual void sleep();
-	// wake up device from previous sleep
-	virtual void wakeup();
 	// set working protocol (default auto)
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// send AT command and receive response
-	virtual byte sendCommand(const char* cmd, char* buf);
+	virtual byte sendCommand(const char* cmd, char* buf = 0);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
@@ -196,8 +194,8 @@ private:
 #define CMD_SEND_AT_COMMAND 0x11
 #define CMD_APPLY_OBD_PIDS 0x12
 #define CMD_LOAD_OBD_DATA 0x13
-#define CMD_GPS_SETUP 0x20
-#define CMD_GPS_QUERY 0x22
+#define CMD_GPS_SETUP 0x14
+#define CMD_GPS_QUERY 0x15
 
 typedef struct {
     uint16_t age;
@@ -212,22 +210,17 @@ typedef struct {
 
 class COBDI2C : public COBD {
 public:
-    void begin();
+	void begin();
 	void end();
-    bool read(byte pid, int& result);
-    void write(const char* s);
+	bool read(byte pid, int& result);
+	void write(const char* s);
 	// API not applicable
 	bool setBaudRate(unsigned long baudrate) { return false; }
-    // Asynchronized access API
-    void setPID(byte pid);
-    void applyPIDs();
-    void loadData();
-    uint16_t getData(byte pid, int& result);
+	// Asynchronized access API
+	void setPID(byte pid, byte obdPid[]);
+	void applyPIDs(byte obdPid[]);
+	void loadData(PID_INFO obdInfo[]);
 protected:
-    byte receive(char* buffer, int timeout = OBD_TIMEOUT_LONG);
-    byte m_addr;
-    PID_INFO obdInfo[MAX_PIDS];
-    byte obdPid[MAX_PIDS];
-private:
-    bool sendCommandBlock(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
+	byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
+	bool sendCommandBlock(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
 };
