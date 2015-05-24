@@ -1,5 +1,5 @@
 /*************************************************************************
-* Test sketch for SIM800 library
+* SIM800 GPRS/HTTP Library
 * Distributed under GPL v2.0
 * Written by Stanley Huang <stanleyhuangyc@gmail.com>
 * For more information, please visit http://arduinodev.com
@@ -7,9 +7,16 @@
 
 #include <Arduino.h>
 
+// change this to the pin connect with SIM800 reset pin
 #define SIM800_RESET_PIN 7
+
+// change this to the serial UART which SIM800 is attached to
 #define simser Serial1
+
+// change this to the serial UART used for console
 #define con Serial
+
+// change this to 1 to enable debug information output
 #define DEBUG 0
 
 typedef enum {
