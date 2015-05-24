@@ -1,5 +1,5 @@
 /*************************************************************************
-* Test sketch for SIM800 library
+* SIM800 GPRS/HTTP Library
 * Distributed under GPL v2.0
 * Written by Stanley Huang <stanleyhuangyc@gmail.com>
 * For more information, please visit http://arduinodev.com
