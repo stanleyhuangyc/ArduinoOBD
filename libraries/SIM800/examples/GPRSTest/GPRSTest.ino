@@ -10,7 +10,6 @@
 #define APN "connect"
 static const char* url = "http://arduinodev.com/datetime.php";
 
-
 CGPRS_SIM800 gprs;
 uint32_t count = 0;
 uint32_t errors = 0;
@@ -50,17 +49,6 @@ void setup()
      con.print(ret);
      con.println("dB");
   }
- 
-#if 0
-  sendCommand("AT+CSQ");
-  lcd.println("Dialing...");
-  if (sendCommand("ATD + +61402533012;", 10000)) {
-    lcd.println(buffer); 
-  }
-  if (sendCommand("ATH"))
-    lcd.println(buffer);
-  delay(1000);
-#endif
 
   gprs.sendCommand("AT+CMGF=1");    // sets the SMS mode to text
   gprs.sendCommand("AT+CPMS=\"SM\",\"SM\",\"SM\""); // selects the memory
@@ -76,7 +64,6 @@ void setup()
 
 void loop()
 {
-  count++;
   
   char mydata[16];
   sprintf(mydata, "t=%lu", millis());
@@ -85,6 +72,7 @@ void loop()
   con.print('?');
   con.println(mydata);
   gprs.httpConnect(url, mydata);
+  count++;
   while (gprs.httpIsConnected() == 0) {
     // can do something here while waiting
     con.write('.');
@@ -93,26 +81,42 @@ void loop()
     }
   }
   if (gprs.httpState == HTTP_ERROR) {
-    con.println("error");
+    con.println("Connect error");
     errors++;
     delay(3000);
     return; 
   }
+  con.println();
   gprs.httpRead();
   int ret;
   while ((ret = gprs.httpIsRead()) == 0) {
     // can do something here while waiting
   }
   if (gprs.httpState == HTTP_ERROR) {
-    con.println("error");
+    con.println("Read error");
     errors++;
     delay(3000);
     return; 
   }
 
   // now we have received payload
-  con.print("\n[Payload]");
+  con.print("[Payload]");
   con.println(gprs.buffer);
+
+  // show position
+  GSM_LOCATION loc;
+  if (gprs.getLocation(&loc)) {
+    con.print("LAT:");
+    con.print(loc.lat, 6);
+    con.print(" LON:");
+    con.print(loc.lon, 6);
+    con.print(" TIME:");
+    con.print(loc.hour);
+    con.print(':');
+    con.print(loc.minute);
+    con.print(':');
+    con.println(loc.second);
+  }
   
   // show stats  
   con.print("Total Requests:");

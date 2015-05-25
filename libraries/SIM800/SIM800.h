@@ -27,6 +27,17 @@ typedef enum {
     HTTP_ERROR,
 } HTTP_STATES;
 
+typedef struct {
+  float lat;
+  float lon;
+  uint8_t year; /* year past 2000, e.g. 15 for 2015 */
+  uint8_t month;
+  uint8_t day;
+  uint8_t hour;
+  uint8_t minute;
+  uint8_t second;
+} GSM_LOCATION;
+
 class CGPRS_SIM800 {
 public:
     CGPRS_SIM800():httpState(HTTP_DISABLED) {}
@@ -35,18 +46,31 @@ public:
     bool getOperatorName();
     bool checkSMS();
     int getSignalQuality();
-    void httpUninit();
+    bool getLocation(GSM_LOCATION* loc);
+    // initialize HTTP connection
     bool httpInit();
+    // terminate  HTTP connection
+    void httpUninit();
+    // connect to HTTP server
     bool httpConnect(const char* url, const char* args = 0);
     // check if HTTP connection is established
     // return 0 for in progress, 1 for success, 2 for error
     byte httpIsConnected();
+    // read data from HTTP connection
     void httpRead();
     // check if HTTP connection is established
     // return 0 for in progress, -1 for error, number of http payload bytes on success
     int httpIsRead();
+    // send AT command and check for expected response
     byte sendCommand(const char* cmd, unsigned int timeout = 2000, const char* expected = 0);
+    // send AT command and check for two possible responses
     byte sendCommand(const char* cmd, const char* expected1, const char* expected2, unsigned int timeout = 2000);
+    // toggle low-power mode
+    bool sleep(bool enabled)
+    {
+      return sendCommand(enabled ? "AT+CFUN=0" : "AT+CFUN=1");
+    }
+    // check if there is available serial data
     bool available()
     {
       return simser.available(); 
@@ -56,7 +80,7 @@ public:
 private:
     byte checkbuffer(const char* expected1, const char* expected2 = 0, unsigned int timeout = 2000);
     void purgeSerial();
-    byte bytesRecv;
-    uint32_t checkTimer;
+    byte m_bytesRecv;
+    uint32_t m_checkTimer;
 };
 

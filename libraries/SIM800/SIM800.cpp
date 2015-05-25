@@ -21,6 +21,7 @@ bool CGPRS_SIM800::init()
     if (sendCommand("AT")) {
         sendCommand("AT+IPR=115200");
         sendCommand("ATE0");
+		sendCommand("AT+CFUN=1", 10000);
         return true;
     }
     return false;
@@ -61,9 +62,9 @@ byte CGPRS_SIM800::setup(const char* apn)
   if (!sendCommand(0))
     return 4;
   
-  for (byte n = 0; n < 10 && !(success = (sendCommand("AT+SAPBR=1,1") != 0)); n++)
-    delay(500);
-  
+  sendCommand("AT+SAPBR=1,1", 10000);
+  sendCommand("AT+SAPBR=2,1", 10000);
+
   if (!success)
     return 5;
 
@@ -109,6 +110,33 @@ int CGPRS_SIM800::getSignalQuality()
    return 0; 
   }
 }
+
+bool CGPRS_SIM800::getLocation(GSM_LOCATION* loc)
+{
+  if (sendCommand("AT+CIPGSMLOC=1,1", 10000)) do {
+    char *p;
+    if (!(p = strchr(buffer, ':'))) break;
+    if (!(p = strchr(p, ','))) break;
+    loc->lon = atof(++p);
+    if (!(p = strchr(p, ','))) break;
+    loc->lat = atof(++p);
+    if (!(p = strchr(p, ','))) break;
+    loc->year = atoi(++p) - 2000;
+    if (!(p = strchr(p, '/'))) break;
+    loc->month = atoi(++p);
+    if (!(p = strchr(p, '/'))) break;
+    loc->day = atoi(++p);
+    if (!(p = strchr(p, ','))) break;
+    loc->hour = atoi(++p);
+    if (!(p = strchr(p, ':'))) break;
+    loc->minute = atoi(++p);
+    if (!(p = strchr(p, ':'))) break;
+    loc->second = atoi(++p);
+    return true;
+  } while(0);
+  return false;
+}
+
 void CGPRS_SIM800::httpUninit()
 {
   sendCommand("AT+HTTPTERM");
@@ -139,8 +167,8 @@ bool CGPRS_SIM800::httpConnect(const char* url, const char* args)
         // Starts GET action
         simser.println("AT+HTTPACTION=0");
         httpState = HTTP_CONNECTING;
-        bytesRecv = 0;
-        checkTimer = millis();
+        m_bytesRecv = 0;
+        m_checkTimer = millis();
     } else {
         httpState = HTTP_ERROR;
     }
@@ -161,8 +189,8 @@ void CGPRS_SIM800::httpRead()
 {
     simser.println("AT+HTTPREAD");
     httpState = HTTP_READING;
-    bytesRecv = 0;
-    checkTimer = millis();
+    m_bytesRecv = 0;
+    m_checkTimer = millis();
 }
 // check if HTTP connection is established
 // return 0 for in progress, -1 for error, number of http payload bytes on success
@@ -170,7 +198,7 @@ int CGPRS_SIM800::httpIsRead()
 {
     byte ret = checkbuffer("+HTTPREAD: ", "Error", 10000) == 1;
     if (ret == 1) {
-        bytesRecv = 0;
+        m_bytesRecv = 0;
         // read the rest data
         sendCommand(0, 100, "\r\n");
         int bytes = atoi(buffer);
@@ -270,13 +298,13 @@ byte CGPRS_SIM800::checkbuffer(const char* expected1, const char* expected2, uns
 {
     while (simser.available()) {
         char c = simser.read();
-        if (bytesRecv >= sizeof(buffer) - 1) {
+        if (m_bytesRecv >= sizeof(buffer) - 1) {
             // buffer full, discard first half
-            bytesRecv = sizeof(buffer) / 2 - 1;
-            memcpy(buffer, buffer + sizeof(buffer) / 2, bytesRecv);
+            m_bytesRecv = sizeof(buffer) / 2 - 1;
+            memcpy(buffer, buffer + sizeof(buffer) / 2, m_bytesRecv);
         }
-        buffer[bytesRecv++] = c;
-        buffer[bytesRecv] = 0;
+        buffer[m_bytesRecv++] = c;
+        buffer[m_bytesRecv] = 0;
         if (strstr(buffer, expected1)) {
             return 1;
         }
@@ -284,7 +312,7 @@ byte CGPRS_SIM800::checkbuffer(const char* expected1, const char* expected2, uns
             return 2;
         }
     }
-    return (millis() - checkTimer < timeout) ? 0 : 3;
+    return (millis() - m_checkTimer < timeout) ? 0 : 3;
 }
 
 void CGPRS_SIM800::purgeSerial()
