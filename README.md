@@ -61,7 +61,7 @@ samples - several simple sketches for testing purpose
 
 nanologger - OBD-II data logger working with 128x64 monochrome OLED display (for Arduino Nano)
 
-megalogger - OBD-II and GPS data logger based on 320x240 TFT LCD display (for Arduino MEGA/ADK)
+megalogger - OBD-II and GPS data logger based on 320x240 TFT LCD display (for Arduino MEGA)
 
 tester - a testing sketch for OBD-II communication and capability
 
