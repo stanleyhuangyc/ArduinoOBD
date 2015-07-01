@@ -67,8 +67,3 @@ megalogger - OBD-II and GPS data logger based on 320x240 TFT LCD display (for Ar
 
 utilites - useful utility source code for development
 
-How to view logged data
------------------------
-Data2KML (http://arduinodev.com/data2kml-utility/) is an open-source command line utility which converts data logged by obdlogger or megalogger to KML file loading in Google Earth.
-
-A web service (http://freematics.com/chart/) is provided to view data logged by obdlogger or megalogger.
