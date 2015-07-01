@@ -1,9 +1,9 @@
 Arduino OBD-II Adapter Library & Sketches
 =========================================
 
-(C)2012-2014 Freematics.com
+(C)2012-2015 Freematics.com
 
-The Arduino OBD-II Adapter is a product that works as a vehicle OBD-II data bridge for Arduino with open-source Arduino library provided. Besides providing OBD-II data access, it also provides power supply (converted and regulated from OBD-II port) for Arduino and its attached devices.
+OBD-II Adapter for Arduino is a product that works as a vehicle OBD-II data bridge for Arduino (literally all embedded platforms) with open-source Arduino library provided. Besides providing easy-to-use OBD-II data access, it also integrates 6-axis or 9-axis MEMS sensor module and a voltmeter for measuring vehicle battery power. The adapter draws power from OBD-II port and convert it to 5V for powering attached device.
 
 OBD-II Adapter: http://freematics.com/pages/products/arduino-obd-adapter/
 
