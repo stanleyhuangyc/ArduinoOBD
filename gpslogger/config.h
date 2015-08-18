@@ -4,34 +4,23 @@
 /**************************************
 * Data logging/streaming out
 **************************************/
-#define ENABLE_DATA_OUT 0
+#define ENABLE_DATA_OUT 1
 #define ENABLE_DATA_LOG 1
-#define USE_SOFTSERIAL 0
+#define USE_SOFTSERIAL 1
 //this defines the format of log file
-#define LOG_FORMAT FORMAT_CSV
-#define STREAM_FORMAT FORMAT_CSV
-#define STREAM_BAUDRATE 115200
+#define STREAM_FORMAT FORMAT_TEXT
+#define STREAM_BAUDRATE 9600
 
 /**************************************
 * Choose SD pin here
 **************************************/
-#define SD_CS_PIN SS // generic
-//#define SD_CS_PIN 4 // ethernet shield
-//#define SD_CS_PIN 7 // microduino
-//#define SD_CS_PIN 10 // SD breakout
-
-/**************************************
-* Choose LCD model here
-**************************************/
-LCD_SSD1289 lcd;
-//LCD_ILI9341 lcd;
-//LCD_Null lcd;
+#define SD_CS_PIN SS
 
 /**************************************
 * Other options
 **************************************/
 #define USE_MPU6050 0
-#define GPS_BAUDRATE 38400
+#define GPS_BAUDRATE 115200
 #define GPS_DATA_TIMEOUT 2000 /* ms */
 //#define DEBUG Serial
 #define DEBUG_BAUDRATE 9600
