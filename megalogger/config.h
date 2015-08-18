@@ -26,7 +26,8 @@
 
 // this defines the format of data streaming
 // FORMAT_BIN is required by Freematics OBD iOS App
-// FORMAT_CSV is for text-based output
+// FORMAT_CSV for text-based data, hex digits for PID
+// FORMAT_TEXT for text-based, text names for PID
 #define STREAM_FORMAT FORMAT_BIN
 
 /* Default streaming baudrates:
