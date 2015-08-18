@@ -1,13 +1,13 @@
 Arduino OBD-II Adapter Library & Sketches
 =========================================
 
-(C)2012-2014 Freematics.com
+(C)2012-2015 Freematics.com
 
-The Arduino OBD-II Adapter is a product that works as a vehicle OBD-II data bridge for Arduino with open-source Arduino library provided. Besides providing OBD-II data access, it also provides power supply (converted and regulated from OBD-II port) for Arduino and its attached devices.
+OBD-II Adapter for Arduino is a product that works as a vehicle OBD-II data bridge for Arduino (literally all embedded platforms) with open-source Arduino library provided. Besides providing easy-to-use OBD-II data access, it also integrates 6-axis or 9-axis MEMS sensor module and a voltmeter for measuring vehicle battery power. The adapter draws power from OBD-II port and convert it to 5V for powering attached device.
 
 OBD-II Adapter: http://freematics.com/pages/products/arduino-obd-adapter/
 
-OBD-II Data Logger Kits: http://freematics.com/pages/products/obd-kit3/
+OBD-II Telematics DIY Kit: http://freematics.com/pages/products/arduino-telematics-kit-3/
 
 ![Image](http://www.arduinodev.com/wp-content/uploads/2012/03/obdkit1-150x150.jpg)
 
@@ -61,14 +61,9 @@ samples - several simple sketches for testing purpose
 
 nanologger - OBD-II data logger working with 128x64 monochrome OLED display (for Arduino Nano)
 
-unologger - OBD-II data logger working with 320x240 TFT LCD display (for Arduino UNO & Bluno)
+megalogger - OBD-II and GPS data logger based on 320x240 TFT LCD display (for Arduino MEGA)
 
-megalogger - OBD-II and GPS data logger based on 320x240 TFT LCD display (for Arduino MEGA, ADK and DUE)
+tester - a testing sketch for OBD-II communication and capability
 
 utilites - useful utility source code for development
 
-How to view logged data
------------------------
-Data2KML (http://arduinodev.com/data2kml-utility/) is an open-source command line utility which converts data logged by obdlogger or megalogger to KML file loading in Google Earth.
-
-A web service (http://freematics.com/chart/) is provided to view data logged by obdlogger or megalogger.
