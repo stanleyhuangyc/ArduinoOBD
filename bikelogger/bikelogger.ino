@@ -1,5 +1,7 @@
 /*************************************************************************
-* A prototype for cycling data logger (based on GPS and MEMS)
+* Reference code for cycling data logger (based on GPS and MEMS)
+* Works with Freematics OBD-II Telematics Advanced Kit 
+* Visit http://freematics.com for more information
 * Distributed under GPL v2.0
 * Written by Stanley Huang
 *************************************************************************/
@@ -84,7 +86,7 @@ void processGPS()
 
     uint32_t date;
     gps.get_datetime(&date, &time, 0);
-    logger.logData(PID_GPS_TIME, time, date);
+    logger.logData(PID_GPS_TIME, (int32_t)time);
 
     speed = (int)(gps.speed() * 1852 / 100);
     if (speed < 1000) speed = 0;
@@ -103,7 +105,8 @@ void processGPS()
     gps.get_position(&lat, &lon, 0);
     curLat = (float)lat / 100000;
     curLon = (float)lon / 100000;
-    logger.logData(PID_GPS_COORDINATES, curLat, curLon);
+    logger.logData(PID_GPS_LATITUDE, lat);
+    logger.logData(PID_GPS_LONGITUDE, lon);
 
     if (logger.dataTime - lastTime >= 3000 && speed > 0) {
         if (lastLat == 0) lastLat = lat;
