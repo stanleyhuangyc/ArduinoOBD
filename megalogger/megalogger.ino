@@ -1,22 +1,24 @@
 /*************************************************************************
-* Arduino GPS/OBD-II/9-Axis Data Logger
-* Distributed under GPL v2.0
-* Copyright (c) 2013-2015 Stanley Huang <stanleyhuangyc@gmail.com>
-* All rights reserved.
+* Reference code for OBD-II/GPS/9-Axis Data Logger
+* Works with Freematics OBD-II Telematics Advanced Kit
 * Visit http://freematics.com for more information
+* Distributed under GPL v2.0
+* Written by Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
 #include <Wire.h>
 #include <OBD.h>
 #include <SPI.h>
-#include <SD.h>
 #include <MultiLCD.h>
 #include <TinyGPS.h>
 #include <I2Cdev.h>
 #include <MPU9150.h>
-#include "Narcoleptic.h"
 #include "config.h"
+#if ENABLE_DATA_LOG
+#include <SD.h>
+#endif
+#include "Narcoleptic.h"
 #include "images.h"
 #if ENABLE_DATA_OUT && USE_SOFTSERIAL
 #include <SoftwareSerial.h>
@@ -765,11 +767,12 @@ void setup()
     lcd.setColor(RGB16_GREEN);
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.println("OBD READY!");
-    lcd.setColor(RGB16_YELLOW);
 
     char buf[OBD_RECV_BUF_SIZE];
     if (obd.getVIN(buf)) {
+        lcd.setColor(RGB16_WHITE);
         lcd.print("VIN:");
+        lcd.setColor(RGB16_YELLOW);
         lcd.print(buf);
     }
 
@@ -794,13 +797,8 @@ void loop()
     static byte index2 = 0;
     static byte index3 = 0;
     uint32_t t = millis();
-    byte pid;
-
-    pid = pgm_read_byte(pidTier1 + index);
+    byte pid = pgm_read_byte(pidTier1 + index++);
     logOBDData(pid);
-    index++;
-    t = millis() - t;
-
     if (index == TIER_NUM1) {
         index = 0;
         if (index2 == TIER_NUM2) {

@@ -45,7 +45,7 @@
 
 // 38400bps for G6010 5Hz GPS receiver
 // 115200bps for G7020 10Hz GPS receiver
-#define GPS_BAUDRATE 38400 /* bps */
+#define GPS_BAUDRATE 115200 /* bps */
 
 /**************************************
 * Accelerometer & Gyro
