@@ -10,11 +10,11 @@
 #include <SPI.h>
 #include <SD.h>
 #include <TinyGPS.h>
+#include <MultiLCD.h>
+#include "config.h"
 #if USE_SOFTSERIAL
 #include <SoftwareSerial.h>
 #endif
-#include "MultiLCD.h"
-#include "config.h"
 #include "datalogger.h"
 
 #define DISPLAY_MODES 1
