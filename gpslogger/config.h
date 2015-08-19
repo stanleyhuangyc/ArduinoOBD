@@ -19,10 +19,7 @@
 /**************************************
 * Other options
 **************************************/
-#define USE_MPU6050 0
 #define GPS_BAUDRATE 115200
-#define GPS_DATA_TIMEOUT 2000 /* ms */
-//#define DEBUG Serial
-#define DEBUG_BAUDRATE 9600
+#define USE_MPU6050 1
 
-#endif // CONFIG_H_INCLUDED
+#endif
