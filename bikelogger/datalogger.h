@@ -65,7 +65,7 @@ const PID_NAME pidNames[] PROGMEM = {
 {PID_GPS_SPEED, {'S','P','D'}},
 {PID_GPS_HEADING, {'C','R','S'}},
 {PID_GPS_SAT_COUNT, {'S','A','T'}},
-{PID_GPS_TIME, {'T','M','E'}},
+{PID_GPS_TIME, {'T','I','M'}},
 {PID_GPS_DATE, {'D','T','E'}},
 {PID_BATTERY_VOLTAGE, {'B','A','T'}},
 {PID_DATA_SIZE, {'D','A','T'}},
@@ -89,19 +89,25 @@ public:
         m_lastDataTime = 0;
 #endif
     }
-    void recordData(const char* buf)
+    void recordData(const char* buf, byte len)
     {
 #if ENABLE_DATA_LOG
         dataSize += sdfile.print(dataTime - m_lastDataTime);
         dataSize += sdfile.write(',');
-        dataSize += sdfile.write(buf);
+        dataSize += sdfile.write(buf, len);
         m_lastDataTime = dataTime;
 #endif
+    }
+    void sendData(const char* buf, byte len)
+    {
+        SerialRF.write(buf, len);
 #if MIN_DATA_INTERVAL
         uint32_t t = millis();
         uint32_t elapsed = t - m_lastSendTime;
         if (elapsed < MIN_DATA_INTERVAL) delay(MIN_DATA_INTERVAL - elapsed);
         m_lastSendTime = t;
+#else
+        delay(10);
 #endif
     }
     void logData(char c)
@@ -116,78 +122,66 @@ public:
     void logData(uint16_t pid, int value)
     {
         char buf[16];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%d\r", value);
-#else
-        sprintf(buf, "%X,%d\r", pid, value);
-#endif
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%d\r", value) + n;
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-        SerialRF.write((uint8_t*)&ld, 12);
+        sendData((char*)&ld, 12);
 #else
-        SerialRF.print(buf);
+        sendData(buf, len);
 #endif
 #endif
-        recordData(buf);
+        recordData(buf, len);
     }
     void logData(uint16_t pid, int32_t value)
     {
         char buf[20];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%ld\r", value);
-#else
-        sprintf(buf, "%X,%ld\r", pid, value);
-#endif
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%ld\r", value) + n;
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-        SerialRF.write((uint8_t*)&ld, 12);
+        sendData((uint8_t*)&ld, 12);
 #else
-        SerialRF.print(buf);
+        sendData(buf, len);
 #endif
 #endif
-        recordData(buf);
+        recordData(buf, len);
     }
     void logData(uint16_t pid, uint32_t value)
     {
         char buf[20];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%lu\r", value);
-#else
-        sprintf(buf, "%X,%lu\r", pid, value);
-#endif
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%lu\r", value) + n;
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-        SerialRF.write((uint8_t*)&ld, 12);
+        sendData((uint8_t*)&ld, 12);
 #else
-        SerialRF.print(buf);
+        sendData(buf, len);
 #endif
 #endif
-        recordData(buf);
+        recordData(buf, len);
     }
     void logData(uint16_t pid, int value1, int value2, int value3)
     {
         char buf[24];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%d,%d,%d\r", value1, value2, value3);
-#else
-        sprintf(buf, "%X,%d,%d,%d\r", pid, value1, value2, value3);
-#endif
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%d,%d,%d\r", value1, value2, value3) + n;
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
         ld.checksum = getChecksum((char*)&ld, 20);
         SerialRF.write((uint8_t*)&ld, 20);
 #else
-        SerialRF.print(buf);
+        sendData(buf, len);
 #endif
 #endif
-        recordData(buf);
+        recordData(buf, len);
     }
 #if ENABLE_DATA_LOG
     uint16_t openFile(uint16_t logFlags = 0, uint32_t dateTime = 0)
@@ -241,15 +235,17 @@ private:
 #if STREAM_FORMAT == FORMAT_TEXT
     byte translatePIDName(uint16_t pid, char* text)
     {
+#if STREAM_FORMAT == FORMAT_TEXT
         for (uint16_t n = 0; n < sizeof(pidNames) / sizeof(pidNames[0]); n++) {
             uint16_t id = pgm_read_word(&pidNames[n].pid);
             if (pid == id) {
                 memcpy_P(text, pidNames[n].name, 3);
-                text[3] = '=';
+                text[3] = ',';
                 return 4;
             }
         }
-        return sprintf(text, "%X=", pid);
+#endif
+        return sprintf(text, "%X,", pid);
     }
 #endif
 #if ENABLE_DATA_LOG
