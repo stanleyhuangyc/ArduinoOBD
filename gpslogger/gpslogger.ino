@@ -16,8 +16,6 @@
 #endif
 #include "datalogger.h"
 
-//bool acc = false;
-
 #if USE_MPU6050
 #include <Wire.h>
 #include <MPU6050.h>
@@ -35,14 +33,14 @@ TinyGPS gps;
 
 CDataLogger logger;
 
+bool acc = false;
+
 #if USE_MPU6050
 bool initACC()
 {
-  if (MPU6050_init() != 0)
-    return false;
-  return true;
-
+  return MPU6050_init() == 0;
 }
+
 void processACC()
 {
   accel_t_gyro_union data;
@@ -50,9 +48,6 @@ void processACC()
   logger.dataTime = millis();
   // log x/y/z of accelerometer
   logger.logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
-  delay(10);
-  // log x/y/z of gyro meter
-  logger.logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
 }
 #endif
 
@@ -64,26 +59,21 @@ void processGPS()
   uint32_t date, time;
 
   logger.dataTime = millis();
-
   gps.get_datetime(&date, &time, 0);
   logger.logData(PID_GPS_TIME, (int32_t)time);
-  delay(10);
 
   speed = (int)(gps.speed() * 1852 / 100000);
   logger.logData(PID_GPS_SPEED, speed);
-  delay(10);
 
   //logger.logData(PID_GPS_SAT_COUNT, (int)gps.satellites());
 
   alt = gps.altitude() / 100;
   if (alt > -10000 && alt < 10000) {
     logger.logData(PID_GPS_ALTITUDE, alt);
-    delay(10);
   }
 
   gps.get_position(&lat, &lon, 0);
   logger.logData(PID_GPS_LATITUDE, lat);
-  delay(10);
   logger.logData(PID_GPS_LONGITUDE, lon);
 }
 
@@ -132,10 +122,10 @@ void setup()
 #if ENABLE_DATA_LOG
   if (CheckSD()) {
     int index = logger.openFile();
-    SerialRF.print("File: ");
+    SerialRF.print("File ID:");
     SerialRF.println(index);
   }
-#endif // ENABLE_DATA_LOG
+#endif
 
 #if USE_MPU6050
   Wire.begin();
@@ -148,31 +138,23 @@ void setup()
   GPSUART.begin(GPS_BAUDRATE);
   delay(500);
 
-  if (GPSUART.available()) {
-    // init GPS
-    SerialRF.println("Searching...");
-    for (;;) {
-      if (!GPSUART.available()) continue;
-      char c = GPSUART.read();
-      if (!gps.encode(c)) break;
-    }
-  } else {
-    SerialRF.println("No GPS");
+  while (!GPSUART.available()) {
+    SerialRF.println("Waiting...");
+    delay(500);
+  }
+  // init GPS
+  SerialRF.println("Searching...");
+  for (;;) {
+    if (!GPSUART.available()) continue;
+    char c = GPSUART.read();
+    if (!gps.encode(c)) break;
   }
 }
 
 void loop()
 {
-  static uint32_t lastTime = 0;
-
-  if (GPSUART.available()) {
-    char c = GPSUART.read();
-    if (gps.encode(c)) {
-      processGPS();
-    }
-  }
-
 #if ENABLE_DATA_LOG
+  static uint32_t lastTime = 0;
   // flush file every 3 seconds
   if (logger.dataTime - lastTime >= 3000) {
     lastTime = logger.dataTime;
@@ -181,6 +163,15 @@ void loop()
 #endif
 
 #if USE_MPU6050
-  processACC();
+  if (acc) {
+    processACC();
+  }
 #endif
+
+  if (GPSUART.available()) {
+    char c = GPSUART.read();
+    if (gps.encode(c)) {
+      processGPS();
+    }
+  }
 }
