@@ -12,6 +12,7 @@
 
 #define OBD_TIMEOUT_SHORT 2000 /* ms */
 #define OBD_TIMEOUT_LONG 7000 /* ms */
+#define OBD_TIMEOUT_GPS 200 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
 #define OBD_RECV_BUF_SIZE 128
 
@@ -98,10 +99,10 @@ typedef struct {
     uint32_t time;
     int32_t lat;
     int32_t lon;
-    int alt;
-    float speed;
-    int heading;
-    int sat;
+    int16_t alt;
+    uint8_t speed;
+    uint8_t sat;
+    int16_t heading;
 } GPS_DATA;
 
 uint16_t hex2uint16(const char *p);

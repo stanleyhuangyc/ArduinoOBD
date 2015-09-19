@@ -426,37 +426,38 @@ bool COBD::getGPSData(GPS_DATA* gdata)
     for (p = s; *p; p++) {
         char c = *p;
         if (c == ',' || c == '>' || c <= 0x0d) {
+            long value = atol(s);
             switch (index) {
             case 0:
-                gdata->date = (uint32_t)atol(s);
+                gdata->date = (uint32_t)value;
                 break;
             case 1:
-                gdata->time = (uint32_t)atol(s);
+                gdata->time = (uint32_t)value;
                 break;
             case 2:
-                gdata->lat = atol(s);
+                gdata->lat = value;
                 break;
             case 3:
-                gdata->lon = atol(s);
+                gdata->lon = value;
                 break;
             case 4:
-                gdata->alt = atoi(s);
+                gdata->alt = value;
                 break;
             case 5:
-                gdata->speed = atof(s);
+                gdata->speed = value;
                 break;
             case 6:
-                gdata->heading = atoi(s);
+                gdata->heading = value;
                 break;
             case 7:
-                gdata->sat = atoi(s);
+                gdata->sat = value;
                 break;
             }
             index++;
             s = p + 1;
         }
     }
-    return index > 7;
+    return index >= 4;
 }
 
 #ifdef DEBUG
