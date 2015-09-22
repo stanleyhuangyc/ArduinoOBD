@@ -56,7 +56,7 @@ static uint32_t startTime = 0;
 static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
 static int gpsSpeed = -1;
-static uint16_t gpsDate = 0;
+static byte gpsDate = 0;
 
 static const byte PROGMEM pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static const byte PROGMEM pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
@@ -376,10 +376,10 @@ void processGPS()
     logger.dataTime = millis();
 
     gps.get_datetime(&date, &time, 0);
-    if (date != gpsDate) {
+    if (date != (byte)gpsDate) {
         // log date only if it's changed
-        logger.logData(PID_GPS_DATE, (int32_t)time);
-        gpsDate = date;
+        logger.logData(PID_GPS_DATE, (int32_t)date);
+        gpsDate = (byte)date;
     }
     logger.logData(PID_GPS_TIME, (int32_t)time);
 
@@ -757,10 +757,10 @@ void setup()
     obd.begin();
 
     // this will send a bunch of commands and display response
-    testOut();
-
-    // initialize the OBD until success
-    while (!obd.init(OBD_PROTOCOL));
+    do {
+      testOut();
+      // initialize the OBD until success
+    } while (!obd.init(OBD_PROTOCOL));
 
     state |= STATE_OBD_READY;
 
