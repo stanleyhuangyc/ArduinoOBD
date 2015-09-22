@@ -376,7 +376,7 @@ void processGPS()
     logger.dataTime = millis();
 
     gps.get_datetime(&date, &time, 0);
-    if (date != (byte)gpsDate) {
+    if ((byte)date != (byte)gpsDate) {
         // log date only if it's changed
         logger.logData(PID_GPS_DATE, (int32_t)date);
         gpsDate = (byte)date;
