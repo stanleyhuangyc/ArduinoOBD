@@ -6,8 +6,7 @@
 *************************************************************************/
 
 #define FORMAT_BIN 0
-#define FORMAT_CSV 1
-#define FORMAT_TEXT 2
+#define FORMAT_TEXT 1
 
 typedef struct {
     uint32_t time;
@@ -40,6 +39,8 @@ typedef struct {
 
 #if USE_SOFTSERIAL
 SoftwareSerial SerialRF(A2, A3);
+#elif defined(RF_SERIAL)
+#define SerialRF RF_SERIAL
 #else
 #define SerialRF Serial
 #endif
@@ -77,13 +78,8 @@ public:
     {
 #if ENABLE_DATA_OUT
         SerialRF.begin(STREAM_BAUDRATE);
-        /*
         SerialRF.print("AT+NAMEFreematics");
         delay(10);
-        while (SerialRF.available()) SerialRF.read();
-        SerialRF.println();
-        */
-        m_lastSendTime = 0;
 #endif
 #if ENABLE_DATA_LOG
         m_lastDataTime = 0;
@@ -101,12 +97,7 @@ public:
     void sendData(const char* buf, byte len)
     {
         SerialRF.write(buf, len);
-#if MIN_DATA_INTERVAL
-        uint32_t t = millis();
-        uint32_t elapsed = t - m_lastSendTime;
-        if (elapsed < MIN_DATA_INTERVAL) delay(MIN_DATA_INTERVAL - elapsed);
-        m_lastSendTime = t;
-#endif
+        delay(10);
     }
     void logData(char c)
     {
@@ -246,8 +237,5 @@ private:
     }
 #if ENABLE_DATA_LOG
     uint32_t m_lastDataTime;
-#endif
-#if ENABLE_DATA_OUT
-    uint32_t m_lastSendTime;
 #endif
 };

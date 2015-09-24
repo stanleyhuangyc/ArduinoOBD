@@ -23,12 +23,12 @@
 
 // uses software(1)/hardware(0) serial for data streaming
 #define USE_SOFTSERIAL 0
+#define RF_SERIAL Serial3
 
 // this defines the format of data streaming
 // FORMAT_BIN is required by Freematics OBD iOS App
-// FORMAT_CSV for text-based data, hex digits for PID
 // FORMAT_TEXT for text-based, text names for PID
-#define STREAM_FORMAT FORMAT_BIN
+#define STREAM_FORMAT FORMAT_TEXT
 
 /* Default streaming baudrates:
    9600bps for BLE
@@ -51,8 +51,8 @@
 /**************************************
 * Accelerometer & Gyro
 **************************************/
-#define USE_MPU6050 1
-//#define USE_MPU9150 1
+//#define USE_MPU6050 1
+#define USE_MPU9150 1
 #define ACC_DATA_RATIO 160
 #define GYRO_DATA_RATIO 256
 #define COMPASS_DATA_RATIO 8
