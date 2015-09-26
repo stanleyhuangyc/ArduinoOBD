@@ -57,6 +57,8 @@ static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
 static int gpsSpeed = -1;
 static uint16_t gpsDate = 0;
+static uint32_t obdTime = 0;
+static uint8_t obdCount = 0;
 
 static const byte PROGMEM pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static const byte PROGMEM pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
@@ -175,23 +177,23 @@ void showPIDData(byte pid, int value)
         lcd.printInt(value, 3);
         break;
     case PID_THROTTLE:
-        lcd.setFontSize(FONT_SIZE_LARGE);
-        lcd.setCursor(80, 21);
+        lcd.setFontSize(FONT_SIZE_MEDIUM);
+        lcd.setCursor(92, 21);
         if (value >= 100) value = 99;
         setColorByValue(value, 50, 75, 100);
         lcd.printInt(value, 2);
         break;
     case PID_ENGINE_FUEL_RATE:
         if (value < 100) {
-            lcd.setFontSize(FONT_SIZE_LARGE);
-            lcd.setCursor(80, 24);
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
+            lcd.setCursor(92, 24);
             lcd.printInt(value, 2);
         }
         break;
     case PID_INTAKE_TEMP:
-        if (value >=0 && value < 100) {
-            lcd.setFontSize(FONT_SIZE_LARGE);
-            lcd.setCursor(80, 27);
+        if (value >= 0 && value < 100) {
+            lcd.setFontSize(FONT_SIZE_MEDIUM);
+            lcd.setCursor(92, 27);
             lcd.printInt(value, 2);
         }
         break;
@@ -202,7 +204,7 @@ void showPIDData(byte pid, int value)
 void ShowVoltage(float v)
 {
     lcd.setFontSize(FONT_SIZE_LARGE);
-    lcd.setCursor(80, 18);
+    lcd.setCursor(84, 18);
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.print(v);
 }
@@ -257,13 +259,13 @@ void initScreen()
     lcd.setCursor(184, 11);
     lcd.print("ALTITUDE:        m");
 
-    lcd.setCursor(18, 19);
+    lcd.setCursor(18, 18);
     lcd.print("BATTERY:           V");
-    lcd.setCursor(18, 22);
+    lcd.setCursor(18, 21);
     lcd.print("THROTTLE:       %");
-    lcd.setCursor(18, 25);
+    lcd.setCursor(18, 24);
     lcd.print("FUEL RATE:      L/h");
-    lcd.setCursor(18, 28);
+    lcd.setCursor(18, 27);
     lcd.print("INTAKE:         C");
 
     lcd.setCursor(184, 18);
@@ -546,8 +548,13 @@ void logOBDData(byte pid)
     if (!obd.getResult(pid, value)) {
         return;
     }
-
     logger.dataTime = millis();
+    if (obdCount == 255) {
+      obdTime = 0; 
+      obdCount = 0;
+    }
+    obdTime += logger.dataTime - start;
+    obdCount++;
     // display data
     showPIDData(pid, value);
 
@@ -796,7 +803,6 @@ void loop()
     static byte index = 0;
     static byte index2 = 0;
     static byte index3 = 0;
-    uint32_t t = millis();
     byte pid = pgm_read_byte(pidTier1 + index++);
     logOBDData(pid);
     if (index == TIER_NUM1) {
@@ -831,12 +837,11 @@ void loop()
         lcd.setCursor(250, 2);
         lcd.print(buf);
         // display OBD time
-        if (t < 10000) {
-            lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.setCursor(242, 26);
-            lcd.printInt((uint16_t)t);
-            lcd.print("ms");
-            lcd.printSpace(2);
+        if (obdTime) {
+          lcd.setFontSize(FONT_SIZE_SMALL);
+          lcd.setCursor(242, 26);
+          lcd.print((uint16_t)(obdTime / obdCount));
+          lcd.print("ms ");
         }
         lastRefreshTime = logger.dataTime;
     }
