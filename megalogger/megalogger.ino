@@ -56,7 +56,7 @@ static uint32_t startTime = 0;
 static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
 static int gpsSpeed = -1;
-static uint16_t gpsDate = 0;
+static uint32_t gpsDate = 0;
 static uint32_t obdTime = 0;
 static uint8_t obdCount = 0;
 
@@ -378,10 +378,13 @@ void processGPS()
     logger.dataTime = millis();
 
     gps.get_datetime(&date, &time, 0);
-    if ((uint16_t)date != gpsDate) {
-        // log date only if it's changed
-        logger.logData(PID_GPS_DATE, (int32_t)date);
-        gpsDate = (uint16_t)date;
+    if (date != gpsDate) {
+        // log date only if it's changed and valid
+        int year = date % 100;
+        if (date < 1000000 && date >= 10000 && year >= 15 && (gpsDate == 0 || year - (gpsDate % 100) <= 1)) {
+          logger.logData(PID_GPS_DATE, (int32_t)date);
+          gpsDate = date;
+        }
     }
     logger.logData(PID_GPS_TIME, (int32_t)time);
 
