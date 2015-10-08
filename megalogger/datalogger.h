@@ -96,8 +96,10 @@ public:
     }
     void sendData(const char* buf, byte len)
     {
+#if ENABLE_DATA_OUT
         SerialRF.write(buf, len);
         delay(10);
+#endif
     }
     void logData(char c)
     {

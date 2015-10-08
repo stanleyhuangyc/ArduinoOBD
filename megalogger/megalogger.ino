@@ -49,16 +49,18 @@ static uint32_t lastMemsDataTime = 0;
 #endif
 
 static uint8_t lastFileSize = 0;
-static uint32_t lastGPSDataTime = 0;
 static uint32_t lastRefreshTime = 0;
 static uint32_t distance = 0;
 static uint32_t startTime = 0;
 static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
-static int gpsSpeed = -1;
 static uint32_t gpsDate = 0;
 static uint32_t obdTime = 0;
 static uint8_t obdCount = 0;
+#if USE_GPS
+static uint32_t lastGPSDataTime = 0;
+static int gpsSpeed = -1;
+#endif
 
 static const byte PROGMEM pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static const byte PROGMEM pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
@@ -153,6 +155,7 @@ void showPIDData(byte pid, int value)
             setColorByValue(value, 60, 100, 160);
             lcd.printInt(value, 3);
 
+#if USE_GPS
             if (gpsSpeed != -1) {
                 lcd.setFontSize(FONT_SIZE_SMALL);
                 lcd.setCursor(110, 2);
@@ -167,6 +170,7 @@ void showPIDData(byte pid, int value)
                 }
                 lcd.write(' ');
             }
+#endif
         }
         break;
     case PID_ENGINE_LOAD:
@@ -666,6 +670,7 @@ void showStates()
     lcd.setColor((state & STATE_MEMS_READY) ? RGB16_GREEN : RGB16_RED);
     lcd.draw((state & STATE_MEMS_READY) ? tick : cross, 16, 16);
 
+#if USE_GPS
     lcd.setColor(RGB16_WHITE);
     lcd.setCursor(60, 8);
     lcd.print(" GPS ");
@@ -676,6 +681,7 @@ void showStates()
         lcd.setColor(RGB16_RED);
         lcd.draw(cross, 16, 16);
     }
+#endif
     lcd.setColor(RGB16_WHITE);
 }
 
