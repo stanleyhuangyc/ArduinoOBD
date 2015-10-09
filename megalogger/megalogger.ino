@@ -612,20 +612,37 @@ void showECUCap()
         PID_EGR_ERROR, PID_COMMANDED_EVAPORATIVE_PURGE, PID_FUEL_LEVEL, PID_CONTROL_MODULE_VOLTAGE, PID_ABSOLUTE_ENGINE_LOAD, PID_AMBIENT_TEMP, PID_COMMANDED_THROTTLE_ACTUATOR, PID_ETHANOL_FUEL,
         PID_FUEL_RAIL_PRESSURE, PID_HYBRID_BATTERY_PERCENTAGE, PID_ENGINE_OIL_TEMP, PID_FUEL_INJECTION_TIMING, PID_ENGINE_FUEL_RATE, PID_ENGINE_TORQUE_DEMANDED, PID_ENGINE_TORQUE_PERCENTAGE};
 
+    lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setColor(RGB16_WHITE);
-    lcd.setFontSize(FONT_SIZE_MEDIUM);
-    for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i += 2) {
-        for (byte j = 0; j < 2; j++) {
-            byte pid = pgm_read_byte(pidlist + i + j);
-            lcd.setCursor(216 + j * 56 , i + 4);
-            lcd.print((int)pid | 0x100, HEX);
-            bool valid = obd.isValidPID(pid);
-            if (valid) {
-                lcd.setColor(RGB16_GREEN);
-                lcd.draw(tick, 16, 16);
-                lcd.setColor(RGB16_WHITE);
-            }
-        }
+    for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+      byte pid = pgm_read_byte(pidlist + i);
+      lcd.setCursor(252, i + 4);
+      lcd.write('0');
+      lcd.print((int)pid | 0x100, HEX);
+    }
+    int values[sizeof(pidlist)];
+    bool scanned = false;
+    for (uint32_t t = millis(); millis() - t < GUI_PID_LIST_DURATION * 1000; ) {
+      for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+          byte pid = pgm_read_byte(pidlist + i);
+          bool valid = obd.isValidPID(pid);
+          if (valid) {
+              int value;
+              if (obd.read(pid, value)) {
+                if (!scanned || value == values[i])
+                  lcd.setColor(RGB16_CYAN);
+                else if (value > values[i])
+                  lcd.setColor(RGB16_GREEN);
+                else
+                  lcd.setColor(RGB16_RED);
+                lcd.setCursor(280 , i + 4);
+                byte n = lcd.print(value);
+                for (; n < 4; n++) lcd.print(' ');
+                values[i] = value;
+              }
+          }
+       }
+       scanned = true;
     }
 }
 
@@ -715,7 +732,7 @@ void testOut()
         } else {
             lcd.println("Timeout");
         }
-        delay(1000);
+        delay(500);
     }
     lcd.println();
 }

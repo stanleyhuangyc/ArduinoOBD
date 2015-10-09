@@ -51,8 +51,8 @@
 /**************************************
 * Accelerometer & Gyro
 **************************************/
-//#define USE_MPU6050 1
-#define USE_MPU9150 1
+#define USE_MPU6050 1
+//#define USE_MPU9150 1
 #define ACC_DATA_RATIO 160
 #define GYRO_DATA_RATIO 256
 #define COMPASS_DATA_RATIO 8
@@ -62,6 +62,7 @@
 **************************************/
 #define OBD_MIN_INTERVAL 20 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
+#define GUI_PID_LIST_DURATION 5 /* sec */
 
 /**************************************
 * LCD module (uncomment only one)
