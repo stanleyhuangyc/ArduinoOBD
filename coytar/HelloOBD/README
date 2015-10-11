@@ -1,3 +1,6 @@
 HelloOBD
-A simple example for interfacing with the Freematics Arduino OBD-II 
-Adapter (Model A).
+A simple example for interfacing with the Freematics Arduino OBD-II Adapter (Model A). 
+
+This program improves on the nanologger (https://github.com/stanleyhuangyc/ArduinoOBD/tree/master/nanologger): 
+1) Faster OBD refresh rate
+2) Utilises the U8 graphics library (https://github.com/olikraus/U8glib_Arduino)
