@@ -614,20 +614,22 @@ void showECUCap()
 
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setColor(RGB16_WHITE);
-    for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+    for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
       byte pid = pgm_read_byte(pidlist + i);
-      lcd.setCursor(252, i + 4);
-      lcd.write('0');
-      lcd.print((int)pid | 0x100, HEX);
+      if (obd.isValidPID(pid)) {
+        lcd.setCursor(252, n++);
+        lcd.write('0');
+        lcd.print((int)pid | 0x100, HEX);
+      }
     }
     int values[sizeof(pidlist)];
     bool scanned = false;
     for (uint32_t t = millis(); millis() - t < GUI_PID_LIST_DURATION * 1000; ) {
-      for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
           byte pid = pgm_read_byte(pidlist + i);
-          bool valid = obd.isValidPID(pid);
-          if (valid) {
+          if (obd.isValidPID(pid)) {
               int value;
+              lcd.setCursor(280 , n++);
               if (obd.read(pid, value)) {
                 if (!scanned || value == values[i])
                   lcd.setColor(RGB16_CYAN);
@@ -635,10 +637,12 @@ void showECUCap()
                   lcd.setColor(RGB16_GREEN);
                 else
                   lcd.setColor(RGB16_RED);
-                lcd.setCursor(280 , i + 4);
                 byte n = lcd.print(value);
                 for (; n < 4; n++) lcd.print(' ');
                 values[i] = value;
+              } else {
+                lcd.setColor(RGB16_YELLOW);
+                lcd.print("N/A");
               }
           }
        }
