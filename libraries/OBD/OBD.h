@@ -10,8 +10,8 @@
 #define OBD_MODEL_UART 0
 #define OBD_MODEL_I2C 1
 
-#define OBD_TIMEOUT_SHORT 2000 /* ms */
-#define OBD_TIMEOUT_LONG 7000 /* ms */
+#define OBD_TIMEOUT_SHORT 1000 /* ms */
+#define OBD_TIMEOUT_LONG 10000 /* ms */
 #define OBD_TIMEOUT_GPS 200 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
 #define OBD_RECV_BUF_SIZE 128
