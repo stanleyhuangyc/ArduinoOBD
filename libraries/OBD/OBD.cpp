@@ -81,6 +81,14 @@ bool COBD::read(byte pid, int& result)
 	return getResult(pid, result);
 }
 
+void COBD::read_raw(byte pid, char* result)
+{
+  char buffer[OBD_RECV_BUF_SIZE];
+  sendQuery(pid);
+  char* data = getResponse(pid, buffer);
+  memcpy(result, buffer, sizeof(char)*OBD_RECV_BUF_SIZE);
+}
+
 void COBD::clearDTC()
 {
 	write("04\r");
