@@ -126,6 +126,3 @@ void setup(void) {
 void loop(void) {
   myobd.loop();
 }
-
-Status API Training Shop Blog About Pricing
-© 2015 GitHub, Inc. Terms Privacy Security Contact Help
