@@ -86,7 +86,13 @@ void COBD::read_raw(byte pid, char* result)
   char buffer[OBD_RECV_BUF_SIZE];
   sendQuery(pid);
   char* data = getResponse(pid, buffer);
-  memcpy(result, buffer, sizeof(char)*OBD_RECV_BUF_SIZE);
+  if (!data) {
+	  recover();
+	  errors++;
+  }
+  else {
+	  memcpy(result, buffer, sizeof(char)*OBD_RECV_BUF_SIZE);
+  }
 }
 
 void COBD::clearDTC()
