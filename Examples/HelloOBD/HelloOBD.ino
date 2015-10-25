@@ -1,19 +1,3 @@
-Skip to content
-This repository  
-Search
-Pull requests
-Issues
-Gist
- @coytar
- Unwatch 1
-  Star 0
-  Fork 173 coytar/ArduinoOBD
-forked from stanleyhuangyc/ArduinoOBD
- Branch: master  ArduinoOBD/coytar/HelloOBD/HelloOBD.ino
-c425f1e  14 days ago
-@coytar coytar Rename coytar/HelloOBD.ino to coytar/HelloOBD/HelloOBD.ino
-1 contributor
-RawBlameHistory     133 lines (116 sloc)  2.96 KB
 /*************************************************************************
 HelloOBD
 A simple example for interfacing with the Freematics Arduino OBD-II 
