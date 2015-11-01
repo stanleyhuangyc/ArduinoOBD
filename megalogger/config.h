@@ -67,9 +67,10 @@
 /**************************************
 * LCD module (uncomment only one)
 **************************************/
-LCD_SSD1289 lcd; /* 3.2" SSD12389 based TFT LCD */
-//LCD_ILI9325D lcd; /* 2.8" ILI9325 based TFT LCD */
-//LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI TFT LCD */
+//LCD_R61581 lcd; /* 3.5" CTE35IPS/R61581 based LCD */
+LCD_SSD1289 lcd; /* 3.2" SSD12389 based LCD */
+//LCD_ILI9325D lcd; /* 2.8" ILI9325 based LCD */
+//LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI LCD */
 //LCD_Null lcd;
 
 #endif

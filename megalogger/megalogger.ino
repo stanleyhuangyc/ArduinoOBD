@@ -801,21 +801,18 @@ void setup()
 
     state |= STATE_OBD_READY;
 
-    lcd.setColor(RGB16_GREEN);
-    lcd.setFontSize(FONT_SIZE_MEDIUM);
-    lcd.println("OBD READY!");
-
     char buf[OBD_RECV_BUF_SIZE];
     if (obd.getVIN(buf)) {
+        lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setColor(RGB16_WHITE);
         lcd.print("VIN:");
         lcd.setColor(RGB16_YELLOW);
-        lcd.print(buf);
+        lcd.println(buf);
     }
 
-    //lcd.setFont(FONT_SIZE_MEDIUM);
-    //lcd.setCursor(0, 14);
-    //lcd.print("VIN: XXXXXXXX");
+    lcd.setColor(RGB16_GREEN);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.println("READY!");
 
     showECUCap();
     delay(3000);
