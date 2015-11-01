@@ -27,7 +27,7 @@ typedef enum {
 #define FLAG_PIXEL_DOUBLE_V 4
 #define FLAG_PIXEL_DOUBLE (FLAG_PIXEL_DOUBLE_H | FLAG_PIXEL_DOUBLE_V)
 
-#define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 2))
+#define RGB16(r,g,b) (((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 3))
 
 #define RGB16_RED 0xF800
 #define RGB16_GREEN 0x7E0
@@ -72,6 +72,8 @@ protected:
     virtual void writeDigit(byte n) {}
     byte m_font;
     byte m_flags;
+    uint16_t m_x;
+    uint16_t m_y;
 };
 
 #define TFT_LINE_HEIGHT 8
@@ -197,11 +199,9 @@ private:
     uint8_t Read_Register(uint8_t Addr,uint8_t xParameter);
     uint8_t readID(void);
     uint8_t m_color[2][2];
-    uint16_t m_x;
-    uint16_t m_y;
 };
 
-class LCD_SSD1289 : public UTFT, public LCD_Common
+class LCD_SSD1289 : public UTFT, public LCD_Common, public Print
 {
 public:
     LCD_SSD1289()
@@ -209,6 +209,7 @@ public:
         m_font = FONT_SIZE_MEDIUM;
         disp_x_size = 239;
         disp_y_size = 319;
+	 orient = LANDSCAPE;
         display_transfer_mode = 16;
         display_model = ITDB32S;
         __p1 = 38;
@@ -237,20 +238,75 @@ public:
         m_y = y;
     }
     void begin();
-    void clear();
+    void clear(uint16_t x = 0, uint16_t y = 0, uint16_t width = 319, uint16_t height = 239);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
     void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
     size_t write(uint8_t);
     void clearLine(byte line)
     {
-        //clear(0, line * TFT_LINE_HEIGHT, 320, 8);
+        clear(0, line * TFT_LINE_HEIGHT, disp_y_size, 8);
     }
     void setBackLight(byte brightness);
 private:
     void setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
     void writeDigit(byte n);
-    void clearPixels(uint16_t pixels);
+    void clearPixels(uint32_t pixels);
+    void Enable();
+    void Disable();
+};
+
+class LCD_R61581 : public UTFT, public LCD_Common, public Print
+{
+public:
+    LCD_R61581()
+    {
+        m_font = FONT_SIZE_MEDIUM;
+        disp_x_size = 319;
+        disp_y_size = 479;
+	 orient = LANDSCAPE;
+        display_transfer_mode = 16;
+        display_model = CTE35IPS;
+        __p1 = 38;
+        __p2 = 39;
+        __p3 = 40;
+        __p4 = 41;
+        __p5 = 0;
+
+		P_RS	= portOutputRegister(digitalPinToPort(38));
+		B_RS	= digitalPinToBitMask(38);
+		P_WR	= portOutputRegister(digitalPinToPort(39));
+		B_WR	= digitalPinToBitMask(39);
+		P_CS	= portOutputRegister(digitalPinToPort(40));
+		B_CS	= digitalPinToBitMask(40);
+		P_RST	= portOutputRegister(digitalPinToPort(41));
+		B_RST	= digitalPinToBitMask(41);
+    }
+    void setCursor(uint16_t column, uint8_t line)
+    {
+        m_x = column;
+        m_y = (uint16_t)line * TFT_LINE_HEIGHT;
+    }
+    void setXY(uint16_t x, uint16_t y)
+    {
+        m_x = x;
+        m_y = y;
+    }
+    void begin();
+    void clear(uint16_t x = 0, uint16_t y = 0, uint16_t width = 479, uint16_t height = 319);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
+    void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    size_t write(uint8_t);
+    void clearLine(byte line)
+    {
+        clear(0, line * TFT_LINE_HEIGHT, disp_y_size, 8);
+    }
+    void setBackLight(byte brightness);
+private:
+    void setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+    void writeDigit(byte n);
+    void clearPixels(uint32_t pixels);
     void Enable();
     void Disable();
 };

@@ -14,13 +14,13 @@ Define zone
 
 #define PIN_BACKLIGHT 8
 
+
 /**********************************************
 Standard C functions zone
 **********************************************/
-void LCD_SSD1289::begin()
+void LCD_R61581::begin()
 {
-	_hw_special_init();
-
+    delay(50);
 	pinMode(__p1,OUTPUT);
 	pinMode(__p2,OUTPUT);
 	pinMode(__p3,OUTPUT);
@@ -31,8 +31,10 @@ void LCD_SSD1289::begin()
 	if (display_transfer_mode!=1)
 		_set_direction_registers(display_transfer_mode);
 
+	_hw_special_init();
+
 	sbi(P_RST, B_RST);
-	delay(5); 
+	delay(5);
 	cbi(P_RST, B_RST);
 	delay(15);
 	sbi(P_RST, B_RST);
@@ -44,50 +46,116 @@ void LCD_SSD1289::begin()
 
 	cbi(P_CS, B_CS);
 
-	LCD_Write_COM_DATA(0x00,0x0001);
-	LCD_Write_COM_DATA(0x03,0xA8A4);
-	LCD_Write_COM_DATA(0x0C,0x0000);
-	LCD_Write_COM_DATA(0x0D,0x080C);
-	LCD_Write_COM_DATA(0x0E,0x2B00);
-	LCD_Write_COM_DATA(0x1E,0x00B7);
-	LCD_Write_COM_DATA(0x01,0x2B3F);
-	LCD_Write_COM_DATA(0x02,0x0600);
-	LCD_Write_COM_DATA(0x10,0x0000);
-	LCD_Write_COM_DATA(0x11,0x6070);
-	LCD_Write_COM_DATA(0x05,0x0000);
-	LCD_Write_COM_DATA(0x06,0x0000);
-	LCD_Write_COM_DATA(0x16,0xEF1C);
-	LCD_Write_COM_DATA(0x17,0x0003);
-	LCD_Write_COM_DATA(0x07,0x0233);
-	LCD_Write_COM_DATA(0x0B,0x0000);
-	LCD_Write_COM_DATA(0x0F,0x0000);
-	LCD_Write_COM_DATA(0x41,0x0000);
-	LCD_Write_COM_DATA(0x42,0x0000);
-	LCD_Write_COM_DATA(0x48,0x0000);
-	LCD_Write_COM_DATA(0x49,0x013F);
-	LCD_Write_COM_DATA(0x4A,0x0000);
-	LCD_Write_COM_DATA(0x4B,0x0000);
-	LCD_Write_COM_DATA(0x44,0xEF00);
-	LCD_Write_COM_DATA(0x45,0x0000);
-	LCD_Write_COM_DATA(0x46,0x013F);
-	LCD_Write_COM_DATA(0x30,0x0707);
-	LCD_Write_COM_DATA(0x31,0x0204);
-	LCD_Write_COM_DATA(0x32,0x0204);
-	LCD_Write_COM_DATA(0x33,0x0502);
-	LCD_Write_COM_DATA(0x34,0x0507);
-	LCD_Write_COM_DATA(0x35,0x0204);
-	LCD_Write_COM_DATA(0x36,0x0204);
-	LCD_Write_COM_DATA(0x37,0x0502);
-	LCD_Write_COM_DATA(0x3A,0x0302);
-	LCD_Write_COM_DATA(0x3B,0x0302);
-	LCD_Write_COM_DATA(0x23,0x0000);
-	LCD_Write_COM_DATA(0x24,0x0000);
-	LCD_Write_COM_DATA(0x25,0x8000);
-	LCD_Write_COM_DATA(0x4f,0x0000);
-	LCD_Write_COM_DATA(0x4e,0x0000);
-	LCD_Write_COM(0x22);   
+		LCD_Write_COM(0xB0);		
+		LCD_Write_DATA(0x1E);	    
 
-	sbi (P_CS, B_CS); 
+		LCD_Write_COM(0xB0);
+		LCD_Write_DATA(0x00);
+
+		LCD_Write_COM(0xB3);
+		LCD_Write_DATA(0x02);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x10);
+
+		LCD_Write_COM(0xB4);
+		LCD_Write_DATA(0x00);//0X10
+
+// 		LCD_Write_COM(0xB9); //PWM Settings for Brightness Control
+// 		LCD_Write_DATA(0x01);// Disabled by default. 
+// 		LCD_Write_DATA(0xFF); //0xFF = Max brightness
+// 		LCD_Write_DATA(0xFF);
+// 		LCD_Write_DATA(0x18);
+
+		LCD_Write_COM(0xC0);
+		LCD_Write_DATA(0x03);
+		LCD_Write_DATA(0x3B);//
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x01);
+		LCD_Write_DATA(0x00);//NW
+		LCD_Write_DATA(0x43);
+
+		LCD_Write_COM(0xC1);
+		LCD_Write_DATA(0x08);
+		LCD_Write_DATA(0x15);//CLOCK
+		LCD_Write_DATA(0x08);
+		LCD_Write_DATA(0x08);
+
+		LCD_Write_COM(0xC4);
+		LCD_Write_DATA(0x15);
+		LCD_Write_DATA(0x03);
+		LCD_Write_DATA(0x03);
+		LCD_Write_DATA(0x01);
+
+		LCD_Write_COM(0xC6);
+		LCD_Write_DATA(0x02);
+
+		LCD_Write_COM(0xC8);
+		LCD_Write_DATA(0x0c);
+		LCD_Write_DATA(0x05);
+		LCD_Write_DATA(0x0A);//0X12
+		LCD_Write_DATA(0x6B);//0x7D
+		LCD_Write_DATA(0x04);
+		LCD_Write_DATA(0x06);//0x08
+		LCD_Write_DATA(0x15);//0x0A
+		LCD_Write_DATA(0x10);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x60);//0x23
+ 
+		LCD_Write_COM(0x36);
+		LCD_Write_DATA(0x0A);
+
+		LCD_Write_COM(0x0C);
+		LCD_Write_DATA(0x55);
+
+		LCD_Write_COM(0x3A);
+		LCD_Write_DATA(0x55);
+
+		LCD_Write_COM(0x38);
+ 
+		LCD_Write_COM(0xD0);
+		LCD_Write_DATA(0x07);
+		LCD_Write_DATA(0x07);//VCI1
+		LCD_Write_DATA(0x14);//VRH 0x1D
+		LCD_Write_DATA(0xA2);//BT 0x06
+
+		LCD_Write_COM(0xD1);
+		LCD_Write_DATA(0x03);
+		LCD_Write_DATA(0x5A);//VCM  0x5A
+		LCD_Write_DATA(0x10);//VDV
+
+		LCD_Write_COM(0xD2);
+		LCD_Write_DATA(0x03);
+		LCD_Write_DATA(0x04);//0x24
+		LCD_Write_DATA(0x04);
+
+		LCD_Write_COM(0x11);
+		delay(150);
+
+		LCD_Write_COM(0x2A);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x01);
+		LCD_Write_DATA(0xDF);//320
+
+		LCD_Write_COM(0x2B);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x00);
+		LCD_Write_DATA(0x01);
+		LCD_Write_DATA(0x3F);//480
+
+ 
+		delay(100);
+
+		LCD_Write_COM(0x29);
+		delay(30);
+
+		LCD_Write_COM(0x2C);
+		delay(30);
+
+	sbi (P_CS, B_CS);
 
 	clear();
 
@@ -95,37 +163,42 @@ void LCD_SSD1289::begin()
 	digitalWrite(PIN_BACKLIGHT, HIGH);
 }
 
-void LCD_SSD1289::setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+void LCD_R61581::setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
     swap(word, x1, y1);
     swap(word, x2, y2)
-    y1=disp_y_size-y1;
-    y2=disp_y_size-y2;
-    swap(word, y1, y2)
+    //y1=disp_y_size-y1;
+    //y2=disp_y_size-y2;
+    //swap(word, y1, y2)
     // begin hardware specific code
-	LCD_Write_COM_DATA(0x44,(x2<<8)+x1);
-	LCD_Write_COM_DATA(0x45,y1);
-	LCD_Write_COM_DATA(0x46,y2);
-	LCD_Write_COM_DATA(0x4e,x1);
-	LCD_Write_COM_DATA(0x4f,y1);
-	LCD_Write_COM(0x22); 
+	LCD_Write_COM(0x2a); 
+	LCD_Write_DATA(x1>>8);
+	LCD_Write_DATA(x1);
+	LCD_Write_DATA(x2>>8);
+	LCD_Write_DATA(x2);
+	LCD_Write_COM(0x2b); 
+	LCD_Write_DATA(y1>>8);
+	LCD_Write_DATA(y1);
+	LCD_Write_DATA(y2>>8);
+	LCD_Write_DATA(y2);
+	LCD_Write_COM(0x2c); 
 }
 
-void LCD_SSD1289::setBackLight(byte brightness)
+void LCD_R61581::setBackLight(byte brightness)
 {
     analogWrite(PIN_BACKLIGHT, brightness);
 }
 
-void LCD_SSD1289::Enable()
+void LCD_R61581::Enable()
 {
     cbi(P_CS, B_CS);
 }
-void LCD_SSD1289::Disable()
+void LCD_R61581::Disable()
 {
     sbi(P_CS, B_CS);
 }
 
-void LCD_SSD1289::clearPixels(uint32_t pixels)
+void LCD_R61581::clearPixels(uint32_t pixels)
 {
     Enable();
     do {
@@ -134,7 +207,7 @@ void LCD_SSD1289::clearPixels(uint32_t pixels)
     Disable();
 }
 
-void LCD_SSD1289::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+void LCD_R61581::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
     setColor(0);
     fillRect(x, y, x + width, y + height);
@@ -143,7 +216,7 @@ void LCD_SSD1289::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
     m_y = 0;
 }
 
-size_t LCD_SSD1289::write(uint8_t c)
+size_t LCD_R61581::write(uint8_t c)
 {
     if (c == '\n') {
         m_y += (m_font + 1) << 3;
@@ -157,8 +230,7 @@ size_t LCD_SSD1289::write(uint8_t c)
     if (m_font == FONT_SIZE_SMALL) {
         setXY(m_x, m_y, m_x + 4, m_y + 7);
         if (c > 0x20 && c < 0x7f) {
-            byte i = 4;
-            do {
+            for (byte i = 0; i < 5; i++) {
                 unsigned char d = pgm_read_byte(&font5x8[c - 0x21][i]);
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
@@ -166,7 +238,7 @@ size_t LCD_SSD1289::write(uint8_t c)
                     else
                         setPixel(bch, bcl);
                 }
-            } while(i--);
+            }
         } else {
             clearPixels(5 * 8);
         }
@@ -177,14 +249,14 @@ size_t LCD_SSD1289::write(uint8_t c)
             byte pgm_buffer[16];
             memcpy_P(pgm_buffer, &font8x16_terminal[c - 0x21], 16);
             for (byte i = 0; i < 16; i += 2) {
-                unsigned char d = pgm_buffer[14 - i];
+                unsigned char d = pgm_buffer[i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[15 - i];
+                d = pgm_buffer[i + 1];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
@@ -200,7 +272,7 @@ size_t LCD_SSD1289::write(uint8_t c)
     Disable();
 }
 
-void LCD_SSD1289::writeDigit(byte n)
+void LCD_R61581::writeDigit(byte n)
 {
     Enable();
     if (m_font == FONT_SIZE_LARGE) {
@@ -209,14 +281,14 @@ void LCD_SSD1289::writeDigit(byte n)
             byte pgm_buffer[32];
             memcpy_P(pgm_buffer, &digits16x16[n], sizeof(pgm_buffer));
             for (byte i = 0; i < 16; i++) {
-                unsigned char d = pgm_buffer[15 - i];
+                unsigned char d = pgm_buffer[i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[31 - i];
+                d = pgm_buffer[i + 16];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
@@ -234,21 +306,21 @@ void LCD_SSD1289::writeDigit(byte n)
             byte pgm_buffer[48];
             memcpy_P(pgm_buffer, &digits16x24[n], sizeof(pgm_buffer));
             for (int i = 0; i < 48; i += 3) {
-                unsigned char d = pgm_buffer[45 - i];
+                unsigned char d = pgm_buffer[i];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[46 - i];
+                d = pgm_buffer[i + 1];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[47 - i];
+                d = pgm_buffer[i + 2];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
@@ -266,12 +338,12 @@ void LCD_SSD1289::writeDigit(byte n)
     Disable();
 }
 
-void LCD_SSD1289::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
+void LCD_R61581::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
 {
     byte rows = height >> 3;
     Enable();
     setXY(m_x, m_y, m_x + width - 1, m_y + height - 1);
-    for (int16_t i = width - 1; i >= 0; i--) {
+    for (int16_t i = 0; i < width; i++) {
         for (uint8_t h = 0; h < rows; h++) {
 #ifndef __arm__
            byte d = pgm_read_byte(buffer + i + width * h);
@@ -291,13 +363,13 @@ void LCD_SSD1289::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t heig
     m_x += width;
 }
 
-void LCD_SSD1289::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY)
+void LCD_R61581::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY)
 {
     byte rows = height >> 3;
     if (scaleY == 0) scaleY = scaleX;
     Enable();
     setXY(m_x, m_y, m_x + width * scaleX - 1, m_y + height * scaleY - 1);
-    for (int16_t i = width - 1; i >= 0; i--) {
+    for (int16_t i = 0; i < width; i++) {
         for (byte n = 0; n < scaleX; n++) {
             for (uint8_t h = 0; h < rows; h++) {
 #ifndef __arm__
@@ -323,13 +395,12 @@ void LCD_SSD1289::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t heig
     m_x += width * scaleX;
 }
 
-void LCD_SSD1289::draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
+void LCD_R61581::draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
 {
     char buf[240];
     Enable();
     setXY(m_x, m_y, m_x + width * 2 - 1, m_y + height * 2 - 1);
-    uint16_t i = width - 1;
-    do {
+    for (uint16_t i = 0; i < width; i++) {
         memcpy_P(buf, buffer + i * height * 2, height * 2);
         for (byte j = 0; j < height * 2; j += 2) {
             setPixel(buf[j + 1], buf[j]);
@@ -339,7 +410,7 @@ void LCD_SSD1289::draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t 
             setPixel(buf[j + 1], buf[j]);
             setPixel(buf[j + 1], buf[j]);
         }
-    } while (i--);
+    }
     Disable();
     m_x += width * 2;
 }

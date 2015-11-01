@@ -15,8 +15,13 @@
 //********************************************************************
 
 // *** Hardwarespecific defines ***
-#define cbi(reg, bitmask) *reg &= ~bitmask
-#define sbi(reg, bitmask) *reg |= bitmask
+#if defined(ENERGIA)
+	#define cbi(reg, bitmask) HWREG((uint32_t)reg + 0x3FC) &= ~bitmask
+	#define sbi(reg, bitmask) HWREG((uint32_t)reg + 0x3FC) |= bitmask
+#else
+	#define cbi(reg, bitmask) *reg &= ~bitmask
+	#define sbi(reg, bitmask) *reg |= bitmask
+#endif
 #define pulse_high(reg, bitmask) sbi(reg, bitmask); cbi(reg, bitmask);
 #define pulse_low(reg, bitmask) cbi(reg, bitmask); sbi(reg, bitmask);
 
