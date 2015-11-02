@@ -260,7 +260,7 @@ class UTFT
 		void drawHLine(int x, int y, int l);
 		void drawVLine(int x, int y, int l);
 		void printChar(byte c, int x, int y);
-		virtual void setXY(word x1, word y1, word x2, word y2) = 0;
+		virtual void setXY(word x1, word y1, word x2, word y2);
 		void clrXY();
 		void rotateChar(byte c, int x, int y, int pos, int deg);
 		void _set_direction_registers(byte mode);
