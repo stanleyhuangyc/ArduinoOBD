@@ -71,7 +71,7 @@ void readMEMS()
     Serial.println(gz);
 }
 
-void showECUCap()
+void readPID()
 {
     static const byte PROGMEM pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
@@ -92,17 +92,27 @@ void showECUCap()
 }
 
 void setup() {
-  Serial.begin(115200);
   delay(500);
+  Serial.begin(115200);
   Wire.begin();
   accelgyro.initialize();
-  testOut();
   readMEMS();
+
+  testOut();
+
   Serial.println("Init...");
   while (!obd.init());  
+
+  char buf[OBD_RECV_BUF_SIZE];
+  if (obd.getVIN(buf)) {
+      Serial.print("VIN:");
+      Serial.println(buf);
+  }
+  delay(1000);
 }
 
 void loop() {
-  showECUCap();
+  readPID();
   readMEMS();
+  delay(500);
 }
