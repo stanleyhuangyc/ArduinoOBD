@@ -1,5 +1,5 @@
 /*************************************************************************
-* Sample sketch for Freematics OBD-II I2C Adapter
+* Sample sketch for Freematics OBD-II UART Adapter
 * Reads and prints several OBD-II PIDs value and MEMS sensor data
 * Distributed under GPL v2.0
 * Visit http://freematics.com for more information
@@ -8,12 +8,11 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 #include <OBD.h>
-#include <I2Cdev.h>
-#include <MPU9150.h>
 
-COBDI2C obd;
-MPU6050 accelgyro;
+SoftwareSerial mySerial(A2, A3);
+COBD obd;
 
 void testOut()
 {
@@ -23,8 +22,8 @@ void testOut()
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
         char cmd[6];
         memcpy_P(cmd, cmds[i], sizeof(cmd));
-        Serial.print("Sending ");
-        Serial.println(cmd);
+        mySerial.print("Sending ");
+        mySerial.println(cmd);
         if (obd.sendCommand(cmd, buf)) {
             char *p = strstr(buf, cmd);
             if (p)
@@ -33,42 +32,17 @@ void testOut()
                 p = buf;
             while (*p == '\r') p++;
             while (*p) {
-                Serial.write(*p);
+                mySerial.write(*p);
                 if (*p == '\r' && *(p + 1) != '\r')
-                    Serial.write('\n');
+                    mySerial.write('\n');
                 p++;
             }
         } else {
-            Serial.println("Timeout");
+            mySerial.println("Timeout");
         }
         delay(1000);
     }
-    Serial.println();
-}
-
-void readMEMS()
-{
-    int16_t ax, ay, az;
-    int16_t gx, gy, gz;
-    int temp;
-
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    temp = accelgyro.getTemperature();
-
-    // display MEMS data
-    Serial.print("ACC=");
-    Serial.print(ax);
-    Serial.write('/');
-    Serial.print(ay);
-    Serial.write('/');
-    Serial.println(az);
-
-    Serial.print("GYRO=");
-    Serial.print(gx);
-    Serial.write('/');
-    Serial.print(gy);
-    Serial.write('/');
-    Serial.println(gz);
+    mySerial.println();
 }
 
 void readPID()
@@ -77,42 +51,39 @@ void readPID()
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
         byte pid = pgm_read_byte(pidlist + i);
         bool valid = obd.isValidPID(pid);
-        Serial.print('0');
-        Serial.print((int)pid | 0x100, HEX);
-        Serial.print('=');
+        mySerial.print('0');
+        mySerial.print((int)pid | 0x100, HEX);
+        mySerial.print('=');
         if (valid) {
             int value;
             if (obd.read(pid, value)) {
-              byte n = Serial.println(value);
+              byte n = mySerial.println(value);
             }
         } else {
-          Serial.println('X'); 
+          mySerial.println('X'); 
         }
      }
 }
 
 void setup() {
   delay(500);
-  Serial.begin(115200);
+  mySerial.begin(9600);
   obd.begin();
-  accelgyro.initialize();
-  readMEMS();
 
-  testOut();
-
-  Serial.println("Init...");
-  while (!obd.init());  
+  do {
+    testOut();
+    mySerial.println("Init...");
+  } while (!obd.init());  
 
   char buf[OBD_RECV_BUF_SIZE];
   if (obd.getVIN(buf)) {
-      Serial.print("VIN:");
-      Serial.println(buf);
+      mySerial.print("VIN:");
+      mySerial.println(buf);
   }
   delay(1000);
 }
 
 void loop() {
   readPID();
-  readMEMS();
   delay(500);
 }
