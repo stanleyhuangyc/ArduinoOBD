@@ -14,7 +14,6 @@
 #define OBD_TIMEOUT_LONG 10000 /* ms */
 #define OBD_TIMEOUT_GPS 200 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
-#define OBD_RECV_BUF_SIZE 128
 
 #ifndef OBDUART
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
@@ -132,13 +131,13 @@ public:
 	// set working protocol (default auto)
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// send AT command and receive response
-	virtual byte sendCommand(const char* cmd, char* buf = 0);
+	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
-	virtual bool getVIN(char* buffer);
+	virtual bool getVIN(char* buffer, byte bufsize);
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
@@ -156,12 +155,9 @@ public:
 	// bit map of supported PIDs
 	byte pidmap[4 * 4];
 protected:
-	virtual char* getResponse(byte& pid, char* buffer);
-	virtual byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
-	virtual bool available();
-	virtual char read();
+	virtual char* getResponse(byte& pid, char* buffer, byte bufsize);
+	virtual byte receive(char* buffer, byte bufsize, int timeout = OBD_TIMEOUT_SHORT);
 	virtual void write(const char* s);
-	virtual void write(char c);
 	virtual void dataIdleLoop() {}
 	void recover();
 	void debugOutput(const char* s);
@@ -222,6 +218,6 @@ public:
 	void applyPIDs(byte obdPid[]);
 	void loadData(PID_INFO obdInfo[]);
 protected:
-	byte receive(char* buffer = 0, int timeout = OBD_TIMEOUT_SHORT);
+	byte receive(char* buffer, byte bufsize, int timeout = OBD_TIMEOUT_SHORT);
 	bool sendCommandBlock(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
 };

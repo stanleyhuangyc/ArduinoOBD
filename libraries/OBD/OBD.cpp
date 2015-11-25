@@ -56,11 +56,11 @@ byte hex2uint8(const char *p)
 * OBD-II UART Adapter
 *************************************************************************/
 
-byte COBD::sendCommand(const char* cmd, char* buf)
+byte COBD::sendCommand(const char* cmd, char* buf, byte bufsize)
 {
 	write(cmd);
 	dataIdleLoop();
-	return receive(buf);
+	return receive(buf, bufsize, OBD_TIMEOUT_LONG);
 }
 
 void COBD::sendQuery(byte pid)
@@ -83,32 +83,14 @@ bool COBD::read(byte pid, int& result)
 
 void COBD::clearDTC()
 {
+	char buffer[32];
 	write("04\r");
-	receive(0, 1000);
-}
-
-bool COBD::available()
-{
-	return OBDUART.available();
-}
-
-char COBD::read()
-{
-	char c = OBDUART.read();
-#ifdef DEBUG
-    DEBUG.write(c);
-#endif
-	return c;
+	receive(buffer, sizeof(buffer));
 }
 
 void COBD::write(const char* s)
 {
 	OBDUART.write(s);
-}
-
-void COBD::write(char c)
-{
-	OBDUART.write(c);
 }
 
 int COBD::normalizeData(byte pid, char* data)
@@ -192,9 +174,9 @@ int COBD::normalizeData(byte pid, char* data)
 	return result;
 }
 
-char* COBD::getResponse(byte& pid, char* buffer)
+char* COBD::getResponse(byte& pid, char* buffer, byte bufsize)
 {
-	while (receive(buffer, OBD_TIMEOUT_SHORT) > 0) {
+	while (receive(buffer, bufsize) > 0) {
 		char *p = buffer;
 		while ((p = strstr(p, "41 "))) {
 		    p += 3;
@@ -213,8 +195,8 @@ char* COBD::getResponse(byte& pid, char* buffer)
 
 bool COBD::getResult(byte& pid, int& result)
 {
-	char buffer[OBD_RECV_BUF_SIZE];
-	char* data = getResponse(pid, buffer);
+	char buffer[64];
+	char* data = getResponse(pid, buffer, sizeof(buffer));
 	if (!data) {
 		recover();
 		errors++;
@@ -226,14 +208,14 @@ bool COBD::getResult(byte& pid, int& result)
 
 bool COBD::setProtocol(OBD_PROTOCOLS h)
 {
-    char buf[OBD_RECV_BUF_SIZE];
+    char buf[32];
 	if (h == PROTO_AUTO) {
 		write("ATSP00\r");
 	} else {
 		sprintf(buf, "ATSP%d\r", h);
 		write(buf);
 	}
-	if (receive(buf, 3000) > 0 && strstr(buf, "OK"))
+	if (receive(buf, sizeof(buf), OBD_TIMEOUT_LONG) > 0 && strstr(buf, "OK"))
         return true;
     else
         return false;
@@ -241,24 +223,26 @@ bool COBD::setProtocol(OBD_PROTOCOLS h)
 
 void COBD::sleep()
 {
+  	char buf[32];
 	write("ATLP\r");
-	receive();
+	receive(buf, sizeof(buf));
 }
 
 float COBD::getVoltage()
 {
-    char buf[OBD_RECV_BUF_SIZE];
+    char buf[32];
     write("ATRV\r");
-    byte n = receive(buf, 100);
+    byte n = receive(buf, sizeof(buf));
     if (n > 0) {
         return atof(buf);
     }
     return 0;
 }
 
-bool COBD::getVIN(char* buffer)
+bool COBD::getVIN(char* buffer, byte bufsize)
 {
-    if (sendCommand("0902\r", buffer)) {
+    write("0902\r");
+    if (receive(buffer, bufsize, OBD_TIMEOUT_LONG)) {
         char *p = strstr(buffer, "0: 49 02");
         if (p) {
             char *q = buffer;
@@ -295,19 +279,19 @@ void COBD::begin()
 	recover();
 }
 
-byte COBD::receive(char* buffer, int timeout)
+byte COBD::receive(char* buffer, byte bufsize, int timeout)
 {
 	unsigned char n = 0;
 	unsigned long startTime = millis();
 	for (;;) {
-		if (available()) {
-			char c = read();
+		if (OBDUART.available()) {
+			char c = OBDUART.read();
 			if (n > 2 && c == '>') {
 				// prompt char received
 				break;
 			} else if (!buffer) {
 			       n++;
-			} else if (n < OBD_RECV_BUF_SIZE - 1) {
+			} else if (n < bufsize - 1) {
 				if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
 					// waiting siginal
 					n = 0;
@@ -330,24 +314,25 @@ byte COBD::receive(char* buffer, int timeout)
 
 void COBD::recover()
 {
+	char buf[16];
 	write("AT\r");
-	receive(0, 1000);
+	receive(buf, sizeof(buf));
 }
 
 bool COBD::init(OBD_PROTOCOLS protocol)
 {
 	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r"};
-	char buffer[OBD_RECV_BUF_SIZE];
+	char buffer[64];
 
 	m_state = OBD_CONNECTING;
-	recover();
+	//recover();
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
 		debugOutput(initcmd[i]);
 #endif
 		write(initcmd[i]);
-		if (receive(buffer, OBD_TIMEOUT_LONG) == 0) {
+		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0) {
 			if (i == 0) {
 				// workaround for longer initialization time
 				delay(2000);
@@ -358,12 +343,12 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 		}
 		delay(50);
 	}
-	while (available()) read();
+	//while (available()) read();
 
 	if (protocol != PROTO_AUTO) {
 		setProtocol(protocol);
 	}
-    int value;
+        int value;
 	if (!read(PID_RPM, value)) {
 		m_state = OBD_DISCONNECTED;
 		return false;
@@ -374,7 +359,7 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 	for (byte i = 0; i < 4; i++) {
 		byte pid = i * 0x20;
 		sendQuery(pid);
-		char* data = getResponse(pid, buffer);
+		char* data = getResponse(pid, buffer, sizeof(buffer));
 		if (!data) break;
 		data--;
 		for (byte n = 0; n < 4; n++) {
@@ -384,7 +369,7 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 		}
 		delay(100);
 	}
-	while (available()) read();
+	//while (available()) read();
 
 	m_state = OBD_CONNECTED;
 	errors = 0;
@@ -411,18 +396,18 @@ bool COBD::setBaudRate(unsigned long baudrate)
 
 bool COBD::initGPS(unsigned long baudrate)
 {
-    char buf[OBD_RECV_BUF_SIZE];
+    char buf[32];
     sprintf(buf, "ATBR2 %lu\r", baudrate);
     write(buf);
-    return (receive(buf) && strstr(buf, "OK"));
+    return (receive(buf, sizeof(buf)) && strstr(buf, "OK"));
 }
 
 bool COBD::getGPSData(GPS_DATA* gdata)
 {
-    char buf[OBD_RECV_BUF_SIZE];
+    char buf[128];
     char *p;
     write("ATGPS\r");
-    if (receive(buf) == 0 || !(p = strstr(buf, "$GPS")))
+    if (receive(buf, sizeof(buf)) == 0 || !(p = strstr(buf, "$GPS")))
         return false;
 
     byte index = 0;
@@ -519,7 +504,7 @@ bool COBDI2C::sendCommandBlock(byte cmd, uint8_t data, byte* payload, byte paylo
 	return success;
 }
 
-byte COBDI2C::receive(char* buffer, int timeout)
+byte COBDI2C::receive(char* buffer, byte bufsize, int timeout)
 {
 	uint32_t start = millis();
 	byte offset = 0;
@@ -538,7 +523,7 @@ byte COBDI2C::receive(char* buffer, int timeout)
 				// waiting signal
 				offset = 0;
 				timeout = OBD_TIMEOUT_LONG;
-			} else if (c == 0 || offset == OBD_RECV_BUF_SIZE - 1) {
+			} else if (c == 0 || offset == bufsize - 1) {
 				// string terminator encountered or buffer full
 				if (buffer) buffer[offset] = 0;
 				// discard the remaining data
