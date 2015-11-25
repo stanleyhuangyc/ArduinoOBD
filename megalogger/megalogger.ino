@@ -24,6 +24,7 @@
 #include <SoftwareSerial.h>
 #endif
 #include "datalogger.h"
+#include "touch.h"
 
 // logger states
 #define STATE_SD_READY 0x1
@@ -543,7 +544,7 @@ void processAccelerometer()
 
 void logOBDData(byte pid)
 {
-    char buffer[OBD_RECV_BUF_SIZE];
+    char buffer[64];
     uint32_t start = millis();
     int value;
 
@@ -587,14 +588,15 @@ void logOBDData(byte pid)
     }
 #if ENABLE_DATA_LOG
     // flush SD data every 1KB
-    if ((logger.dataSize >> 10) != lastFileSize) {
+    byte dataSizeKB = logger.dataSize >> 10;
+    if (dataSizeKB != lastFileSize) {
         logger.flushFile();
+        lastFileSize = dataSizeKB;
         // display logged data size
         lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setCursor(242, 28);
         lcd.print((unsigned int)(logger.dataSize >> 10));
         lcd.print("KB");
-        lastFileSize = logger.dataSize >> 10;
     }
 #endif
 
@@ -624,8 +626,9 @@ void showECUCap()
     }
     int values[sizeof(pidlist)];
     bool scanned = false;
-    for (uint32_t t = millis(); millis() - t < GUI_PID_LIST_DURATION * 1000; ) {
-      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+    for (;;) {
+      bool touched = false;
+      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]) && !(touched = touch.available()); i++) {
           byte pid = pgm_read_byte(pidlist + i);
           if (obd.isValidPID(pid)) {
               int value;
@@ -646,6 +649,7 @@ void showECUCap()
               }
           }
        }
+       if (touched) break;
        scanned = true;
     }
 }
@@ -709,7 +713,7 @@ void showStates()
 void testOut()
 {
     static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
-    char buf[OBD_RECV_BUF_SIZE];
+    char buf[128];
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(0, 11);
 
@@ -720,7 +724,7 @@ void testOut()
         lcd.print("Sending ");
         lcd.println(cmd);
         lcd.setColor(RGB16_CYAN);
-        if (obd.sendCommand(cmd, buf)) {
+        if (obd.sendCommand(cmd, buf, sizeof(buf))) {
             char *p = strstr(buf, cmd);
             if (p)
                 p += strlen(cmd);
@@ -801,8 +805,8 @@ void setup()
 
     state |= STATE_OBD_READY;
 
-    char buf[OBD_RECV_BUF_SIZE];
-    if (obd.getVIN(buf)) {
+    char buf[64];
+    if (obd.getVIN(buf, sizeof(buf))) {
         lcd.setFontSize(FONT_SIZE_SMALL);
         lcd.setColor(RGB16_WHITE);
         lcd.print("VIN:");
@@ -810,12 +814,16 @@ void setup()
         lcd.println(buf);
     }
 
+    lcd.setCursor(0, 28);
     lcd.setColor(RGB16_GREEN);
     lcd.setFontSize(FONT_SIZE_MEDIUM);
-    lcd.println("READY!");
+    lcd.print("Tap on LCD to continue");
 
     showECUCap();
-    delay(3000);
+    lcd.setCursor(0, 28);
+    lcd.setColor(RGB16_YELLOW);
+    lcd.setFontSize(FONT_SIZE_MEDIUM);
+    lcd.print("HERE WE GO!           ");
 
     fadeOutScreen();
     initScreen();

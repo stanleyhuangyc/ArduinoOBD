@@ -62,7 +62,6 @@
 **************************************/
 #define OBD_MIN_INTERVAL 20 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
-#define GUI_PID_LIST_DURATION 5 /* sec */
 
 /**************************************
 * LCD module (uncomment only one)

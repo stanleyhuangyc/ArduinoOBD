@@ -1,5 +1,5 @@
 /*************************************************************************
-* Arduino Data Logger Class
+* Freematics Data Logger Class
 * Distributed under GPL v2.0
 * Written by Stanley Huang <stanleyhuangyc@gmail.com>
 * Visit http://freematics.com for more information
