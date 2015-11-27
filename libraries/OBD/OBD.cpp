@@ -94,7 +94,7 @@ bool COBD::getDTCStatus(int* numCodes)
 	bool milOn = false;
 
 	write("01 01\r");  // send OBD request for DTCs
-	int bytesReceived = receive(buffer, 1000); // record the number of bytes of data received, timeout after 1000 milliseconds
+	int bytesReceived = receive(buffer, MAX_PAYLOAD_SIZE, 1000); // record the number of bytes of data received, timeout after 1000 milliseconds
 	buffer[bytesReceived + 1] = '\0'; // set the entry following the last code to "0"
 
 	Serial.println("Engine response to 01 01...");
@@ -130,13 +130,13 @@ bool COBD::getDTCStatus(int* numCodes)
 /* getDTCs
  *  Send request for trouble codes.  Will receive multiple codes in one message.
  */
-int COBD::getDTCs(int numCodes, char *retval) 
+int COBD::getDTCs(int numCodes, char *retval, int bufsize) 
 {
 	write("03\r");  // send OBD request for DTCs
 	int bytesReceived = 0;
 	int len;
 	char buffer[MAX_PAYLOAD_SIZE];
-	while ((len = receive(buffer, 1000)) != 0) {
+	while ((len = receive(buffer, bufsize, 1000)) != 0) {
 		// loop until no data is received
 		buffer[len] = '\0';
 		strcat(retval, buffer);
@@ -176,10 +176,6 @@ int COBD::getDTCs(int numCodes, char *retval)
 		for (i = 0; i < numCodes; i++) {
 			if ((15 * i) > numBytes) {
 				Serial.println("No other errors were available!");
-				write("03\r");  // send OBD request for DTCs
-				len = receive(buffer, 1000); // request DTCs and timeout after 1000 milliseconds
-				buffer[len] = '\0';
-				Serial.printf("Last ditch effort to get error code...\n%s\n", buffer);
 				break;
 			}
 

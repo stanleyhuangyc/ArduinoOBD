@@ -137,7 +137,7 @@ public:
 	virtual bool getDTCStatus(int *numCodes);
 	// gets the engine code errors (MIL), pass in the number of error codes reported from getDTCStatus
 	// to parse the information.
-	virtual int getDTCs(int numCodes, char *retval);
+	virtual int getDTCs(int numCodes, char *retval, int bufsize);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
