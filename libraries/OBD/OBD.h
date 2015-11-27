@@ -132,6 +132,12 @@ public:
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// send AT command and receive response
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize);
+	// get engine error code status, returns true if MIL is on.
+	// pass in a pointer to an int where the number of error codes will be populated
+	virtual bool getDTCStatus(int *numCodes);
+	// gets the engine code errors (MIL), pass in the number of error codes reported from getDTCStatus
+	// to parse the information.
+	virtual int getDTCs(int numCodes, char *retval);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
