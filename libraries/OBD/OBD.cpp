@@ -224,16 +224,13 @@ bool COBD::setProtocol(OBD_PROTOCOLS h)
 void COBD::sleep()
 {
   	char buf[32];
-	write("ATLP\r");
-	receive(buf, sizeof(buf));
+	sendCommand("ATLP\r", buf, sizeof(buf));
 }
 
 float COBD::getVoltage()
 {
     char buf[32];
-    write("ATRV\r");
-    byte n = receive(buf, sizeof(buf));
-    if (n > 0) {
+	if (sendCommand("ATRV\r", buf, sizeof(buf)) > 0) {
         return atof(buf);
     }
     return 0;
@@ -241,8 +238,7 @@ float COBD::getVoltage()
 
 bool COBD::getVIN(char* buffer, byte bufsize)
 {
-    write("0902\r");
-    if (receive(buffer, bufsize, OBD_TIMEOUT_LONG)) {
+	if (sendCommand("0902\r", buffer, bufsize)) {
         char *p = strstr(buffer, "0: 49 02");
         if (p) {
             char *q = buffer;
@@ -315,8 +311,7 @@ byte COBD::receive(char* buffer, byte bufsize, int timeout)
 void COBD::recover()
 {
 	char buf[16];
-	write("AT\r");
-	receive(buf, sizeof(buf));
+	sendCommand("AT\r", buf, sizeof(buf));
 }
 
 bool COBD::init(OBD_PROTOCOLS protocol)
@@ -397,22 +392,19 @@ bool COBD::setBaudRate(unsigned long baudrate)
 bool COBD::initGPS(unsigned long baudrate)
 {
     char buf[32];
-    sprintf(buf, "ATBR2 %lu\r", baudrate);
-    write(buf);
-    return (receive(buf, sizeof(buf)) && strstr(buf, "OK"));
+	return (sendCommand(buf, buf, sizeof(buf)) && strstr(buf, "OK"));
 }
 
 bool COBD::getGPSData(GPS_DATA* gdata)
 {
     char buf[128];
     char *p;
-    write("ATGPS\r");
-    if (receive(buf, sizeof(buf)) == 0 || !(p = strstr(buf, "$GPS")))
+	if (sendCommand("ATGPS\r", buf, sizeof(buf)) == 0 || !(p = strstr(buf, "$GPS")))
         return false;
 
     byte index = 0;
     char *s = buf;
-    s = p + 5;
+	s = *(p + 4) == '$' ? p + 9 : p + 5;
     for (p = s; *p; p++) {
         char c = *p;
         if (c == ',' || c == '>' || c <= 0x0d) {
