@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
 #include <OBD.h>
 #include <I2Cdev.h>
 #include <MPU9150.h>
@@ -18,14 +19,14 @@ MPU6050 accelgyro;
 void testOut()
 {
     static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
-    char buf[OBD_RECV_BUF_SIZE];
+    char buf[128];
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
         char cmd[6];
         memcpy_P(cmd, cmds[i], sizeof(cmd));
         Serial.print("Sending ");
         Serial.println(cmd);
-        if (obd.sendCommand(cmd, buf)) {
+        if (obd.sendCommand(cmd, buf, sizeof(buf))) {
             char *p = strstr(buf, cmd);
             if (p)
                 p += strlen(cmd);
@@ -98,21 +99,23 @@ void setup() {
   accelgyro.initialize();
   readMEMS();
 
-  testOut();
+  //testOut();
 
   Serial.println("Init...");
-  while (!obd.init());  
+  //while (!obd.init());  
 
+/*
   char buf[OBD_RECV_BUF_SIZE];
   if (obd.getVIN(buf)) {
       Serial.print("VIN:");
       Serial.println(buf);
   }
   delay(1000);
+  */
 }
 
 void loop() {
-  readPID();
+  //readPID();
   readMEMS();
   delay(500);
 }
