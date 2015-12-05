@@ -13,8 +13,8 @@
 
 // On Arduino Leonardo, Micro, MEGA or DUE, hardware serial can be used for output
 // as OBD-II adapter should connect to Serial1, otherwise we use software serial
-SoftwareSerial mySerial(A2, A3);
-//#define mySerial Serial
+//SoftwareSerial mySerial(A2, A3);
+#define mySerial Serial
 
 COBD obd;
 
@@ -51,6 +51,9 @@ void testOut()
 void readPID()
 {
     static const byte pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
+    mySerial.print('[');
+    mySerial.print(millis());
+    mySerial.print(']');
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
         byte pid = pidlist[i];
         bool valid = obd.isValidPID(pid);

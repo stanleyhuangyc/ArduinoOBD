@@ -55,25 +55,31 @@ void readMEMS()
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     temp = accelgyro.getTemperature();
 
-    // display MEMS data
+    Serial.print('[');
+    Serial.print(millis());
+    Serial.print(']');
+
     Serial.print("ACC=");
     Serial.print(ax);
-    Serial.write('/');
+    Serial.print('/');
     Serial.print(ay);
-    Serial.write('/');
-    Serial.println(az);
+    Serial.print('/');
+    Serial.print(az);
 
-    Serial.print("GYRO=");
+    Serial.print(" GYRO=");
     Serial.print(gx);
-    Serial.write('/');
+    Serial.print('/');
     Serial.print(gy);
-    Serial.write('/');
+    Serial.print('/');
     Serial.println(gz);
 }
 
 void readPID()
 {
     static const byte pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
+    Serial.print('[');
+    Serial.print(millis());
+    Serial.print(']');
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
         byte pid = pidlist[i];
         bool valid = obd.isValidPID(pid);
