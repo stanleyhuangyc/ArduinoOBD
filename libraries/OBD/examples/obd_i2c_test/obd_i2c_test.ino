@@ -18,12 +18,11 @@ MPU6050 accelgyro;
 
 void testOut()
 {
-    static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
+    static const char cmds[][6] = {"ATZ\r", "ATL1\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[128];
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
-        char cmd[6];
-        memcpy_P(cmd, cmds[i], sizeof(cmd));
+        const char *cmd = cmds[i];
         Serial.print("Sending ");
         Serial.println(cmd);
         if (obd.sendCommand(cmd, buf, sizeof(buf))) {
@@ -74,22 +73,21 @@ void readMEMS()
 
 void readPID()
 {
-    static const byte PROGMEM pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
+    static const byte pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
     for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
-        byte pid = pgm_read_byte(pidlist + i);
+        byte pid = pidlist[i];
         bool valid = obd.isValidPID(pid);
-        Serial.print('0');
         Serial.print((int)pid | 0x100, HEX);
         Serial.print('=');
         if (valid) {
             int value;
             if (obd.read(pid, value)) {
-              byte n = Serial.println(value);
+              Serial.print(value);
             }
-        } else {
-          Serial.println('X'); 
         }
+        Serial.print(' ');
      }
+     Serial.println();
 }
 
 void setup() {
@@ -99,23 +97,21 @@ void setup() {
   accelgyro.initialize();
   readMEMS();
 
-  //testOut();
+  do {
+    testOut();
+    Serial.println("Init...");
+  } while (!obd.init());  
 
-  Serial.println("Init...");
-  //while (!obd.init());  
-
-/*
-  char buf[OBD_RECV_BUF_SIZE];
-  if (obd.getVIN(buf)) {
+  char buf[64];
+  if (obd.getVIN(buf, sizeof(buf))) {
       Serial.print("VIN:");
       Serial.println(buf);
   }
   delay(1000);
-  */
 }
 
 void loop() {
-  //readPID();
+  readPID();
   readMEMS();
-  delay(500);
 }
+ 
