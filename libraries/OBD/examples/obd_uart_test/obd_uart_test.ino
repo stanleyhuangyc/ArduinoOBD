@@ -13,8 +13,8 @@
 
 // On Arduino Leonardo, Micro, MEGA or DUE, hardware serial can be used for output
 // as OBD-II adapter should connect to Serial1, otherwise we use software serial
-//SoftwareSerial mySerial(A2, A3);
-#define mySerial Serial
+SoftwareSerial mySerial(A2, A3);
+//#define mySerial Serial
 
 COBD obd;
 
