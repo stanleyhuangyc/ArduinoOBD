@@ -11,8 +11,9 @@
 #include <SoftwareSerial.h>
 #include <OBD.h>
 
+// On Arduino Leonardo, Micro, MEGA or DUE, hardware serial can be used for output
+// as OBD-II adapter should connect to Serial1, otherwise we use software serial
 SoftwareSerial mySerial(A2, A3);
-// On Arduino Leonardo, Micro or MEGA, OBD-II adapter should connect to Serial1, so Serial can be used as output
 //#define mySerial Serial
 
 COBD obd;
@@ -66,13 +67,18 @@ void readPID()
      mySerial.println();
 }
 
-void setup() {
+void setup()
+{
   delay(500);
   mySerial.begin(115200);
+  // this will begin serial
   obd.begin();
 
+  // send some commands for testing and show response
+  testOut();
+  
+  // initialize OBD-II adapter
   do {
-    testOut();
     mySerial.println("Init...");
   } while (!obd.init());  
 
@@ -84,6 +90,7 @@ void setup() {
   delay(1000);
 }
 
-void loop() {
+void loop()
+{
   readPID();
 }
