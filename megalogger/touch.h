@@ -72,7 +72,7 @@ public:
 		return(data);
 	}
 
-	void read()
+	void read(int& x, int& y)
 	{
 		unsigned long tx=0;
 		unsigned long ty=0;
@@ -93,35 +93,14 @@ public:
 		}
 
 		digitalWrite(T_CS,HIGH);
-
-		TP_X=tx/PREC_TOUCH_CONST;
-		TP_Y=ty/PREC_TOUCH_CONST;
+                x = (tx / PREC_TOUCH_CONST - PixOffsX) / PixSizeX;
+                y = (ty / PREC_TOUCH_CONST - PixOffsX) / PixSizeX;
 	}
 
 	bool available()
 	{
 		return digitalRead(T_IRQ) == 0;
 	}
-
-	int getX()
-	{
-		int value;
-		value = ((TP_X-PixOffsX)/PixSizeX);
-		if (value < 0)
-			value = 0;
-		return value;
-	}
-
-	int getY()
-	{
-		int value;
-		value = ((TP_Y-PixOffsY)/PixSizeY);
-		if (value < 0)
-			value = 0;
-		return value;
-	}
-private:
-	int TP_X,TP_Y;
 };
 
 CTouch touch;

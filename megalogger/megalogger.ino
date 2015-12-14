@@ -628,7 +628,7 @@ void showECUCap()
     bool scanned = false;
     for (;;) {
       bool touched = false;
-      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]) && !(touched = touch.available()); i++) {
+      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]) && !touched; i++) {
           byte pid = pgm_read_byte(pidlist + i);
           if (obd.isValidPID(pid)) {
               int value;
@@ -648,6 +648,7 @@ void showECUCap()
                 lcd.print("N/A");
               }
           }
+          touched = touch.available();
        }
        if (touched) break;
        scanned = true;
