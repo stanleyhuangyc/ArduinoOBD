@@ -81,6 +81,129 @@ bool COBD::read(byte pid, int& result)
 	return getResult(pid, result);
 }
 
+/* 
+ * getDTCStatus
+ *  send request for number of DTC codes available. Will also return value if MIL ("Check Engine") light is on.
+ *  if number of codes is > 0, then request the actual codes as well.
+ */    
+bool COBD::getDTCStatus(int* numCodes)
+{
+	char buffer[MAX_PAYLOAD_SIZE + 1];
+	char val3str[3];
+	int val3;
+	bool milOn = false;
+
+	write("01 01\r");  // send OBD request for DTCs
+	int bytesReceived = receive(buffer, MAX_PAYLOAD_SIZE, 1000); // record the number of bytes of data received, timeout after 1000 milliseconds
+	buffer[bytesReceived + 1] = '\0'; // set the entry following the last code to "0"
+
+	Serial.println("Engine response to 01 01...");
+	Serial.println(buffer);
+
+	if (bytesReceived > 0) {
+
+		// Response should be "41 01 xx yy yy yy yy"
+		// looking for the value in xx
+
+		int response = strncmp(buffer, "41", 2);
+		if (response == 0) {
+
+			// Extract the number of codes from the string
+			memcpy(val3str, &buffer[6], 2);
+
+			val3 = strtol(val3str, NULL, 16);  // Convert hex string to decimal
+
+			if ((val3 & 0x80) > 0) { // MIL is on
+				milOn = true;
+			}
+
+			*numCodes = val3 & 0x7F;
+
+		} else {
+			Serial.println("Error receiving DTC information");
+		}
+	}
+
+	return milOn;
+}
+
+/* getDTCs
+ *  Send request for trouble codes.  Will receive multiple codes in one message.
+ */
+int COBD::getDTCs(int numCodes, char *retval, int bufsize) 
+{
+	write("03\r");  // send OBD request for DTCs
+	int bytesReceived = 0;
+	int len;
+	char buffer[MAX_PAYLOAD_SIZE];
+	while ((len = receive(buffer, bufsize, 1000)) != 0) {
+		// loop until no data is received
+		buffer[len] = '\0';
+		strcat(retval, buffer);
+		bytesReceived += len;
+	}
+
+	int numBytes = bytesReceived;
+	retval[bytesReceived] = '\0';
+
+	Serial.println("Raw DTC Data from 03...");
+	Serial.println(retval);
+
+	if (numCodes > 0 && bytesReceived > 0 && strncmp(retval, "43", 2) == 0) {
+		int i;
+		int j;
+		char response[MAX_PAYLOAD_SIZE + 1];
+
+		// Remove spaces from the string
+		for (i = 0, j = 0; retval[i] != '\0'; i++) {
+			if (retval[i] != ' ') {
+				response[j++] = retval[i];
+			} else {
+				numBytes--;
+			}
+		}
+
+		response[j] = '\0';
+
+		char oneCode[15];
+		char category[2];
+		char codeType[3];
+		char codeTypes[5] = "PCBU";
+		char code[4];  // Actual trouble code
+		Serial.println("-------------------");
+
+		// Loop through each code
+		for (i = 0; i < numCodes; i++) {
+			if ((15 * i) > numBytes) {
+				Serial.println("No other errors were available!");
+				break;
+			}
+
+			// Grab one chunk of codes at a time
+			memcpy(oneCode, &response[15 * i], 14);
+			oneCode[14] = '\0'; 
+
+			Serial.printf("Error code %d=%s\n", i + 1, oneCode);
+
+			memcpy(category, &oneCode[2], 1);
+			category[2] = '\0';
+			unsigned int numCategory = strtol(category, NULL, 16);
+
+			// numCategory represents 0x0X, the letter is the bits 3 and 4, the value is bits 1 and 2
+			sprintf(codeType, "%c%d", codeTypes[numCategory >> 2], (numCategory & 0x03));
+
+			memcpy(code, &oneCode[3], 3);
+			code[4] = '\0';
+
+			Serial.printf("Formatted error=%d/%d: %s%s\n", i + 1, numCodes, codeType, code);
+			Serial.println("-------------------");
+		}
+
+	}
+
+	return bytesReceived;
+}
+
 void COBD::clearDTC()
 {
 	char buffer[32];
