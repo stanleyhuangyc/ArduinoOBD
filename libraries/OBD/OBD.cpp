@@ -56,11 +56,11 @@ byte hex2uint8(const char *p)
 * OBD-II UART Adapter
 *************************************************************************/
 
-byte COBD::sendCommand(const char* cmd, char* buf, byte bufsize)
+byte COBD::sendCommand(const char* cmd, char* buf, byte bufsize, int timeout)
 {
 	write(cmd);
 	dataIdleLoop();
-	return receive(buf, bufsize, OBD_TIMEOUT_LONG);
+	return receive(buf, bufsize, timeout);
 }
 
 void COBD::sendQuery(byte pid)
@@ -316,11 +316,10 @@ void COBD::recover()
 
 bool COBD::init(OBD_PROTOCOLS protocol)
 {
-	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r"};
+	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r","0100\r"};
 	char buffer[64];
 
 	m_state = OBD_CONNECTING;
-	//recover();
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
@@ -342,11 +341,6 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 
 	if (protocol != PROTO_AUTO) {
 		setProtocol(protocol);
-	}
-        int value;
-	if (!read(PID_RPM, value)) {
-		m_state = OBD_DISCONNECTED;
-		return false;
 	}
 
 	// load pid map
@@ -389,58 +383,6 @@ bool COBD::setBaudRate(unsigned long baudrate)
     return true;
 }
 
-bool COBD::initGPS(unsigned long baudrate)
-{
-    char buf[32];
-	return (sendCommand(buf, buf, sizeof(buf)) && strstr(buf, "OK"));
-}
-
-bool COBD::getGPSData(GPS_DATA* gdata)
-{
-    char buf[128];
-    char *p;
-	if (sendCommand("ATGPS\r", buf, sizeof(buf)) == 0 || !(p = strstr(buf, "$GPS")))
-        return false;
-
-    byte index = 0;
-    char *s = buf;
-	s = *(p + 4) == '$' ? p + 9 : p + 5;
-    for (p = s; *p; p++) {
-        char c = *p;
-        if (c == ',' || c == '>' || c <= 0x0d) {
-            long value = atol(s);
-            switch (index) {
-            case 0:
-                gdata->date = (uint32_t)value;
-                break;
-            case 1:
-                gdata->time = (uint32_t)value;
-                break;
-            case 2:
-                gdata->lat = value;
-                break;
-            case 3:
-                gdata->lon = value;
-                break;
-            case 4:
-                gdata->alt = value;
-                break;
-            case 5:
-                gdata->speed = value;
-                break;
-            case 6:
-                gdata->heading = value;
-                break;
-            case 7:
-                gdata->sat = value;
-                break;
-            }
-            index++;
-            s = p + 1;
-        }
-    }
-    return index >= 4;
-}
 
 #ifdef DEBUG
 void COBD::debugOutput(const char *s)

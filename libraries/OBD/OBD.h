@@ -93,17 +93,6 @@ typedef enum {
     OBD_CONNECTED = 2
 } OBD_STATES;
 
-typedef struct {
-    uint32_t date;
-    uint32_t time;
-    int32_t lat;
-    int32_t lon;
-    int16_t alt;
-    uint8_t speed;
-    uint8_t sat;
-    int16_t heading;
-} GPS_DATA;
-
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
 
@@ -131,7 +120,7 @@ public:
 	// set working protocol (default auto)
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// send AT command and receive response
-	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize);
+	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
@@ -145,9 +134,7 @@ public:
 	// determine if the PID is supported
 	virtual bool isValidPID(byte pid);
 	// init GPS module
-	virtual bool initGPS(unsigned long baudrate = 38400);
 	// parse GPS data
-	virtual bool getGPSData(GPS_DATA* gdata);
 	// set current PID mode
 	byte dataMode;
 	// occurrence of errors
