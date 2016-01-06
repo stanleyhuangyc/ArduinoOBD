@@ -239,7 +239,7 @@ float COBD::getVoltage()
 bool COBD::getVIN(char* buffer, byte bufsize)
 {
 	if (sendCommand("0902\r", buffer, bufsize)) {
-        char *p = strstr(buffer, "0: 49 02");
+	    char *p = strstr(buffer, "49 02");
         if (p) {
             char *q = buffer;
             p += 10;
