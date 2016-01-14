@@ -280,7 +280,7 @@ void initScreen()
     lcd.setCursor(280, 19);
     lcd.print("SAT:");
     lcd.setCursor(184, 20);
-    lcd.print("LON:");
+    lcd.print("LNG:");
 
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(184, 22);
@@ -393,8 +393,8 @@ void processGPS()
     }
     logger.logData(PID_GPS_TIME, (int32_t)time);
 
-    int32_t lat, lon;
-    gps.get_position(&lat, &lon, 0);
+    int32_t lat, lng;
+    gps.get_position(&lat, &lng, 0);
 
     byte sat = gps.satellites();
 
@@ -420,17 +420,13 @@ void processGPS()
 
     // display latitude
     lcd.setCursor(214, 19);
-    lcd.print(lat / 100000);
-    lcd.write('.');
-    lcd.printLong(abs(lat) % 100000, 5);
+    lcd.print((float)lat / 100000, 5);
     // display longitude
     lcd.setCursor(214, 20);
-    lcd.print(lon / 100000);
-    lcd.write('.');
-    lcd.printLong(abs(lon) % 100000, 5);
+    lcd.print((float)lng / 100000, 5);
     // log latitude/longitude
     logger.logData(PID_GPS_LATITUDE, lat);
-    logger.logData(PID_GPS_LONGITUDE, lon);
+    logger.logData(PID_GPS_LONGITUDE, lng);
 
     // display number of satellites
     if (sat < 100) {
