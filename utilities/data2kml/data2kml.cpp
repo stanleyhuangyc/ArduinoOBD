@@ -15,7 +15,7 @@
 typedef struct {
 	uint32_t timestamp;
 	float lat;
-	float lon;
+	float lng;
 	uint16_t speed;
 	uint16_t speedgps;
 	uint16_t rpm;
@@ -37,23 +37,46 @@ typedef struct {
 	DATASET* dataset;
 	int datacount;
 	float startLat;
-	float startLon;
+	float startLng;
 	uint32_t curDate;
 	uint32_t curTime;
 	uint32_t ts;
 	uint32_t lastts;
 	float lastLat;
-	float lastLon;
+	float lastLng;
 	uint32_t lastTime;
 	DATASET datas;
 } KML_DATA;
 
-void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
+uint16_t hex2uint16(const char *p)
+{
+	char c = *p;
+	uint16_t i = 0;
+	for (char n = 0; c && n < 4; c = *(++p)) {
+		if (c >= 'A' && c <= 'F') {
+			c -= 7;
+		}
+		else if (c >= 'a' && c <= 'f') {
+			c -= 39;
+		}
+		else if (c == ' ') {
+			continue;
+		}
+		else if (c < '0' || c > '9') {
+			break;
+		}
+		i = (i << 4) | (c & 0xF);
+		n++;
+	}
+	return i;
+}
+
+void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, int value[])
 {
 	kd->ts = timestamp;
 	switch (pid) {
 	case PID_GPS_LATITUDE:
-		kd->datas.lat = value[0] / 100000;
+		kd->datas.lat = (float)value[0] / 1000000;
 		if (!kd->startLat) {
 			kd->startLat = kd->datas.lat;
 		}
@@ -64,18 +87,18 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 		}
 		break;
 	case PID_GPS_LONGITUDE:
-		kd->datas.lon = value[0] / 100000;
-		if (!kd->startLon) {
-			kd->startLon = kd->datas.lon;
+		kd->datas.lng = (float)value[0] / 1000000;
+		if (!kd->startLng) {
+			kd->startLng = kd->datas.lng;
 		}
 		if (kd->datacount > 0) {
-			float diff = kd->datas.lon - kd->dataset[kd->datacount - 1].lon;
+			float diff = kd->datas.lng - kd->dataset[kd->datacount - 1].lng;
 			if (diff > 0.1 || diff < -0.1)
-				kd->datas.lon = 0;	
+				kd->datas.lng = 0;	
 		}
 		break;
 	case PID_GPS_ALTITUDE:
-		kd->datas.alt = (uint16_t)value[0];
+		kd->datas.alt = value[0];
 		break;
 	case PID_SPEED:
 		kd->datas.speed = (uint16_t)value[0];
@@ -113,7 +136,7 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 		kd->curTime = (uint32_t)value[0];
 		break;
 	}
-	if (kd->curTime != kd->lastTime && kd->datas.lat && kd->datas.lon) {
+	if (kd->curTime != kd->lastTime && kd->datas.lat && kd->datas.lng) {
 		fprintf(kd->fp, "<when>");
 		if (kd->curDate) {
 			fprintf(kd->fp, "%04u-%02u-%02u", 2000 + (kd->curDate % 100), (kd->curDate / 100) % 100, kd->curDate / 10000);
@@ -127,7 +150,7 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 			fprintf(kd->fp, "T%02u:%02u:%02u.%03uZ", kd->curTime / 1000000, (kd->curTime / 10000) % 100, (kd->curTime / 100) % 100, (kd->curTime % 100) * 10);
 		}
 		fprintf(kd->fp, "</when>");
-		fprintf(kd->fp, "<gx:coord>%f %f %d</gx:coord>", kd->datas.lon, kd->datas.lat, kd->datas.alt);
+		fprintf(kd->fp, "<gx:coord>%f %f %d</gx:coord>", kd->datas.lng, kd->datas.lat, kd->datas.alt);
 
 		kd->datas.timestamp = timestamp;
 		kd->dataset = (DATASET*)realloc(kd->dataset, sizeof(DATASET) * (kd->datacount + 1));
@@ -135,7 +158,7 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, float value[])
 		kd->datacount++;
 
 		kd->lastLat = kd->datas.lat;
-		kd->lastLon = kd->datas.lon;
+		kd->lastLng = kd->datas.lng;
 		kd->lastTime = kd->curTime;
 	}
 }
@@ -263,7 +286,7 @@ void WriteKMLTail(KML_DATA* kd)
 		if (g <= -0.15f) {
 			n++;
 			fprintf(kd->fp, "<Placemark><name>#%d %u:%02u</name>", n, kd->dataset[i].timestamp / 60000, (kd->dataset[i].timestamp / 1000) % 60);
-			fprintf(kd->fp, "<styleUrl>#brakepoint</styleUrl><Point><coordinates>%f,%f</coordinates></Point>", kd->dataset[i].lon, kd->dataset[i].lat);
+			fprintf(kd->fp, "<styleUrl>#brakepoint</styleUrl><Point><coordinates>%f,%f</coordinates></Point>", kd->dataset[i].lng, kd->dataset[i].lat);
 			fprintf(kd->fp, "<ExtendedData>");
 			fprintf(kd->fp, "<Data name=\"Speed\"><value>%d</value></Data>", kd->dataset[i].speed);
 			fprintf(kd->fp, "<Data name=\"RPM\"><value>%d</value></Data>", kd->dataset[i].rpm);
@@ -285,6 +308,26 @@ void Cleanup(KML_DATA* kd)
 	free(kd);
 }
 
+int ReadLine(FILE* fp, char* buf, int bufsize)
+{
+	int c;
+	int n = 0;
+	for (;;) {
+		c = fgetc(fp);
+		if (c == -1) break;
+		if (c == '\r' || c == '\n') {
+			if (n == 0)
+				continue;
+			else
+				break;
+		}
+		if (n == bufsize - 1) break;
+		buf[n++] = c;
+	}
+	buf[n] = 0;
+	return n;
+}
+
 int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, uint32_t endpos)
 {
 	FILE* fp = fopen(logfile, "r");
@@ -303,37 +346,70 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 	int elapsed;
 	int pid;
 
-	while (fscanf(fp, "%d,%X,", &elapsed, &pid) > 0) {
-		char c;
-		char data[64];
-		int i = 0;
-		int index = 0;
-		float value[3] = {0};
-		while ((c = fgetc(fp)) != '\r') {
-			if (i == sizeof(data)) continue;
-			data[i++] = c;
-			if (c == ' ') {
-				if (index < 2) {
-					data[i] = 0;
-					value[index++] = atof(data);
-					i = 0;
-				}
-			}
+	char buf[1024];
+	while (ReadLine(fp, buf, sizeof(buf)) > 0) {
+		if (buf[0] == '#') {
+			// absolute timestamp
+			ts = atoi(buf + 1);
 		}
-		data[i] = 0;
-		value[index] = atof(data);
-		ts += elapsed;
-		if (ts < startpos)
-			continue;
+		else {
+			ts += atoi(buf);
+		}
+		char *p = strchr(buf, ',');
+		if (!p++) continue;
+		pid = 0;
+		if (*(p + 3) == ',') {
+			if (!memcmp(p, "DTE", 3))
+				pid = PID_GPS_DATE;
+			else if (!memcmp(p, "UTC", 3))
+				pid = PID_GPS_TIME;
+			else if (!memcmp(p, "UTC", 3))
+				pid = PID_GPS_TIME;
+			else if (!memcmp(p, "LAT", 3))
+				pid = PID_GPS_LATITUDE;
+			else if (!memcmp(p, "LNG", 3))
+				pid = PID_GPS_LONGITUDE;
+			else if (!memcmp(p, "ALT", 3))
+				pid = PID_GPS_ALTITUDE;
+			else if (!memcmp(p, "SPD", 3))
+				pid = PID_GPS_SPEED;
+			else if (!memcmp(p, "CRS", 3))
+				pid = PID_GPS_HEADING;
+			else if (!memcmp(p, "SAT", 3))
+				pid = PID_GPS_SAT_COUNT;
+			else if (!memcmp(p, "ACC", 3))
+				pid = PID_ACC;
+			else if (!memcmp(p, "GYR", 3))
+				pid = PID_GYRO;
+			else if (!memcmp(p, "MAG", 3))
+				pid = PID_COMPASS;
+			else if (!memcmp(p, "BAT", 3))
+				pid = PID_BATTERY_VOLTAGE;
+		}
+		if (pid == 0)
+			pid = hex2uint16(p);
 
-		printf("Time=%.1f PID=%X", (float)ts / 1000, pid);
-		for (int n = 0; n <= index; n++) {
-			if (value[n] == (int)value[n])
-				printf(" D%d=%d", n, (int)value[n]);
-			else
-				printf(" D%d=%f", n, value[n]);
+		p = strchr(p, ',');
+		if (!p++) continue;
+
+		int value[3] = {0};
+		int i = 0;
+		int total = 0;
+		do {
+			value[i] = atoi(p);
+			p = strchr(p, ',');
+			if (!p++) break;
+			total = ++i;
+		} while (i < 3);
+
+		printf("Time=%.2f ", (float)ts / 1000);
+		if (total == 1) {
+			printf("%X=%d", pid, value[0]);
 		}
-		putchar('\n');
+		else {
+			printf("%X=%d,%d,%d", pid, value[0], value[1], value[2]);
+		}
+		printf("\n");
 		WriteKMLData(kd, ts, pid, value);
 
 		if (endpos && ts > endpos)
