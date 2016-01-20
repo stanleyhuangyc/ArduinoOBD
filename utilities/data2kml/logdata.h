@@ -15,10 +15,6 @@
 #define PID_RUNTIME 0x11F
 #define PID_DISTANCE 0x131
 
-#define PID_TIME_DATE 0xF001
-#define PID_TIME_TIME 0xF002
-#define PID_TIME_PLAY_SPEED 0xF003
-
 #define PID_STAT_0_60 0xF100
 #define PID_STAT_0_100 0xF101
 #define PID_STAT_0_160 0xF102
@@ -47,16 +43,6 @@ enum {
 	PID_STAT_ACC_BACKWARD,
 };
 
-enum {
-	PID_LOCAL_DATA = 0xF300,
-	PID_LOCAL_RATE,
-	PID_REMOTE_DATA,
-	PID_REMOTE_RATE,
-	PID_TIME_REMAIN,
-	PID_BATTERY,
-	PID_DEVICE_TEMP,
-};
-
 #define PID_GPS_LATITUDE 0xA
 #define PID_GPS_LONGITUDE 0xB
 #define PID_GPS_ALTITUDE 0xC
@@ -68,8 +54,9 @@ enum {
 
 #define PID_ACC 0x20
 #define PID_GYRO 0x21
-
-#define PID_VIDEO_FRAME 0xFF00
+#define PID_COMPASS 0x22
+#define PID_MEMS_TEMP 0x23
+#define PID_BATTERY_VOLTAGE 0x24
 
 typedef struct {
 	uint32_t time;
