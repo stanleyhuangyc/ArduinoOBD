@@ -20,11 +20,11 @@ typedef struct {
 	uint16_t speedgps;
 	uint16_t rpm;
 	uint16_t throttle;
-	uint16_t coolant;
-	uint16_t intake;
+	int16_t coolant;
+	int16_t intake;
 	uint16_t load;
 	uint16_t absload;
-	uint16_t alt;
+	int16_t alt;
 	int16_t acc[3];
 } DATASET;
 
@@ -71,12 +71,22 @@ uint16_t hex2uint16(const char *p)
 	return i;
 }
 
-void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, int value[])
+static int isFloat(const char* s)
+{
+	while (*s && *s != ',') {
+		if (*s == '.')
+			return 1;
+		s++;
+	}
+	return 0;
+}
+
+void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, const char* value)
 {
 	kd->ts = timestamp;
 	switch (pid) {
 	case PID_GPS_LATITUDE:
-		kd->datas.lat = (float)value[0] / 1000000;
+		kd->datas.lat = isFloat(value) ? (float)atof(value) : (float)atoi(value) / 1000000;
 		if (!kd->startLat) {
 			kd->startLat = kd->datas.lat;
 		}
@@ -87,7 +97,7 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, int value[])
 		}
 		break;
 	case PID_GPS_LONGITUDE:
-		kd->datas.lng = (float)value[0] / 1000000;
+		kd->datas.lng = isFloat(value) ? (float)atof(value) : (float)atoi(value) / 1000000;
 		if (!kd->startLng) {
 			kd->startLng = kd->datas.lng;
 		}
@@ -98,42 +108,47 @@ void WriteKMLData(KML_DATA* kd, uint32_t timestamp, uint16_t pid, int value[])
 		}
 		break;
 	case PID_GPS_ALTITUDE:
-		kd->datas.alt = value[0];
+		kd->datas.alt = atoi(value);
 		break;
 	case PID_SPEED:
-		kd->datas.speed = (uint16_t)value[0];
+		kd->datas.speed = (uint16_t)atoi(value);
 		break;
 	case PID_RPM:
-		kd->datas.rpm = (uint16_t)value[0];
+		kd->datas.rpm = (uint16_t)atoi(value);
 		break;
 	case PID_THROTTLE:
-		kd->datas.throttle = (uint16_t)value[0];
+		kd->datas.throttle = (uint16_t)atoi(value);
 		break;
 	case PID_COOLANT_TEMP:
-		kd->datas.coolant = (uint16_t)value[0];
+		kd->datas.coolant = (int16_t)atoi(value);
 		break;
 	case PID_INTAKE_TEMP:
-		kd->datas.intake = (uint16_t)value[0];
+		kd->datas.intake = (int16_t)atoi(value);
 		break;
 	case PID_ENGINE_LOAD:
-		kd->datas.load = (uint16_t)value[0];
+		kd->datas.load = (uint16_t)atoi(value);
 		break;
 	case PID_ABS_ENGINE_LOAD:
-		kd->datas.absload = (uint16_t)value[0];
+		kd->datas.absload = (uint16_t)atoi(value);
 		break;
 	case PID_GPS_SPEED:
-		kd->datas.speedgps = (uint16_t)value[0];
+		kd->datas.speedgps = (uint16_t)atoi(value);
 		break;
 	case PID_ACC:
-		kd->datas.acc[0] = (int16_t)value[0];
-		kd->datas.acc[1] = (int16_t)value[1];
-		kd->datas.acc[2] = (int16_t)value[2];
+		{
+			const char *p = value;
+			kd->datas.acc[0] = atoi(p);
+			if (!(p = strchr(p, ','))) break;
+			kd->datas.acc[1] = atoi(++p);
+			if (!(p = strchr(p, ','))) break;
+			kd->datas.acc[2] = atoi(++p);
+		}
 		break;
 	case PID_GPS_DATE:
-		kd->curDate = (uint32_t)value[0];
+		kd->curDate = (uint32_t)atoi(value);
 		break;
 	case PID_GPS_TIME:
-		kd->curTime = (uint32_t)value[0];
+		kd->curTime = (uint32_t)atoi(value);
 		break;
 	}
 	if (kd->curTime != kd->lastTime && kd->datas.lat && kd->datas.lng) {
@@ -301,7 +316,7 @@ void WriteKMLTail(KML_DATA* kd)
 
 }
 
-void Cleanup(KML_DATA* kd)
+void CleanupKml(KML_DATA* kd)
 {
 	if (kd->dataset) free(kd->dataset);
 	if (kd->fp) fclose(kd->fp);
@@ -338,13 +353,10 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 
 	uint32_t ts = 0;
 	KML_DATA* kd = (KML_DATA*)calloc(1, sizeof(KML_DATA));
-	kd->fp = fopen(kmlfile, "w");
-	
-	//fprintf(kd->fp, "%s", kmlhead);
-	AppendFile(kd->fp, "kmlhead.txt");	
 
 	int elapsed;
 	int pid;
+	int count = 0;
 
 	char buf[1024];
 	while (ReadLine(fp, buf, sizeof(buf)) > 0) {
@@ -392,33 +404,28 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 		p = strchr(p, ',');
 		if (!p++) continue;
 
-		int value[3] = {0};
-		int i = 0;
-		int total = 0;
-		do {
-			value[i] = atoi(p);
-			p = strchr(p, ',');
-			if (!p++) break;
-			total = ++i;
-		} while (i < 3);
-
-		printf("Time=%.2f ", (float)ts / 1000);
-		if (total == 1) {
-			printf("%X=%d", pid, value[0]);
+		char* value = p;
+		printf("Time=%.2f %X=%s\n", (float)ts / 1000, pid, value);
+		if (!kd->fp) {
+			kd->fp = fopen(kmlfile, "w");
+			//fprintf(kd->fp, "%s", kmlhead);
+			AppendFile(kd->fp, "kmlhead.txt");
 		}
-		else {
-			printf("%X=%d,%d,%d", pid, value[0], value[1], value[2]);
-		}
-		printf("\n");
 		WriteKMLData(kd, ts, pid, value);
+		count++;
 
 		if (endpos && ts > endpos)
 			break;
 	}
+
+	if (kd->fp) {
+		WriteKMLTail(kd);
+		CleanupKml(kd);
+	}
+	else {
+		printf("No GPS data available in this file. KML not created.\n");
+	}
 	
-	WriteKMLTail(kd);
-	Cleanup(kd);
-	fclose(fp);
 	return 0;
 }
 
