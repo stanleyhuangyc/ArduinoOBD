@@ -115,6 +115,8 @@ public:
 	virtual OBD_STATES getState() { return m_state; }
 	// read specified OBD-II PID value
 	virtual bool read(byte pid, int& result);
+	// read raw PID value including entire response
+	virtual void read_raw(byte pid, char* result);
 	// set device into
 	virtual void sleep();
 	// set working protocol (default auto)
