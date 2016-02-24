@@ -257,7 +257,7 @@ void WriteKMLTail(KML_DATA* kd)
 
 	fprintf(kd->fp, "<gx:SimpleArrayData name=\"alt\">");
 	for (i = 0; i < kd->datacount; i++) {
-		fprintf(kd->fp, "<gx:value>%.2f</gx:value>", (float)kd->dataset[i].alt / 100);
+		fprintf(kd->fp, "<gx:value>%d</gx:value>", kd->dataset[i].alt);
 	}
 	fprintf(kd->fp, "</gx:SimpleArrayData>");
 
@@ -271,7 +271,7 @@ void WriteKMLTail(KML_DATA* kd)
 
 	fprintf(kd->fp, "<gx:SimpleArrayData name=\"acc\">");
 	for (i = 0; i < kd->datacount; i++) {
-		fprintf(kd->fp, "<gx:value>X:%d Y:%d Z:%d</gx:value>", kd->dataset[i].acc[0] / 64, kd->dataset[i].acc[1] / 64, kd->dataset[i].acc[2] / 64);
+		fprintf(kd->fp, "<gx:value>X:%d Y:%d Z:%d</gx:value>", kd->dataset[i].acc[0], kd->dataset[i].acc[1], kd->dataset[i].acc[2]);
 	}
 	fprintf(kd->fp, "</gx:SimpleArrayData>");	
 	fprintf(kd->fp, "<gx:SimpleArrayData name=\"ts\">");
@@ -298,7 +298,8 @@ void WriteKMLTail(KML_DATA* kd)
 		else
 			continue;
 
-		if (g <= -0.15f) {
+		// determine brake point
+		if (g <= -0.2f) {
 			n++;
 			fprintf(kd->fp, "<Placemark><name>#%d %u:%02u</name>", n, kd->dataset[i].timestamp / 60000, (kd->dataset[i].timestamp / 1000) % 60);
 			fprintf(kd->fp, "<styleUrl>#brakepoint</styleUrl><Point><coordinates>%f,%f</coordinates></Point>", kd->dataset[i].lng, kd->dataset[i].lat);
@@ -405,12 +406,13 @@ int ConvertToKML(const char* logfile, const char* kmlfile, uint32_t startpos, ui
 		if (!p++) continue;
 
 		char* value = p;
-		printf("Time=%.2f %X=%s\n", (float)ts / 1000, pid, value);
+		printf("Time=%02u:%02u.%03u %X=%s\t\t\r", ts / 60000, (ts % 60000) / 1000, ts % 1000, pid, value);
 		if (!kd->fp) {
 			kd->fp = fopen(kmlfile, "w");
 			//fprintf(kd->fp, "%s", kmlhead);
 			AppendFile(kd->fp, "kmlhead.txt");
 		}
+
 		WriteKMLData(kd, ts, pid, value);
 		count++;
 
@@ -435,7 +437,7 @@ int main(int argc, const char* argv[])
 	int endpos = 0;
 	char outfile[256];
 
-	printf("Data2KML (C)2013-14 Written by Stanley Huang <http://freematics.com> \n\n");
+	printf("Data2KML (C)2013-16 Written by Stanley Huang <http://freematics.com> \n\n");
 	if (argc <= 1) {
 		printf("Usage: %s [Input file] [Output file] [Start Pos] [End Pos]\n\n", argv[0]);
 		printf("Description about the arguments:\n\n\
