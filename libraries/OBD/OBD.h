@@ -1,8 +1,8 @@
 /*************************************************************************
 * Arduino Library for OBD-II UART/I2C Adapter
-* Distributed under GPL v2.0
+* Distributed under BSD License
 * Visit http://freematics.com for more information
-* (C)2012-2015 Stanley Huang <stanleyhuangyc@gmail.com>
+* (C)2012-2016 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
@@ -11,7 +11,7 @@
 #define OBD_MODEL_I2C 1
 
 #define OBD_TIMEOUT_SHORT 1000 /* ms */
-#define OBD_TIMEOUT_LONG 10000 /* ms */
+#define OBD_TIMEOUT_LONG 15000 /* ms */
 #define OBD_TIMEOUT_GPS 200 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
 
@@ -90,7 +90,8 @@ typedef enum {
 typedef enum {
     OBD_DISCONNECTED = 0,
     OBD_CONNECTING = 1,
-    OBD_CONNECTED = 2
+    OBD_CONNECTED = 2,
+	OBD_FAILED = 3
 } OBD_STATES;
 
 uint16_t hex2uint16(const char *p);
@@ -100,10 +101,7 @@ class COBD
 {
 public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
-	/*
-       Serial baudrate is only adjustable for Arduino OBD-II Adapters V2
-       Check out http://freematics.com/pages/products/arduino-obd-adapter
-	*/
+	// begin serial UART
 	virtual void begin();
 	// initialize OBD-II connection
 	virtual bool init(OBD_PROTOCOLS protocol = PROTO_AUTO);
@@ -115,6 +113,8 @@ public:
 	virtual OBD_STATES getState() { return m_state; }
 	// read specified OBD-II PID value
 	virtual bool read(byte pid, int& result);
+	// read multiple (up to 8) OBD-II PID values, return number of values obtained
+	virtual byte read(const byte pid[], byte count, int result[]);
 	// set device into
 	virtual void sleep();
 	// set working protocol (default auto)
@@ -141,6 +141,8 @@ public:
 	byte errors;
 	// bit map of supported PIDs
 	byte pidmap[4 * 4];
+	// adapter version
+	byte version;
 protected:
 	virtual char* getResponse(byte& pid, char* buffer, byte bufsize);
 	virtual byte receive(char* buffer, byte bufsize, int timeout = OBD_TIMEOUT_SHORT);
@@ -197,6 +199,7 @@ public:
 	void begin();
 	void end();
 	bool read(byte pid, int& result);
+	byte read(const byte pid[], byte count, int result[]);
 	void write(const char* s);
 	// API not applicable
 	bool setBaudRate(unsigned long baudrate) { return false; }

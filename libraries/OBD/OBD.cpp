@@ -1,8 +1,8 @@
 /*************************************************************************
 * Arduino Library for OBD-II UART/I2C Adapter
-* Distributed under GPL v2.0
+* Distributed under BSD License
 * Visit http://freematics.com for more information
-* (C)2012-2015 Stanley Huang <stanleyhuangyc@gmail.com>
+* (C)2012-2016 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
 #include <Arduino.h>
@@ -79,6 +79,25 @@ bool COBD::read(byte pid, int& result)
 	sendQuery(pid);
 	// receive and parse the response
 	return getResult(pid, result);
+}
+
+byte COBD::read(const byte pid[], byte count, int result[])
+{
+	// send a multiple query command
+	char buffer[128];
+	char *p = buffer;
+	byte results = 0;
+	for (byte n = 0; n < count; n++) {
+		p += sprintf(p, "%02X%02X\r\n", dataMode, pid[n]);		
+	}
+	write(buffer);
+	// receive and parse the response
+	for (byte n = 0; n < count; n++) {
+		byte curpid = pid[n];
+		if (getResult(curpid, result[n]))
+			results++;
+	}
+	return results;
 }
 
 void COBD::clearDTC()
@@ -239,7 +258,7 @@ float COBD::getVoltage()
 bool COBD::getVIN(char* buffer, byte bufsize)
 {
 	if (sendCommand("0902\r", buffer, bufsize)) {
-	    char *p = strstr(buffer, "49 02");
+        char *p = strstr(buffer, "0: 49 02");
         if (p) {
             char *q = buffer;
             p += 10;
@@ -321,23 +340,30 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 
 	m_state = OBD_CONNECTING;
 
+	write("ATI\r");
+	if (receive(buffer, sizeof(buffer), 100)) {
+		char *p = strstr(buffer, "OBDUART");
+		if (p) {
+			p += 9;
+			version = (*p - '0') * 10 + (*(p + 2) - '0');
+		}
+	}
+	if (version == 0) {
+		m_state = OBD_FAILED;
+		return false;
+	}
+
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
 		debugOutput(initcmd[i]);
 #endif
 		write(initcmd[i]);
 		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0) {
-			if (i == 0) {
-				// workaround for longer initialization time
-				delay(2000);
-			} else {
-				m_state = OBD_DISCONNECTED;
-				return false;
-			}
+			m_state = OBD_DISCONNECTED;
+			return false;
 		}
 		delay(50);
 	}
-	//while (available()) read();
 
 	if (protocol != PROTO_AUTO) {
 		setProtocol(protocol);
@@ -358,7 +384,6 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 		}
 		delay(100);
 	}
-	//while (available()) read();
 
 	m_state = OBD_CONNECTED;
 	errors = 0;
@@ -469,6 +494,17 @@ byte COBDI2C::receive(char* buffer, byte bufsize, int timeout)
 		}
 	} while(millis() - start < timeout);
 	return 0;
+}
+
+byte COBDI2C::read(const byte pid[], byte count, int result[])
+{
+	byte results = 0; 
+	for (byte n = 0; n < count; n++) {
+		if (read(pid[n], result[n])) {
+			results++;
+		}
+	}
+	return results;
 }
 
 void COBDI2C::setPID(byte pid, byte obdPid[])
