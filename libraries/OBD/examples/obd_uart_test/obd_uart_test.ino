@@ -12,7 +12,7 @@
 #include <OBD.h>
 
 // On Arduino Leonardo, Micro, MEGA or DUE, hardware serial can be used for output
-// as OBD-II adapter should connect to Serial1, otherwise we use software serial
+// as OBD-II UART adapter connects to Serial1, otherwise we use software serial
 SoftwareSerial mySerial(A2, A3);
 //#define mySerial Serial
 
@@ -48,26 +48,33 @@ void testOut()
     mySerial.println();
 }
 
-void readPID()
+void readPIDSingle()
 {
-    static const byte pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
+    int value;
     mySerial.print('[');
     mySerial.print(millis());
     mySerial.print(']');
-    for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
-        byte pid = pidlist[i];
-        bool valid = obd.isValidPID(pid);
-        mySerial.print((int)pid | 0x100, HEX);
+    mySerial.print("RPM=");
+    if (obd.read(PID_RPM, value)) {
+      mySerial.print(value);
+    }
+    mySerial.println();
+}
+
+void readPIDMultiple()
+{
+    static const byte pids[] = {PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_COOLANT_TEMP, PID_INTAKE_TEMP};
+    int values[sizeof(pids)];
+    if (obd.read(pids, sizeof(pids), values) == sizeof(pids)) {
+      for (byte i = 0; i < sizeof(pids) ; i++) {
+        mySerial.print('[');
+        mySerial.print(millis());
+        mySerial.print(']');
+        mySerial.print((int)pids[i] | 0x100, HEX);
         mySerial.print('=');
-        if (valid) {
-            int value;
-            if (obd.read(pid, value)) {
-              mySerial.print(value);
-            }
-        }
-        mySerial.print(' ');
-     }
-     mySerial.println();
+        mySerial.println(values[i]);
+       }
+    }
 }
 
 void setup()
@@ -95,5 +102,6 @@ void setup()
 
 void loop()
 {
-  readPID();
+  readPIDSingle();
+  readPIDMultiple();
 }
