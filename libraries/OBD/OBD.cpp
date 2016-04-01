@@ -117,10 +117,10 @@ int COBD::normalizeData(byte pid, char* data)
 	int result;
 	switch (pid) {
 	case PID_RPM:
-	case PID_EVAP_SYS_VAPOR_PRESSURE:
+	case PID_EVAP_SYS_VAPOR_PRESSURE: // kPa
 		result = getLargeValue(data) >> 2;
 		break;
-	case PID_FUEL_PRESSURE:
+	case PID_FUEL_PRESSURE: // kPa
 		result = getSmallValue(data) * 3;
 		break;
 	case PID_COOLANT_TEMP:
@@ -146,7 +146,7 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_HYBRID_BATTERY_PERCENTAGE:
 		result = getPercentageValue(data);
 		break;
-	case PID_MAF_FLOW:
+	case PID_MAF_FLOW: // grams/sec
 		result = getLargeValue(data) / 100;
 		break;
 	case PID_TIMING_ADVANCE:
@@ -186,6 +186,9 @@ int COBD::normalizeData(byte pid, char* data)
 	case PID_CATALYST_TEMP_B1S2:
 	case PID_CATALYST_TEMP_B2S2:
 		result = getLargeValue(data) / 10 - 40;
+		break;
+	case PID_AIR_FUEL_EQUIV_RATIO: // 0~200
+		result = (long)getLargeValue(data) * 200 / 65536;
 		break;
 	default:
 		result = getSmallValue(data);
