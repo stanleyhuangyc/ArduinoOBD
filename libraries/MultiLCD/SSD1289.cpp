@@ -14,6 +14,21 @@ Define zone
 
 #define PIN_BACKLIGHT 8
 
+#define PIN_CLK 6
+#define PIN_CS 5
+#define PIN_DIN 4
+#define PIN_DOUT 3
+#define PIN_IRQ 2
+
+#define PREC_TOUCH_CONST 10
+
+#define PixSizeX	136
+#define PixOffsX	425
+
+#define PixSizeY	106
+#define PixOffsY	366
+
+
 /**********************************************
 Standard C functions zone
 **********************************************/
@@ -93,6 +108,19 @@ void LCD_SSD1289::begin()
 
 	pinMode(PIN_BACKLIGHT, OUTPUT);
 	digitalWrite(PIN_BACKLIGHT, HIGH);
+
+	// set up pins for touch controller
+	pinMode(PIN_CLK,  OUTPUT);
+	pinMode(PIN_CS,   OUTPUT);
+	pinMode(PIN_DIN,  OUTPUT);
+	pinMode(PIN_DOUT, INPUT);
+	pinMode(PIN_IRQ,  INPUT);
+
+	digitalWrite(PIN_CS,  HIGH);
+	digitalWrite(PIN_CLK, HIGH);
+	digitalWrite(PIN_DIN, HIGH);
+	digitalWrite(PIN_CLK, HIGH);
+
 }
 
 void LCD_SSD1289::setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
@@ -123,6 +151,14 @@ void LCD_SSD1289::Enable()
 void LCD_SSD1289::Disable()
 {
     sbi(P_CS, B_CS);
+}
+
+void LCD_SSD1289::drawPixel(uint16_t poX, uint16_t poY,uint16_t color)
+{
+    Enable();
+    setXY(poX, poY, poX, poY);
+    setPixel(color);
+    Disable();
 }
 
 void LCD_SSD1289::clearPixels(uint32_t pixels)
@@ -343,3 +379,68 @@ void LCD_SSD1289::draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t 
     Disable();
     m_x += width * 2;
 }
+
+void LCD_SSD1289::shiftOutTouchData(unsigned char data)
+{
+	unsigned char nop;
+	unsigned char count;
+
+	digitalWrite(PIN_CLK,LOW);
+
+	for(count=0; count<8; count++)
+	{
+		digitalWrite(PIN_DIN, data & 0x80 ? HIGH : LOW);
+		digitalWrite(PIN_CLK, LOW);                
+		nop++;
+		digitalWrite(PIN_CLK, HIGH);
+		data <<= 1; 
+		//nop++;
+	}
+}
+
+unsigned int LCD_SSD1289::shiftInTouchData()
+{
+	unsigned char nop;
+	unsigned int data = 0;
+	unsigned char count;
+	for(count=0; count<12; count++)
+	{
+		data <<= 1;
+		digitalWrite(PIN_CLK, HIGH);               
+		nop++;
+		digitalWrite(PIN_CLK, LOW);
+		//nop++;
+		data |= digitalRead(PIN_DOUT);
+	}
+	return data;
+}
+
+byte LCD_SSD1289::getTouchData(int& x, int& y)
+{
+	long tx = 0;
+	long ty = 0;
+
+	if (digitalRead(PIN_IRQ) == HIGH)
+		return 0;
+	
+	digitalWrite(PIN_CS,LOW);                    
+	for (int i=0; i < PREC_TOUCH_CONST; i++)
+	{
+		shiftOutTouchData(0x90);        
+		digitalWrite(PIN_CLK,HIGH);
+		digitalWrite(PIN_CLK,LOW); 
+		int d = shiftInTouchData();
+		if (d < PixOffsY) return 0;
+		ty += d;
+
+		shiftOutTouchData(0xD0);      
+		digitalWrite(PIN_CLK,HIGH);
+		digitalWrite(PIN_CLK,LOW);
+		tx+=shiftInTouchData();
+	}
+	digitalWrite(PIN_CS,HIGH);
+	y = (tx - PixOffsX * PREC_TOUCH_CONST) / PixSizeX;
+	x = (ty - PixOffsY * PREC_TOUCH_CONST) / PixSizeY;
+	return 1;
+}
+

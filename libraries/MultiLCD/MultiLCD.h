@@ -62,6 +62,9 @@ public:
     virtual void clear() {}
     virtual void begin() {}
     virtual void setCursor(byte column, byte line) {}
+    virtual byte readTouchData(int& x, int& y) { return 0; }
+    virtual int getScreenWidth() { return 320; }
+    virtual int getScreenHeight() { return 240; }
     void printInt(uint16_t value, int8_t padding = -1);
     void printLong(uint32_t value, int8_t padding = -1);
     void printSpace(byte n)
@@ -248,12 +251,16 @@ public:
         clear(0, line * TFT_LINE_HEIGHT, disp_y_size, 8);
     }
     void setBackLight(byte brightness);
+    void drawPixel(uint16_t poX, uint16_t poY, uint16_t color);
+    byte getTouchData(int& x, int& y);
 private:
     void setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
     void writeDigit(byte n);
     void clearPixels(uint32_t pixels);
     void Enable();
     void Disable();
+    void shiftOutTouchData(unsigned char data);
+    unsigned int shiftInTouchData();
 };
 
 class LCD_R61581 : public UTFT, public LCD_Common, public Print
@@ -303,11 +310,17 @@ public:
         clear(0, line * TFT_LINE_HEIGHT, disp_y_size, 8);
     }
     void setBackLight(byte brightness);
+    void drawPixel(uint16_t poX, uint16_t poY, uint16_t color);
+    byte getTouchData(int& x, int& y);
+    int getScreenWidth() { return 480; }
+    int getScreenHeight() { return 320; }
 private:
     void setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
     void writeDigit(byte n);
     void clearPixels(uint32_t pixels);
     void Enable();
     void Disable();
+    void shiftOutTouchData(unsigned char data);
+    unsigned int shiftInTouchData();
 };
 
