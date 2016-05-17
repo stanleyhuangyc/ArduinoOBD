@@ -24,17 +24,12 @@
 // uses software(1)/hardware(0) serial for data streaming
 #define USE_SOFTSERIAL 0
 #define RF_SERIAL Serial3
+#define STREAM_BAUDRATE 9600 /* bps */
 
 // this defines the format of data streaming
 // FORMAT_BIN is required by Freematics OBD iOS App
 // FORMAT_TEXT for text-based, text names for PID
 #define STREAM_FORMAT FORMAT_TEXT
-
-/* Default streaming baudrates:
-   9600bps for BLE
-   38400bps for BT 2.1
-*/
-#define STREAM_BAUDRATE 9600
 
 /**************************************
 * GPS configuration
@@ -59,7 +54,6 @@
 /**************************************
 * Timeout/interval options
 **************************************/
-#define OBD_MIN_INTERVAL 20 /* ms */
 #define ACC_DATA_INTERVAL 200 /* ms */
 
 /**************************************

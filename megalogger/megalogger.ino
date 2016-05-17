@@ -3,7 +3,7 @@
 * Works with Freematics OBD-II Telematics Advanced Kit
 * Visit http://freematics.com for more information
 * Distributed under GPL v2.0
-* Written by Stanley Huang <stanleyhuangyc@gmail.com>
+* Written by Stanley Huang <support@freematics.com.au>
 *************************************************************************/
 
 #include <Arduino.h>
@@ -24,7 +24,6 @@
 #include <SoftwareSerial.h>
 #endif
 #include "datalogger.h"
-#include "touch.h"
 
 // logger states
 #define STATE_SD_READY 0x1
@@ -56,20 +55,10 @@ static uint32_t startTime = 0;
 static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
 static uint32_t gpsDate = 0;
-static uint32_t obdTime = 0;
-static uint8_t obdCount = 0;
 #if USE_GPS
 static uint32_t lastGPSDataTime = 0;
 static int gpsSpeed = -1;
 #endif
-
-static const byte PROGMEM pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
-static const byte PROGMEM pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static const byte PROGMEM pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE};
-
-#define TIER_NUM1 sizeof(pidTier1)
-#define TIER_NUM2 sizeof(pidTier2)
-#define TIER_NUM3 sizeof(pidTier3)
 
 byte state = 0;
 
@@ -219,7 +208,7 @@ void fadeOutScreen()
     // fade out backlight
     for (int n = 254; n >= 0; n--) {
         lcd.setBackLight(n);
-        delay(5);
+        delay(3);
     }
 }
 
@@ -227,7 +216,7 @@ void fadeInScreen()
 {
     for (int n = 1; n <= 255; n++) {
         lcd.setBackLight(n);
-        delay(10);
+        delay(6);
     }
 }
 
@@ -538,27 +527,11 @@ void processAccelerometer()
 #endif
 }
 
-void logOBDData(byte pid)
+void logOBDData(byte pid, int value)
 {
     char buffer[64];
-    uint32_t start = millis();
-    int value;
-
     // send query for OBD-II PID
-    obd.sendQuery(pid);
-    // let PID parsed from response
-    pid = 0;
-    // read responded PID and data
-    if (!obd.getResult(pid, value)) {
-        return;
-    }
     logger.dataTime = millis();
-    if (obdCount == 255) {
-      obdTime = 0; 
-      obdCount = 0;
-    }
-    obdTime += logger.dataTime - start;
-    obdCount++;
     // display data
     showPIDData(pid, value);
 
@@ -595,13 +568,6 @@ void logOBDData(byte pid)
         lcd.print("KB");
     }
 #endif
-
-    // if OBD response is very fast, go on processing other data for a while
-#ifdef OBD_MIN_INTERVAL
-    while (millis() - start < OBD_MIN_INTERVAL) {
-        obd.dataIdleLoop();
-    }
-#endif
 }
 
 void showECUCap()
@@ -622,9 +588,9 @@ void showECUCap()
     }
     int values[sizeof(pidlist)];
     bool scanned = false;
-    for (;;) {
-      bool touched = false;
-      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]) && !touched; i++) {
+    bool touched = false;
+    for (uint32_t t = millis(); millis() - t < 10000 & !touched; ) {
+      for (byte i = 0, n = 4; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
           byte pid = pgm_read_byte(pidlist + i);
           if (obd.isValidPID(pid)) {
               int value;
@@ -644,9 +610,11 @@ void showECUCap()
                 lcd.print("N/A");
               }
           }
-          touched = touch.available();
+          if (!touched) {
+            int x, y;
+            touched = lcd.getTouchData(x, y);
+          }
        }
-       if (touched) break;
        scanned = true;
     }
 }
@@ -665,10 +633,11 @@ void reconnect()
             continue;
 
         int value;
-        if (obd.read(PID_RPM, value) && value > 0)
+        if (obd.read(PID_RPM, value))
             break;
-
-        Narcoleptic.delay(1000);
+        
+        obd.sleep();
+        Narcoleptic.delay(4000);
     }
     // re-initialize
     state |= STATE_OBD_READY;
@@ -744,22 +713,18 @@ void testOut()
 
 void setup()
 {
+#if USE_GPS
+    GPSUART.begin(GPS_BAUDRATE);
+    lastGPSDataTime = 0;
+#endif
+    logger.initSender();
+
     lcd.begin();
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setColor(0xFFE0);
     lcd.println("MEGA LOGGER - OBD-II/GPS/MEMS");
     lcd.println();
     lcd.setColor(RGB16_WHITE);
-
-#if USE_GPS
-    GPSUART.begin(GPS_BAUDRATE);
-    // switching to 10Hz mode, effective only for MTK3329
-    //GPSUART.println(PMTK_SET_NMEA_OUTPUT_ALLDATA);
-    //GPSUART.println(PMTK_SET_NMEA_UPDATE_10HZ);
-    lastGPSDataTime = 0;
-#endif
-
-    logger.initSender();
 
 #if ENABLE_DATA_LOG
     if (checkSD()) {
@@ -799,7 +764,6 @@ void setup()
 
     // initialize the OBD until success
     while (!obd.init(OBD_PROTOCOL));
-
     state |= STATE_OBD_READY;
 
     char buf[64];
@@ -830,38 +794,36 @@ void setup()
     lastRefreshTime = millis();
 }
 
+
 void loop()
 {
-    static byte index = 0;
     static byte index2 = 0;
-    static byte index3 = 0;
-    byte pid = pgm_read_byte(pidTier1 + index++);
-    logOBDData(pid);
-    if (index == TIER_NUM1) {
-        index = 0;
-        if (index2 == TIER_NUM2) {
-            index2 = 0;
-            pid = pgm_read_byte(pidTier3 + index3);
-            if (obd.isValidPID(pid)) {
-                logOBDData(pid);
-            }
-            index3 = (index3 + 1) % TIER_NUM3;
-            if (index3 == 0) {
-                float v = obd.getVoltage();
-                ShowVoltage(v);
-                logger.logData(PID_BATTERY_VOLTAGE, (int)(v * 100));
-            }
-        } else {
-            pid = pgm_read_byte(pidTier2 + index2);
-            if (obd.isValidPID(pid)) {
-                logOBDData(pid);
-            }
-            index2++;
-        }
+    const byte pids[]= {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD};
+    const byte pids2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_ENGINE_FUEL_RATE};
+    int values[sizeof(pids)] = {0};
+    uint32_t pidTime = millis();
+    // read multiple OBD-II PIDs
+    byte results = obd.read(pids, sizeof(pids), values);
+    pidTime = millis() - pidTime;
+    if (results == sizeof(pids)) {
+      for (byte n = 0; n < sizeof(pids); n++) {
+        logOBDData(pids[n], values[n]);
+      }
+    }
+    byte pid = pids2[index2 = (index2 + 1) % sizeof(pids2)];
+    // check validation and read a single OBD-II PID
+    if (obd.isValidPID(pid)) {
+      int value;
+      if (obd.read(pid, value)) {
+        logOBDData(pid, value); 
+      }
     }
 
     if (logger.dataTime -  lastRefreshTime >= 1000) {
-        char buf[12];
+      float v = obd.getVoltage();
+      ShowVoltage(v);
+
+      char buf[12];
         // display elapsed time
         unsigned int sec = (logger.dataTime - startTime) / 1000;
         sprintf(buf, "%02u:%02u", sec / 60, sec % 60);
@@ -869,10 +831,10 @@ void loop()
         lcd.setCursor(250, 2);
         lcd.print(buf);
         // display OBD time
-        if (obdTime) {
+        if (results) {
           lcd.setFontSize(FONT_SIZE_SMALL);
           lcd.setCursor(242, 26);
-          lcd.print((uint16_t)(obdTime / obdCount));
+          lcd.print((uint16_t)(pidTime / results));
           lcd.print("ms ");
         }
         lastRefreshTime = logger.dataTime;
