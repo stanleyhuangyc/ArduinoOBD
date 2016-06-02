@@ -351,10 +351,6 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 			version = (*p - '0') * 10 + (*(p + 2) - '0');
 		}
 	}
-	if (version == 0) {
-		m_state = OBD_FAILED;
-		return false;
-	}
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
