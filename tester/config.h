@@ -13,7 +13,7 @@
 * Accelerometer & Gyro
 **************************************/
 //#define USE_MPU6050 1
-#define USE_MPU9150 1
+//#define USE_MPU9150 1
 
 /**************************************
 * LCD module (uncomment only one)
@@ -32,7 +32,9 @@ LCD_ILI9341 lcd; /* 2.2" ILI9341 based SPI TFT LCD */
 * Data streaming options
 **************************************/
 // enable(1)/disable(0) data streaming
-#define ENABLE_DATA_OUT 1
+#define ENABLE_DATA_OUT 0
+#define ENABLE_DATA_LOG 1
+#define SD_CS_PIN 10
 
 #define DELAY_AFTER_SENDING 10
 

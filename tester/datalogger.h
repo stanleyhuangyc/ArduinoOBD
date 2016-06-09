@@ -1,6 +1,12 @@
+/*************************************************************************
+* Freematics Data Logger Class
+* Distributed under GPL v2.0
+* Written by Stanley Huang <stanleyhuangyc@gmail.com>
+* Visit http://freematics.com for more information
+*************************************************************************/
+
 #define FORMAT_BIN 0
-#define FORMAT_CSV 1
-#define FORMAT_TEXT 2
+#define FORMAT_TEXT 1
 
 typedef struct {
     uint32_t time;
@@ -33,6 +39,8 @@ typedef struct {
 
 #if USE_SOFTSERIAL
 SoftwareSerial SerialRF(A2, A3);
+#elif defined(RF_SERIAL)
+#define SerialRF RF_SERIAL
 #else
 #define SerialRF Serial
 #endif
@@ -44,7 +52,7 @@ static File sdfile;
 #endif
 
 typedef struct {
-    uint16_t pid;
+    uint8_t pid;
     char name[3];
 } PID_NAME;
 
@@ -53,12 +61,12 @@ const PID_NAME pidNames[] PROGMEM = {
 {PID_GYRO, {'G','Y','R'}},
 {PID_COMPASS, {'M','A','G'}},
 {PID_GPS_LATITUDE, {'L','A','T'}},
-{PID_GPS_LONGITUDE, {'L','O','N'}},
+{PID_GPS_LONGITUDE, {'L','N','G'}},
 {PID_GPS_ALTITUDE, {'A','L','T'}},
 {PID_GPS_SPEED, {'S','P','D'}},
 {PID_GPS_HEADING, {'C','R','S'}},
 {PID_GPS_SAT_COUNT, {'S','A','T'}},
-{PID_GPS_TIME, {'T','M','E'}},
+{PID_GPS_TIME, {'U','T','C'}},
 {PID_GPS_DATE, {'D','T','E'}},
 {PID_BATTERY_VOLTAGE, {'B','A','T'}},
 {PID_DATA_SIZE, {'D','A','T'}},
@@ -66,120 +74,144 @@ const PID_NAME pidNames[] PROGMEM = {
 
 class CDataLogger {
 public:
+    CDataLogger()
+    {
+        m_lastDataTime = 0;
+#if ENABLE_DATA_CACHE
+        cacheBytes = 0;
+#endif
+    }
     void initSender()
     {
 #if ENABLE_DATA_OUT
         SerialRF.begin(STREAM_BAUDRATE);
 #endif
-#if ENABLE_DATA_LOG
-    m_lastDataTime = 0;
-#endif
     }
-    void recordData(const char* buf)
+    byte genTimestamp(char* buf, bool absolute)
+    {
+      byte n;
+      if (absolute || dataTime >= m_lastDataTime + 60000) {
+        // absolute timestamp
+        n = sprintf(buf, "#%lu,", dataTime);
+      } else {
+        // incremental timestamp
+        n = sprintf(buf, "%u,", (unsigned int)(dataTime - m_lastDataTime));
+      }
+      return n;
+    }
+    void record(const char* buf, byte len)
     {
 #if ENABLE_DATA_LOG
-        dataSize += sdfile.print(dataTime - m_lastDataTime);
-        dataSize += sdfile.write(',');
-        dataSize += sdfile.write(buf);
+#if STREAM_FORMAT == FORMAT_BIN
+        dataSize += sdfile.write(buf, len);
+#else
+        char tmp[12];
+        byte n = genTimestamp(tmp, dataSize == 0);
+        dataSize += sdfile.write(tmp, n);
+        dataSize += sdfile.write(buf, len);
+        sdfile.println();
+        dataSize += 3;
+#endif
+#endif
         m_lastDataTime = dataTime;
+    }
+    void dispatch(const char* buf, byte len)
+    {
+#if ENABLE_DATA_CACHE
+        if (cacheBytes + len < MAX_CACHE_SIZE - 10) {
+          cacheBytes += genTimestamp(cache + cacheBytes, cacheBytes == 0);
+          memcpy(cache + cacheBytes, buf, len);
+          cacheBytes += len;
+          cache[cacheBytes++] = '\n';
+          cache[cacheBytes] = 0;
+        }
+#else
+        //char tmp[12];
+        //genTimestamp(tmp, false);
+        //SerialRF.print(tmp);
+#endif
+#if ENABLE_DATA_OUT
+        SerialRF.write(buf, len);
+        SerialRF.println();
 #endif
     }
-    void logData(char c)
+    void logData(const char* buf, byte len)
     {
-#if ENABLE_DATA_LOG
-        if (c >= ' ') {
-            sdfile.write(c);
-            dataSize++;
-        }
+#if ENABLE_DATA_OUT
+#if STREAM_FORMAT != FORMAT_BIN
+        dispatch(buf, len);
 #endif
+#endif
+        record(buf, len);
+    }
+    void logData(uint16_t pid)
+    {
+        char buf[8];
+        byte len = translatePIDName(pid, buf);
+#if ENABLE_DATA_OUT
+#if STREAM_FORMAT != FORMAT_BIN
+        dispatch(buf, len);
+#endif
+#endif
+        record(buf, len);
     }
     void logData(uint16_t pid, int value)
     {
         char buf[16];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%d\n", value);
-#else
-        sprintf(buf, "%X,%d\n", pid, value);
-#endif
-#if ENABLE_DATA_OUT
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%d", value) + n;
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-        SerialRF.write((uint8_t*)&ld, 12);
+        dispatch((const char*)&ld, 12);
 #else
-        SerialRF.print(buf);
+        dispatch(buf, len);
 #endif
-#ifdef DELAY_AFTER_SENDING
-        delay(DELAY_AFTER_SENDING);
-#endif
-#endif
-        recordData(buf);
+        record(buf, len);
     }
     void logData(uint16_t pid, int32_t value)
     {
         char buf[20];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%ld\n", value);
-#else
-        sprintf(buf, "%X,%ld\n", pid, value);
-#endif
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%ld", value) + n;
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-        SerialRF.write((uint8_t*)&ld, 12);
+        dispatch((const char*)&ld, 12);
 #else
-        SerialRF.print(buf);
-#endif
-#ifdef DELAY_AFTER_SENDING
-        delay(DELAY_AFTER_SENDING);
+        dispatch(buf, len);
 #endif
 #endif
-        recordData(buf);
+        record(buf, len);
     }
     void logData(uint16_t pid, uint32_t value)
     {
         char buf[20];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%lu\n", value);
-#else
-        sprintf(buf, "%X,%lu\n", pid, value);
-#endif
-#if ENABLE_DATA_OUT
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%lu", value) + n;
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-        SerialRF.write((uint8_t*)&ld, 12);
+        dispatch((const char*)&ld, 12);
 #else
-        SerialRF.print(buf);
+        dispatch(buf, len);
 #endif
-#endif
-#ifdef DELAY_AFTER_SENDING
-        delay(DELAY_AFTER_SENDING);
-#endif
-        recordData(buf);
+        record(buf, len);
     }
     void logData(uint16_t pid, int value1, int value2, int value3)
     {
         char buf[24];
-#if STREAM_FORMAT == FORMAT_TEXT
-        sprintf(buf + translatePIDName(pid, buf), "%d,%d,%d\n", value1, value2, value3);
-#else
-        sprintf(buf, "%X,%d,%d,%d\n", pid, value1, value2, value3);
-#endif
-#if ENABLE_DATA_OUT
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%d,%d,%d", value1, value2, value3) + n;
 #if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
         ld.checksum = getChecksum((char*)&ld, 20);
-        SerialRF.write((uint8_t*)&ld, 20);
+        dispatch((const char*)&ld, 20);
 #else
-        SerialRF.print(buf);
+        dispatch(buf, len);
 #endif
-#ifdef DELAY_AFTER_SENDING
-        delay(DELAY_AFTER_SENDING);
-#endif
-#endif
-        recordData(buf);
+        record(buf, len);
     }
 #if ENABLE_DATA_LOG
     uint16_t openFile(uint16_t logFlags = 0, uint32_t dateTime = 0)
@@ -221,6 +253,10 @@ public:
 #endif
     uint32_t dataTime;
     uint32_t dataSize;
+#if ENABLE_DATA_CACHE
+    char cache[MAX_CACHE_SIZE];
+    int cacheBytes;
+#endif
 private:
     byte getChecksum(char* buffer, byte len)
     {
@@ -230,21 +266,19 @@ private:
         }
         return checksum;
     }
-#if STREAM_FORMAT == FORMAT_TEXT
     byte translatePIDName(uint16_t pid, char* text)
     {
+#if STREAM_FORMAT == FORMAT_TEXT && USE_FRIENDLY_PID_NAME
         for (uint16_t n = 0; n < sizeof(pidNames) / sizeof(pidNames[0]); n++) {
-            uint16_t id = pgm_read_word(&pidNames[n].pid);
+            uint16_t id = pgm_read_byte(&pidNames[n].pid);
             if (pid == id) {
                 memcpy_P(text, pidNames[n].name, 3);
-                text[3] = '=';
+                text[3] = ',';
                 return 4;
             }
         }
-        return sprintf(text, "%X=", pid);
+#endif
+        return sprintf(text, "%X,", pid);
     }
-#endif
-#if ENABLE_DATA_LOG
     uint32_t m_lastDataTime;
-#endif
 };
