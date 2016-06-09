@@ -23,8 +23,8 @@
 
 // uses software(1)/hardware(0) serial for data streaming
 #define USE_SOFTSERIAL 0
-#define RF_SERIAL Serial3
-#define STREAM_BAUDRATE 9600 /* bps */
+#define RF_SERIAL Serial
+#define STREAM_BAUDRATE 115200 /* bps */
 
 // this defines the format of data streaming
 // FORMAT_BIN is required by Freematics OBD iOS App
@@ -59,8 +59,8 @@
 /**************************************
 * LCD module (uncomment only one)
 **************************************/
-//LCD_R61581 lcd; /* 3.5" CTE35IPS/R61581 based LCD */
-LCD_SSD1289 lcd; /* 3.2" SSD12389 based LCD */
+LCD_R61581 lcd; /* 3.5" CTE35IPS/R61581 based LCD */
+//LCD_SSD1289 lcd; /* 3.2" SSD12389 based LCD */
 //LCD_ILI9325D lcd; /* 2.8" ILI9325 based LCD */
 //LCD_ILI9341 lcd; /* 2.4" ILI9341 based SPI LCD */
 //LCD_Null lcd;
