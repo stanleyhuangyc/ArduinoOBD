@@ -302,6 +302,7 @@ size_t LCD_R61581::write(uint8_t c)
         m_x += 9;
     }
     Disable();
+    return 1;
 }
 
 void LCD_R61581::writeDigit(byte n)
