@@ -13,6 +13,9 @@
 #include <MPU9150.h>
 #include "MultiLCD.h"
 #include "config.h"
+#if ENABLE_DATA_LOG
+#include <SD.h>
+#endif
 #include "datalogger.h"
 
 #define OBD_MODEL_UART 0
@@ -47,17 +50,6 @@ static int lastValue = 0;
 MPU6050 accelgyro;
 #endif
 
-static const PROGMEM uint8_t tick[16 * 16 / 8] =
-{0x00,0x80,0xC0,0xE0,0xC0,0x80,0x00,0x80,0xC0,0xE0,0xF0,0xF8,0xFC,0x78,0x30,0x00,0x00,0x01,0x03,0x07,0x0F,0x1F,0x1F,0x1F,0x0F,0x07,0x03,0x01,0x00,0x00,0x00,0x00};
-
-static const byte PROGMEM pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
-static const byte PROGMEM pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static const byte PROGMEM pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_ENGINE_FUEL_RATE, PID_DISTANCE};
-
-#define TIER_NUM1 sizeof(pidTier1)
-#define TIER_NUM2 sizeof(pidTier2)
-#define TIER_NUM3 sizeof(pidTier3)
-
 void chartUpdate(CHART_DATA* chart, int value)
 {
   if (value > chart->height) value = chart->height;
@@ -81,6 +73,13 @@ public:
     COBDDevice():state(0) {}
     void setup()
     {
+#if ENABLE_DATA_LOG
+        lcd.setFontSize(FONT_SIZE_SMALL);
+        lcd.setColor(RGB16_WHITE);
+        lcd.setCursor(0, 3);
+        checkSD();
+#endif
+
 #if USE_MPU6050 || USE_MPU9150
         Wire.begin();
         accelgyro.initialize();
@@ -93,20 +92,64 @@ public:
         
         showVIN();
         
-        showECUCap();
-        delay(3000);
-
-        benchmark();
-        delay(5000);
+        //showECUCap();
+        //delay(3000);
 
         initScreen();
 
         state |= STATE_INIT_DONE;
     }
+#if ENABLE_DATA_LOG
+bool checkSD()
+{
+    Sd2Card card;
+    SdVolume volume;
+    pinMode(SS, OUTPUT);
+
+    if (card.init(SPI_FULL_SPEED, SD_CS_PIN)) {
+        const char* type;
+        switch(card.type()) {
+        case SD_CARD_TYPE_SD1:
+            type = "SD1";
+            break;
+        case SD_CARD_TYPE_SD2:
+            type = "SD2";
+            break;
+        case SD_CARD_TYPE_SDHC:
+            type = "SDHC";
+            break;
+        default:
+            type = "SDx";
+        }
+
+        lcd.print(type);
+        lcd.write(' ');
+        if (!volume.init(card)) {
+            return false;
+        }
+
+        uint32_t volumesize = volume.blocksPerCluster();
+        volumesize >>= 1; // 512 bytes per block
+        volumesize *= volume.clusterCount();
+        volumesize >>= 10;
+
+        lcd.print((int)volumesize);
+        lcd.print("MB");
+    } else {
+        return false;
+    }
+
+    if (!SD.begin(SD_CS_PIN)) {
+        return false;
+    }
+
+    return true;
+}
+#endif
     void testOut()
     {
         static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r", "0902\r"};
-        char buf[OBD_RECV_BUF_SIZE];
+        char buf[128];
         
         lcd.setColor(RGB16_WHITE);
         lcd.setFontSize(FONT_SIZE_SMALL);
@@ -121,7 +164,7 @@ public:
             lcd.print("Sending ");
             lcd.println(cmd);
             lcd.setColor(RGB16_CYAN);
-            if (sendCommand(cmd, buf)) {
+            if (sendCommand(cmd, buf, sizeof(buf))) {
                 char *p = strstr(buf, cmd);
                 if (p)
                     p += strlen(cmd);
@@ -142,147 +185,42 @@ public:
     }
     void showVIN()
     {
-      char buf[OBD_RECV_BUF_SIZE];
+      char buf[255];
       lcd.setFontSize(FONT_SIZE_MEDIUM);
-      if (getVIN(buf)) {
+      if (getVIN(buf, sizeof(buf))) {
           lcd.setColor(RGB16_WHITE);
           lcd.print("\nVIN:");
           lcd.setColor(RGB16_YELLOW);
           lcd.println(buf);
       }
     }
-    void showECUCap()
-    {
-        static const byte PROGMEM pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_MAF_FLOW, PID_THROTTLE, PID_AUX_INPUT,
-            PID_EGR_ERROR, PID_COMMANDED_EVAPORATIVE_PURGE, PID_FUEL_LEVEL, PID_CONTROL_MODULE_VOLTAGE, PID_ABSOLUTE_ENGINE_LOAD, PID_AMBIENT_TEMP, PID_COMMANDED_THROTTLE_ACTUATOR, PID_ETHANOL_FUEL,
-            PID_FUEL_RAIL_PRESSURE, PID_HYBRID_BATTERY_PERCENTAGE, PID_ENGINE_OIL_TEMP, PID_FUEL_INJECTION_TIMING, PID_ENGINE_FUEL_RATE, PID_ENGINE_TORQUE_DEMANDED, PID_ENGINE_TORQUE_PERCENTAGE};
-    
-        lcd.setColor(RGB16_WHITE);
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        for (byte i = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i += 2) {
-            for (byte j = 0; j < 2; j++) {
-                byte pid = pgm_read_byte(pidlist + i + j);
-                lcd.setCursor(216 + j * 56 , i + 4);
-                lcd.print((int)pid | 0x100, HEX);
-                bool valid = isValidPID(pid);
-                if (valid) {
-                    lcd.setColor(RGB16_GREEN);
-                    lcd.draw(tick, 16, 16);
-                    lcd.setColor(RGB16_WHITE);
-                }
-            }
-        }
-    }
-    void benchmark()
-    {
-        lcd.clear();
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        lcd.setColor(RGB16_YELLOW);
-        lcd.println("Benchmarking OBD-II...");
-        lcd.setColor(RGB16_WHITE);
-        lcd.setFontSize(FONT_SIZE_SMALL);
-
-        uint32_t elapsed;
-        char buf[OBD_RECV_BUF_SIZE];
-        uint16_t count = 0;
-        for (elapsed = 0; elapsed < OBD_BENCHMARK_TIME * 1000; ) {
-          lcd.setCursor(0, 4);
-          for (byte n = 0; n < TIER_NUM1; n++) {
-              byte pid = pgm_read_byte(pidTier1 + n);
-              char cmd[6];
-              sprintf(cmd, "01%02X\r", pid);
-              lcd.setColor(RGB16_CYAN);
-              lcd.print('[');
-              lcd.print(elapsed);
-              lcd.print("] ");
-              lcd.setColor(RGB16_WHITE);
-              lcd.println(cmd);
-              startTime = millis();
-              if (sendCommand(cmd, buf)) {
-                elapsed += (millis() - startTime);
-                count++;
-                lcd.setColor(RGB16_GREEN);
-                lcd.println(buf);
-              } else {
-                lcd.setColor(RGB16_RED);
-                lcd.println("Timeout!");
-              }
-          }
-        }
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
-        lcd.setColor(RGB16_WHITE);
-        if (count) {
-            lcd.print("\nOBD-II PID Access Time: ");
-            lcd.print(elapsed / count);
-            lcd.println("ms");
-        } else {
-            lcd.println("\nNo Data!");
-        }
-
-#if USE_MPU6050 || USE_MPU9150
-        if (!(state & STATE_MEMS_READY)) return;
-        lcd.setColor(RGB16_YELLOW);
-        lcd.println("\nBenchmarking MEMS...");
-        startTime = millis();
-        for (count = 0, elapsed = 0; elapsed < MEMS_BENCHMARK_TIME * 1000; elapsed = millis() - startTime, count++) {
-          int16_t ax, ay, az;
-          int16_t gx, gy, gz;
-#if USE_MPU9150
-          int16_t mx, my, mz;
-          accelgyro.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
-#else
-          accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-#endif
-        }
-        lcd.setColor(RGB16_WHITE);
-        lcd.println();
-#if USE_MPU9150
-        lcd.print('9');
-#else
-        lcd.print('6');
-#endif
-        lcd.print("-Axis Data Access Time: ");
-        lcd.print(elapsed / count);
-        lcd.println("ms");
-#endif
-    }
-    void logOBDData(byte pid)
-    {
-        int value;
-        if (read(pid, value)) {
-          logData(pid, value);
-          showData(pid, value);
-        }
-    }
     void loop()
     {
-        static byte index = 0;
         static byte index2 = 0;
-        static byte index3 = 0;
-        byte pid = pgm_read_byte(pidTier1 + index++);
-        logOBDData(pid);
-        if (index == TIER_NUM1) {
-            index = 0;
-            if (index2 == TIER_NUM2) {
-                index2 = 0;
-                pid = pgm_read_byte(pidTier3 + index3);
-                if (isValidPID(pid)) {
-                  logOBDData(pid);
-                }
-                index3 = (index3 + 1) % TIER_NUM3;
-                if (index3 == 0) {
-                    float v = getVoltage();
-                    ShowVoltage(v);
-                }
-            } else {
-                pid = pgm_read_byte(pidTier2 + index2);
-                if (isValidPID(pid)) {
-                  logOBDData(pid);
-                }
-                index2++;
-            }
+        const byte pids[]= {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD};
+        int values[sizeof(pids)];
+        // read multiple OBD-II PIDs
+        if (read(pids, sizeof(pids), values) == sizeof(pids)) {
+          dataTime = millis();
+          for (byte n = 0; n < sizeof(pids); n++) {
+            logData((uint16_t)pids[n] | 0x100, values[n]);
+            showData(pids[n], values[n]);
+          }
         }
-
+        static byte lastSec = 0;
+        const byte pids2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_DISTANCE};
+        byte sec = (uint8_t)(millis() >> 10);
+        if (sec != lastSec) {
+          // goes in every other second
+          int value;
+          byte pid = pids2[index2 = (index2 + 1) % (sizeof(pids2))];
+          // read single OBD-II PID
+          if (isValidPID(pid) && read(pid, value)) {
+            dataTime = millis();
+            logData((uint16_t)pid | 0x100, value);
+            lastSec = sec;
+          }
+        }
         if (errors >= 5) {
             reconnect();
         }
@@ -479,6 +417,7 @@ public:
 
         lcd.setColor(RGB16_WHITE);
     }
+#if USE_MPU6050 || USE_MPU9150
     void dataIdleLoop()
     {
       // while waiting for response from OBD-II adapter, let's do something here
@@ -486,6 +425,7 @@ public:
         logMEMSData();
       }
     }
+#endif
     byte state;
 };
 
