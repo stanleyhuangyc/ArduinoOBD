@@ -54,14 +54,14 @@ byte hex2uint8(const char *p)
 * OBD-II UART Adapter
 *************************************************************************/
 
-byte COBD2UART::sendCommand(const char* cmd, char* buf, byte bufsize, int timeout)
+byte COBD::sendCommand(const char* cmd, char* buf, byte bufsize, int timeout)
 {
 	write(cmd);
 	dataIdleLoop();
 	return receive(buf, bufsize, timeout);
 }
 
-void COBD2UART::sendQuery(byte pid)
+void COBD::sendQuery(byte pid)
 {
 	char cmd[8];
 	sprintf(cmd, "%02X%02X\r", dataMode, pid);
@@ -71,7 +71,7 @@ void COBD2UART::sendQuery(byte pid)
 	write(cmd);
 }
 
-bool COBD2UART::readPID(byte pid, int& result)
+bool COBD::readPID(byte pid, int& result)
 {
 	// send a query command
 	sendQuery(pid);
@@ -79,7 +79,7 @@ bool COBD2UART::readPID(byte pid, int& result)
 	return getResult(pid, result);
 }
 
-byte COBD2UART::readPID(const byte pid[], byte count, int result[])
+byte COBD::readPID(const byte pid[], byte count, int result[])
 {
 	// send a multiple query command
 	char buffer[128];
@@ -98,19 +98,19 @@ byte COBD2UART::readPID(const byte pid[], byte count, int result[])
 	return results;
 }
 
-void COBD2UART::clearDTC()
+void COBD::clearDTC()
 {
 	char buffer[32];
 	write("04\r");
 	receive(buffer, sizeof(buffer));
 }
 
-void COBD2UART::write(const char* s)
+void COBD::write(const char* s)
 {
 	OBDUART.write(s);
 }
 
-int COBD2UART::normalizeData(byte pid, char* data)
+int COBD::normalizeData(byte pid, char* data)
 {
 	int result;
 	switch (pid) {
@@ -194,7 +194,7 @@ int COBD2UART::normalizeData(byte pid, char* data)
 	return result;
 }
 
-char* COBD2UART::getResponse(byte& pid, char* buffer, byte bufsize)
+char* COBD::getResponse(byte& pid, char* buffer, byte bufsize)
 {
 	while (receive(buffer, bufsize) > 0) {
 		char *p = buffer;
@@ -213,7 +213,7 @@ char* COBD2UART::getResponse(byte& pid, char* buffer, byte bufsize)
 	return 0;
 }
 
-bool COBD2UART::getResult(byte& pid, int& result)
+bool COBD::getResult(byte& pid, int& result)
 {
 	char buffer[64];
 	char* data = getResponse(pid, buffer, sizeof(buffer));
@@ -226,7 +226,7 @@ bool COBD2UART::getResult(byte& pid, int& result)
 	return true;
 }
 
-bool COBD2UART::setProtocol(OBD_PROTOCOLS h)
+bool COBD::setProtocol(OBD_PROTOCOLS h)
 {
     char buf[32];
 	if (h == PROTO_AUTO) {
@@ -241,13 +241,13 @@ bool COBD2UART::setProtocol(OBD_PROTOCOLS h)
         return false;
 }
 
-void COBD2UART::sleep()
+void COBD::sleep()
 {
   	char buf[32];
 	sendCommand("ATLP\r", buf, sizeof(buf));
 }
 
-char* COBD2UART::getResultValue(char* buf)
+char* COBD::getResultValue(char* buf)
 {
 	char* p = buf;
 	for (;;) {
@@ -261,7 +261,7 @@ char* COBD2UART::getResultValue(char* buf)
 	return 0;
 }
 
-float COBD2UART::getVoltage()
+float COBD::getVoltage()
 {
     char buf[32];
 	if (sendCommand("ATRV\r", buf, sizeof(buf)) > 0) {
@@ -271,7 +271,7 @@ float COBD2UART::getVoltage()
     return 0;
 }
 
-bool COBD2UART::getVIN(char* buffer, byte bufsize)
+bool COBD::getVIN(char* buffer, byte bufsize)
 {
 	if (sendCommand("0902\r", buffer, bufsize)) {
         char *p = strstr(buffer, "0: 49 02");
@@ -291,7 +291,7 @@ bool COBD2UART::getVIN(char* buffer, byte bufsize)
     return false;
 }
 
-bool COBD2UART::isValidPID(byte pid)
+bool COBD::isValidPID(byte pid)
 {
 	if (pid >= 0x7f)
 		return true;
@@ -301,16 +301,26 @@ bool COBD2UART::isValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-void COBD2UART::begin()
+void COBD::begin()
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef DEBUG
 	DEBUG.begin(115200);
 #endif
 	recover();
+
+	char buffer[32];
+	version = 0;
+	if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
+		char *p = strstr(buffer, "OBDUART");
+		if (p) {
+			p += 9;
+			version = (*p - '0') * 10 + (*(p + 2) - '0');
+		}
+	}
 }
 
-byte COBD2UART::receive(char* buffer, byte bufsize, int timeout)
+byte COBD::receive(char* buffer, byte bufsize, int timeout)
 {
 	unsigned char n = 0;
 	unsigned long startTime = millis();
@@ -343,31 +353,18 @@ byte COBD2UART::receive(char* buffer, byte bufsize, int timeout)
 	return n;
 }
 
-void COBD2UART::recover()
+void COBD::recover()
 {
 	char buf[16];
 	sendCommand("AT\r", buf, sizeof(buf));
 }
 
-bool COBD2UART::init(OBD_PROTOCOLS protocol)
+bool COBD::init(OBD_PROTOCOLS protocol)
 {
 	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r","0100\r"};
 	char buffer[64];
 
 	m_state = OBD_CONNECTING;
-
-	write("ATI\r");
-	if (receive(buffer, sizeof(buffer), 100)) {
-		char *p = strstr(buffer, "OBDUART");
-		if (p) {
-			p += 9;
-			version = (*p - '0') * 10 + (*(p + 2) - '0');
-		}
-	}
-	if (version == 0) {
-		m_state = OBD_FAILED;
-		return false;
-	}
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
@@ -406,13 +403,13 @@ bool COBD2UART::init(OBD_PROTOCOLS protocol)
 	return true;
 }
 
-void COBD2UART::end()
+void COBD::end()
 {
 	m_state = OBD_DISCONNECTED;
 	OBDUART.end();
 }
 
-bool COBD2UART::setBaudRate(unsigned long baudrate)
+bool COBD::setBaudRate(unsigned long baudrate)
 {
     OBDUART.print("ATBR1 ");
     OBDUART.print(baudrate);
@@ -424,9 +421,51 @@ bool COBD2UART::setBaudRate(unsigned long baudrate)
     return true;
 }
 
+float COBD::getTemperature()
+{
+	char buf[32];
+	if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
+		char* p = getResultValue(buf);
+		return (float)(atoi(p) + 12412) / 340;
+	}
+	else {
+		return -1000;
+	}
+}
+
+bool COBD::readAccel(int& x, int& y, int& z)
+{
+	char buf[64];
+	if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
+		char* p = getResultValue(buf);
+		x = atoi(p++);
+		if (!(p = strchr(p, ','))) break;
+		y = atoi(++p);
+		if (!(p = strchr(p, ','))) break;
+		z = atoi(++p);
+		return true;
+	} while (0);
+	return false;
+}
+
+bool COBD::readGyro(int& x, int& y, int& z)
+{
+	char buf[64];
+	if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
+		char* p = getResultValue(buf);
+		x = atoi(p++);
+		if (!(p = strchr(p, ','))) break;
+		y = atoi(++p);
+		if (!(p = strchr(p, ','))) break;
+		z = atoi(++p);
+		return true;
+	} while (0);
+	return false;
+}
+
 
 #ifdef DEBUG
-void COBD2UART::debugOutput(const char *s)
+void COBD::debugOutput(const char *s)
 {
 	DEBUG.print('[');
 	DEBUG.print(millis());

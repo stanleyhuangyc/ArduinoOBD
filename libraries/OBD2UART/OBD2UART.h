@@ -95,10 +95,10 @@ typedef enum {
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
 
-class COBD2UART
+class COBD
 {
 public:
-	COBD2UART():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
+	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	// begin serial UART
 	virtual void begin();
 	// initialize OBD-II connection
@@ -121,10 +121,16 @@ public:
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
-	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
+	// get battery voltage (works without ECU)
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
+	// get device temperature
+	virtual float getTemperature();
+	// get accelerometer data
+	virtual bool readAccel(int& x, int& y, int& z);
+	// get gyroscope data
+	virtual bool readGyro(int& x, int& y, int& z);
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
@@ -167,5 +173,6 @@ private:
 	{
 		return (int)hex2uint8(data) - 40;
 	}
+	char* getResultValue(char* buf);
 };
 
