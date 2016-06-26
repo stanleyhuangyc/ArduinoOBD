@@ -88,7 +88,7 @@ byte COBD::read(const byte pid[], byte count, int result[])
 	char *p = buffer;
 	byte results = 0;
 	for (byte n = 0; n < count; n++) {
-		p += sprintf(p, "%02X%02X\r\n", dataMode, pid[n]);		
+		p += sprintf(p, "%02X%02X\r", dataMode, pid[n]);		
 	}
 	write(buffer);
 	// receive and parse the response

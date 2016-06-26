@@ -124,7 +124,7 @@ public:
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
-	// get battery voltage (in 0.1V, e.g. 125 for 12.5V, works without ECU)
+	// get battery voltage (works without ECU)
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
