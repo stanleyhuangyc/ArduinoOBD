@@ -5,7 +5,7 @@
 * (C)2012-2016 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
-#include "OBDUART.h"
+#include "OBD2UART.h"
 
 //#define DEBUG Serial
 
@@ -54,14 +54,14 @@ byte hex2uint8(const char *p)
 * OBD-II UART Adapter
 *************************************************************************/
 
-byte COBDUART::sendCommand(const char* cmd, char* buf, byte bufsize, int timeout)
+byte COBD2UART::sendCommand(const char* cmd, char* buf, byte bufsize, int timeout)
 {
 	write(cmd);
 	dataIdleLoop();
 	return receive(buf, bufsize, timeout);
 }
 
-void COBDUART::sendQuery(byte pid)
+void COBD2UART::sendQuery(byte pid)
 {
 	char cmd[8];
 	sprintf(cmd, "%02X%02X\r", dataMode, pid);
@@ -71,7 +71,7 @@ void COBDUART::sendQuery(byte pid)
 	write(cmd);
 }
 
-bool COBDUART::readPID(byte pid, int& result)
+bool COBD2UART::readPID(byte pid, int& result)
 {
 	// send a query command
 	sendQuery(pid);
@@ -79,14 +79,14 @@ bool COBDUART::readPID(byte pid, int& result)
 	return getResult(pid, result);
 }
 
-byte COBDUART::readPID(const byte pid[], byte count, int result[])
+byte COBD2UART::readPID(const byte pid[], byte count, int result[])
 {
 	// send a multiple query command
 	char buffer[128];
 	char *p = buffer;
 	byte results = 0;
 	for (byte n = 0; n < count; n++) {
-		p += sprintf(p, "%02X%02X\r\n", dataMode, pid[n]);		
+		p += sprintf(p, "%02X%02X\r", dataMode, pid[n]);		
 	}
 	write(buffer);
 	// receive and parse the response
@@ -98,19 +98,19 @@ byte COBDUART::readPID(const byte pid[], byte count, int result[])
 	return results;
 }
 
-void COBDUART::clearDTC()
+void COBD2UART::clearDTC()
 {
 	char buffer[32];
 	write("04\r");
 	receive(buffer, sizeof(buffer));
 }
 
-void COBDUART::write(const char* s)
+void COBD2UART::write(const char* s)
 {
 	OBDUART.write(s);
 }
 
-int COBDUART::normalizeData(byte pid, char* data)
+int COBD2UART::normalizeData(byte pid, char* data)
 {
 	int result;
 	switch (pid) {
@@ -194,7 +194,7 @@ int COBDUART::normalizeData(byte pid, char* data)
 	return result;
 }
 
-char* COBDUART::getResponse(byte& pid, char* buffer, byte bufsize)
+char* COBD2UART::getResponse(byte& pid, char* buffer, byte bufsize)
 {
 	while (receive(buffer, bufsize) > 0) {
 		char *p = buffer;
@@ -213,7 +213,7 @@ char* COBDUART::getResponse(byte& pid, char* buffer, byte bufsize)
 	return 0;
 }
 
-bool COBDUART::getResult(byte& pid, int& result)
+bool COBD2UART::getResult(byte& pid, int& result)
 {
 	char buffer[64];
 	char* data = getResponse(pid, buffer, sizeof(buffer));
@@ -226,7 +226,7 @@ bool COBDUART::getResult(byte& pid, int& result)
 	return true;
 }
 
-bool COBDUART::setProtocol(OBD_PROTOCOLS h)
+bool COBD2UART::setProtocol(OBD_PROTOCOLS h)
 {
     char buf[32];
 	if (h == PROTO_AUTO) {
@@ -241,22 +241,37 @@ bool COBDUART::setProtocol(OBD_PROTOCOLS h)
         return false;
 }
 
-void COBDUART::sleep()
+void COBD2UART::sleep()
 {
   	char buf[32];
 	sendCommand("ATLP\r", buf, sizeof(buf));
 }
 
-float COBDUART::getVoltage()
+char* COBD2UART::getResultValue(char* buf)
+{
+	char* p = buf;
+	for (;;) {
+		if (isdigit(*p)) {
+			return p;
+		}
+		p = strchr(p, '\r');
+		if (!p) break;
+		if (*(++p) == '\n') p++;
+	}
+	return 0;
+}
+
+float COBD2UART::getVoltage()
 {
     char buf[32];
 	if (sendCommand("ATRV\r", buf, sizeof(buf)) > 0) {
-        return atof(buf);
+		char* p = getResultValue(buf);
+		if (p) return atof(p);
     }
     return 0;
 }
 
-bool COBDUART::getVIN(char* buffer, byte bufsize)
+bool COBD2UART::getVIN(char* buffer, byte bufsize)
 {
 	if (sendCommand("0902\r", buffer, bufsize)) {
         char *p = strstr(buffer, "0: 49 02");
@@ -276,7 +291,7 @@ bool COBDUART::getVIN(char* buffer, byte bufsize)
     return false;
 }
 
-bool COBDUART::isValidPID(byte pid)
+bool COBD2UART::isValidPID(byte pid)
 {
 	if (pid >= 0x7f)
 		return true;
@@ -286,7 +301,7 @@ bool COBDUART::isValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-void COBDUART::begin()
+void COBD2UART::begin()
 {
 	OBDUART.begin(OBD_SERIAL_BAUDRATE);
 #ifdef DEBUG
@@ -295,7 +310,7 @@ void COBDUART::begin()
 	recover();
 }
 
-byte COBDUART::receive(char* buffer, byte bufsize, int timeout)
+byte COBD2UART::receive(char* buffer, byte bufsize, int timeout)
 {
 	unsigned char n = 0;
 	unsigned long startTime = millis();
@@ -328,13 +343,13 @@ byte COBDUART::receive(char* buffer, byte bufsize, int timeout)
 	return n;
 }
 
-void COBDUART::recover()
+void COBD2UART::recover()
 {
 	char buf[16];
 	sendCommand("AT\r", buf, sizeof(buf));
 }
 
-bool COBDUART::init(OBD_PROTOCOLS protocol)
+bool COBD2UART::init(OBD_PROTOCOLS protocol)
 {
 	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r","0100\r"};
 	char buffer[64];
@@ -391,13 +406,13 @@ bool COBDUART::init(OBD_PROTOCOLS protocol)
 	return true;
 }
 
-void COBDUART::end()
+void COBD2UART::end()
 {
 	m_state = OBD_DISCONNECTED;
 	OBDUART.end();
 }
 
-bool COBDUART::setBaudRate(unsigned long baudrate)
+bool COBD2UART::setBaudRate(unsigned long baudrate)
 {
     OBDUART.print("ATBR1 ");
     OBDUART.print(baudrate);
@@ -411,7 +426,7 @@ bool COBDUART::setBaudRate(unsigned long baudrate)
 
 
 #ifdef DEBUG
-void COBDUART::debugOutput(const char *s)
+void COBD2UART::debugOutput(const char *s)
 {
 	DEBUG.print('[');
 	DEBUG.print(millis());

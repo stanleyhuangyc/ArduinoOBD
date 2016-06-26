@@ -95,10 +95,10 @@ typedef enum {
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
 
-class COBDUART
+class COBD2UART
 {
 public:
-	COBDUART():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
+	COBD2UART():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	// begin serial UART
 	virtual void begin();
 	// initialize OBD-II connection
