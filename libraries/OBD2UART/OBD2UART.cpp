@@ -251,7 +251,7 @@ char* COBD::getResultValue(char* buf)
 {
 	char* p = buf;
 	for (;;) {
-		if (isdigit(*p)) {
+		if (isdigit(*p) || *p == '-') {
 			return p;
 		}
 		p = strchr(p, '\r');
@@ -426,7 +426,7 @@ float COBD::getTemperature()
 	char buf[32];
 	if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
 		char* p = getResultValue(buf);
-		return (float)(atoi(p) + 12412) / 340;
+		if (p) return (float)(atoi(p) + 12412) / 340;
 	}
 	else {
 		return -1000;
@@ -435,9 +435,10 @@ float COBD::getTemperature()
 
 bool COBD::readAccel(int& x, int& y, int& z)
 {
-	char buf[64];
+	char buf[32];
 	if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
 		char* p = getResultValue(buf);
+		if (!p) break;
 		x = atoi(p++);
 		if (!(p = strchr(p, ','))) break;
 		y = atoi(++p);
@@ -450,9 +451,10 @@ bool COBD::readAccel(int& x, int& y, int& z)
 
 bool COBD::readGyro(int& x, int& y, int& z)
 {
-	char buf[64];
+	char buf[32];
 	if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
 		char* p = getResultValue(buf);
+		if (!p) break;
 		x = atoi(p++);
 		if (!(p = strchr(p, ','))) break;
 		y = atoi(++p);
