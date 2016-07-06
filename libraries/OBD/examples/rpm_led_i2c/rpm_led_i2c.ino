@@ -24,7 +24,7 @@ void setup()
 void loop()
 {
   int value;
-  if (obd.read(PID_RPM, value)) {
+  if (obd.readPID(PID_RPM, value)) {
     // RPM is successfully read and its value stored in variable 'value'
     // light on LED when RPM exceeds 3000
     digitalWrite(13, value > 3000 ? HIGH : LOW);

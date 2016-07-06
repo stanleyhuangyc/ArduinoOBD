@@ -7,11 +7,10 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <OBD.h>
 #include <SPI.h>
 #include <SD.h>
-#include <MPU6050.h>
-#include "MicroLCD.h"
+#include <OBD.h>
+#include <MicroLCD.h>
 #include "images.h"
 #include "config.h"
 #if USE_SOFTSERIAL
@@ -38,11 +37,9 @@ static int lastValue = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
-static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, PID_FUEL_LEVEL};
 
 #define TIER_NUM1 sizeof(pidTier1)
 #define TIER_NUM2 sizeof(pidTier2)
-#define TIER_NUM3 sizeof(pidTier3)
 
 byte pidValue[TIER_NUM1];
 
@@ -53,14 +50,6 @@ public:
     void setup()
     {
         showStates();
-
-#if USE_MPU6050
-        Wire.begin();
-        if (MPU6050_init() == 0) {
-            state |= STATE_ACC_READY;
-            showStates();
-        }
-#endif
 
         do {
             showStates();
@@ -110,8 +99,6 @@ public:
             index = 0;
             if (index2 == TIER_NUM2) {
                 index2 = 0;
-                logOBDData(pidTier3[index3]);
-                index3 = (index3 + 1) % TIER_NUM3;
             } else {
                 logOBDData(pidTier2[index2++]);
             }
@@ -214,24 +201,11 @@ private:
             lastPid = 0;
         }
     }
-#if USE_MPU6050
-    void processAccelerometer()
-    {
-        accel_t_gyro_union data;
-        MPU6050_readout(&data);
-        dataTime = millis();
-        // log x/y/z of accelerometer
-        logData(PID_ACC, data.value.x_accel, data.value.y_accel, data.value.z_accel);
-        //showGForce(data.value.y_accel);
-        // log x/y/z of gyro meter
-        logData(PID_GYRO, data.value.x_gyro, data.value.y_gyro, data.value.z_gyro);
-    }
-#endif
     int logOBDData(byte pid)
     {
         int value = 0;
         // send a query to OBD adapter for specified OBD-II pid
-        if (read(pid, value)) {
+        if (readPID(pid, value)) {
             dataTime = millis();
             // log data to SD card
             logData(0x100 | pid, value);
@@ -259,7 +233,7 @@ private:
             }
             if (init()) {
                 int value;
-                if (read(PID_RPM, value) && value > 0)
+                if (readPID(PID_RPM, value) && value > 0)
                     break;
             }
         }

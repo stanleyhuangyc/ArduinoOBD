@@ -74,7 +74,7 @@ void readMEMS()
     Serial.println(gz);
 }
 
-void readPID()
+void readPIDs()
 {
     static const byte pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
     Serial.print('[');
@@ -87,7 +87,7 @@ void readPID()
         Serial.print('=');
         if (valid) {
             int value;
-            if (obd.read(pid, value)) {
+            if (obd.readPID(pid, value)) {
               Serial.print(value);
             }
         }
@@ -117,7 +117,7 @@ void setup() {
 }
 
 void loop() {
-  readPID();
+  readPIDs();
   readMEMS();
 }
  

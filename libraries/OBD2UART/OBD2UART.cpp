@@ -465,7 +465,6 @@ bool COBD::readGyro(int& x, int& y, int& z)
 	return false;
 }
 
-
 #ifdef DEBUG
 void COBD::debugOutput(const char *s)
 {

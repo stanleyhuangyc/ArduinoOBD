@@ -55,7 +55,7 @@ void readPIDSingle()
     mySerial.print(millis());
     mySerial.print(']');
     mySerial.print("RPM=");
-    if (obd.read(PID_RPM, value)) {
+    if (obd.readPID(PID_RPM, value)) {
       mySerial.print(value);
     }
     mySerial.println();
@@ -65,7 +65,7 @@ void readPIDMultiple()
 {
     static const byte pids[] = {PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_COOLANT_TEMP, PID_INTAKE_TEMP};
     int values[sizeof(pids)];
-    if (obd.read(pids, sizeof(pids), values) == sizeof(pids)) {
+    if (obd.readPID(pids, sizeof(pids), values) == sizeof(pids)) {
       for (byte i = 0; i < sizeof(pids) ; i++) {
         mySerial.print('[');
         mySerial.print(millis());

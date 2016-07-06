@@ -73,7 +73,7 @@ void COBD::sendQuery(byte pid)
 	write(cmd);
 }
 
-bool COBD::read(byte pid, int& result)
+bool COBD::readPID(byte pid, int& result)
 {
 	// send a query command
 	sendQuery(pid);
@@ -81,7 +81,7 @@ bool COBD::read(byte pid, int& result)
 	return getResult(pid, result);
 }
 
-byte COBD::read(const byte pid[], byte count, int result[])
+byte COBD::readPID(const byte pid[], byte count, int result[])
 {
 	// send a multiple query command
 	char buffer[128];
@@ -249,11 +249,26 @@ void COBD::sleep()
 	sendCommand("ATLP\r", buf, sizeof(buf));
 }
 
+char* COBD::getResultValue(char* buf)
+{
+	char* p = buf;
+	for (;;) {
+		if (isdigit(*p) || *p == '-') {
+			return p;
+		}
+		p = strchr(p, '\r');
+		if (!p) break;
+		if (*(++p) == '\n') p++;
+	}
+	return 0;
+}
+
 float COBD::getVoltage()
 {
     char buf[32];
 	if (sendCommand("ATRV\r", buf, sizeof(buf)) > 0) {
-        return atof(buf);
+		char* p = getResultValue(buf);
+		if (p) return atof(p);
     }
     return 0;
 }
@@ -295,6 +310,16 @@ void COBD::begin()
 	DEBUG.begin(115200);
 #endif
 	recover();
+
+	char buffer[32];
+	version = 0;
+	if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
+		char *p = strstr(buffer, "OBDUART");
+		if (p) {
+			p += 9;
+			version = (*p - '0') * 10 + (*(p + 2) - '0');
+		}
+	}
 }
 
 byte COBD::receive(char* buffer, byte bufsize, int timeout)
@@ -342,15 +367,6 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 	char buffer[64];
 
 	m_state = OBD_CONNECTING;
-
-	write("ATI\r");
-	if (receive(buffer, sizeof(buffer), 100)) {
-		char *p = strstr(buffer, "OBDUART");
-		if (p) {
-			p += 9;
-			version = (*p - '0') * 10 + (*(p + 2) - '0');
-		}
-	}
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
 #ifdef DEBUG
@@ -408,6 +424,50 @@ bool COBD::setBaudRate(unsigned long baudrate)
 }
 
 
+float COBD::getTemperature()
+{
+	char buf[32];
+	if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
+		char* p = getResultValue(buf);
+		if (p) return (float)(atoi(p) + 12412) / 340;
+	}
+	else {
+		return -1000;
+	}
+}
+
+bool COBD::readAccel(int& x, int& y, int& z)
+{
+	char buf[32];
+	if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
+		char* p = getResultValue(buf);
+		if (!p) break;
+		x = atoi(p++);
+		if (!(p = strchr(p, ','))) break;
+		y = atoi(++p);
+		if (!(p = strchr(p, ','))) break;
+		z = atoi(++p);
+		return true;
+	} while (0);
+	return false;
+}
+
+bool COBD::readGyro(int& x, int& y, int& z)
+{
+	char buf[32];
+	if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
+		char* p = getResultValue(buf);
+		if (!p) break;
+		x = atoi(p++);
+		if (!(p = strchr(p, ','))) break;
+		y = atoi(++p);
+		if (!(p = strchr(p, ','))) break;
+		z = atoi(++p);
+		return true;
+	} while (0);
+	return false;
+}
+
 #ifdef DEBUG
 void COBD::debugOutput(const char *s)
 {
@@ -429,6 +489,16 @@ void COBDI2C::begin()
 	DEBUG.begin(115200);
 #endif
 	recover();
+
+	char buffer[32];
+	version = 0;
+	if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
+		char *p = strstr(buffer, "OBDUART");
+		if (p) {
+			p += 9;
+			version = (*p - '0') * 10 + (*(p + 2) - '0');
+		}
+	}
 }
 
 void COBDI2C::end()
@@ -436,7 +506,7 @@ void COBDI2C::end()
 	m_state = OBD_DISCONNECTED;
 }
 
-bool COBDI2C::read(byte pid, int& result)
+bool COBDI2C::readPID(byte pid, int& result)
 {
 	sendQuery(pid);
 	dataIdleLoop();
@@ -469,7 +539,7 @@ byte COBDI2C::receive(char* buffer, byte bufsize, int timeout)
 	do {
 		Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)1);
 		int c = Wire.read();
-		if (offset == 0 && (c == 0 || c == -1)) {
+		if (offset == 0 && c < 0xa) {
 			 // data not ready
 			dataIdleLoop();
 			continue; 
@@ -492,21 +562,22 @@ byte COBDI2C::receive(char* buffer, byte bufsize, int timeout)
 			}
 		}
 	} while(millis() - start < timeout);
+	if (buffer) buffer[offset] = 0;
 	return 0;
 }
 
-byte COBDI2C::read(const byte pid[], byte count, int result[])
+byte COBDI2C::readPID(const byte pid[], byte count, int result[])
 {
 	byte results = 0; 
 	for (byte n = 0; n < count; n++) {
-		if (read(pid[n], result[n])) {
+		if (readPID(pid[n], result[n])) {
 			results++;
 		}
 	}
 	return results;
 }
 
-void COBDI2C::setPID(byte pid, byte obdPid[])
+void COBDI2C::setQueryPID(byte pid, byte obdPid[])
 {
 	byte n = 0;
 	for (; n < MAX_PIDS && obdPid[n]; n++) {
@@ -520,13 +591,13 @@ void COBDI2C::setPID(byte pid, byte obdPid[])
 	obdPid[n] = pid;
 }
 
-void COBDI2C::applyPIDs(byte obdPid[])
+void COBDI2C::applyQueryPIDs(byte obdPid[])
 {
 	sendCommandBlock(CMD_APPLY_OBD_PIDS, 0, (byte*)obdPid, sizeof(obdPid[0])* MAX_PIDS);
 	delay(200);
 }
 
-void COBDI2C::loadData(PID_INFO obdInfo[])
+void COBDI2C::loadQueryData(PID_INFO obdInfo[])
 {
 	sendCommandBlock(CMD_LOAD_OBD_DATA);
 	dataIdleLoop();

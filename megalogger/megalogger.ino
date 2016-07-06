@@ -595,7 +595,7 @@ void showECUCap()
           if (obd.isValidPID(pid)) {
               int value;
               lcd.setCursor(280 , n++);
-              if (obd.read(pid, value)) {
+              if (obd.readPID(pid, value)) {
                 if (!scanned || value == values[i])
                   lcd.setColor(RGB16_CYAN);
                 else if (value > values[i])
@@ -633,7 +633,7 @@ void reconnect()
             continue;
 
         int value;
-        if (obd.read(PID_RPM, value))
+        if (obd.readPID(PID_RPM, value))
             break;
         
         obd.sleep();
@@ -803,7 +803,7 @@ void loop()
     int values[sizeof(pids)] = {0};
     uint32_t pidTime = millis();
     // read multiple OBD-II PIDs
-    byte results = obd.read(pids, sizeof(pids), values);
+    byte results = obd.readPID(pids, sizeof(pids), values);
     pidTime = millis() - pidTime;
     if (results == sizeof(pids)) {
       for (byte n = 0; n < sizeof(pids); n++) {
@@ -814,7 +814,7 @@ void loop()
     // check validation and read a single OBD-II PID
     if (obd.isValidPID(pid)) {
       int value;
-      if (obd.read(pid, value)) {
+      if (obd.readPID(pid, value)) {
         logOBDData(pid, value); 
       }
     }

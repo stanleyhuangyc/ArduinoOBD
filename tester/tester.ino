@@ -200,7 +200,7 @@ bool checkSD()
         const byte pids[]= {PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD};
         int values[sizeof(pids)];
         // read multiple OBD-II PIDs
-        if (read(pids, sizeof(pids), values) == sizeof(pids)) {
+        if (readPID(pids, sizeof(pids), values) == sizeof(pids)) {
           dataTime = millis();
           for (byte n = 0; n < sizeof(pids); n++) {
             logData((uint16_t)pids[n] | 0x100, values[n]);
@@ -215,7 +215,7 @@ bool checkSD()
           int value;
           byte pid = pids2[index2 = (index2 + 1) % (sizeof(pids2))];
           // read single OBD-II PID
-          if (isValidPID(pid) && read(pid, value)) {
+          if (isValidPID(pid) && readPID(pid, value)) {
             dataTime = millis();
             logData((uint16_t)pid | 0x100, value);
             lastSec = sec;

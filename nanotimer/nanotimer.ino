@@ -8,9 +8,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <OBD.h>
 #include <SD.h>
 #include <MicroLCD.h>
+#include <OBD.h>
 #include "config.h"
 #if USE_SOFTSERIAL
 #include <SoftwareSerial.h>
@@ -188,7 +188,7 @@ private:
         uint32_t dataTime;
 #endif
         int speed;
-        if (!read(PID_SPEED, speed))
+        if (!readPID(PID_SPEED, speed))
             return;
 
         dataTime = millis();

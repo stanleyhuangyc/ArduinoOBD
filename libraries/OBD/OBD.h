@@ -113,9 +113,9 @@ public:
 	// get connection state
 	virtual OBD_STATES getState() { return m_state; }
 	// read specified OBD-II PID value
-	virtual bool read(byte pid, int& result);
+	virtual bool readPID(byte pid, int& result);
 	// read multiple (up to 8) OBD-II PID values, return number of values obtained
-	virtual byte read(const byte pid[], byte count, int result[]);
+	virtual byte readPID(const byte pid[], byte count, int result[]);
 	// set device into
 	virtual void sleep();
 	// set working protocol (default auto)
@@ -128,6 +128,12 @@ public:
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
+	// get device temperature
+	virtual float getTemperature();
+	// get accelerometer data
+	virtual bool readAccel(int& x, int& y, int& z);
+	// get gyroscope data
+	virtual bool readGyro(int& x, int& y, int& z);
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
@@ -170,6 +176,7 @@ private:
 	{
 		return (int)hex2uint8(data) - 40;
 	}
+	char* getResultValue(char* buf);
 };
 
 #define I2C_ADDR 0x62
@@ -199,15 +206,15 @@ class COBDI2C : public COBD {
 public:
 	void begin();
 	void end();
-	bool read(byte pid, int& result);
-	byte read(const byte pid[], byte count, int result[]);
+	bool readPID(byte pid, int& result);
+	byte readPID(const byte pid[], byte count, int result[]);
 	void write(const char* s);
 	// API not applicable
 	bool setBaudRate(unsigned long baudrate) { return false; }
 	// Asynchronized access API
-	void setPID(byte pid, byte obdPid[]);
-	void applyPIDs(byte obdPid[]);
-	void loadData(PID_INFO obdInfo[]);
+	void setQueryPID(byte pid, byte obdPid[]);
+	void applyQueryPIDs(byte obdPid[]);
+	void loadQueryData(PID_INFO obdInfo[]);
 protected:
 	byte receive(char* buffer, byte bufsize, int timeout = OBD_TIMEOUT_SHORT);
 	bool sendCommandBlock(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
