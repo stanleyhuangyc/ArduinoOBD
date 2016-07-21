@@ -428,7 +428,7 @@ void LCD_R61581::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t heigh
     m_x += width * scaleX;
 }
 
-void LCD_R61581::draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
+void LCD_R61581::draw2x(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
 {
     char buf[240];
     Enable();

@@ -303,7 +303,7 @@ public:
     void clear(uint16_t x = 0, uint16_t y = 0, uint16_t width = 479, uint16_t height = 319);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
     void draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY = 0);
-    void draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
+    void draw2x(const PROGMEM byte* buffer, uint16_t width, uint16_t height);
     size_t write(uint8_t);
     void clearLine(byte line)
     {
