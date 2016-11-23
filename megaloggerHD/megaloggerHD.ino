@@ -164,7 +164,7 @@ void showPIDData(byte pid, int value)
     case PID_INTAKE_TEMP:
         if (value >= 0 && value < 100) {
             lcd.setFontSize(FONT_SIZE_MEDIUM);
-            lcd.setCursor(102, 34);
+            lcd.setCursor(102, 33);
             lcd.printInt(value, 2);
         }
         break;
@@ -601,14 +601,14 @@ void showStates()
 {
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setColor(RGB16_WHITE);
-    lcd.setCursor(0, 8);
+    lcd.setCursor(0, 10);
     lcd.print("MEMS ");
     lcd.setColor((state & STATE_MEMS_READY) ? RGB16_GREEN : RGB16_RED);
     lcd.draw((state & STATE_MEMS_READY) ? tick : cross, 16, 16);
 
 #if USE_GPS
     lcd.setColor(RGB16_WHITE);
-    lcd.setCursor(60, 8);
+    lcd.setCursor(60, 10);
     lcd.print(" GPS ");
     if (state & STATE_GPS_CONNECTED) {
         lcd.setColor(RGB16_GREEN);
@@ -626,7 +626,7 @@ void testOut()
     static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[128];
     lcd.setFontSize(FONT_SIZE_SMALL);
-    lcd.setCursor(0, 11);
+    lcd.setCursor(0, 13);
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
         char cmd[6];

@@ -4,8 +4,8 @@
 /**************************************
 * OBD-II Adapter options
 **************************************/
-#define OBD_ADAPTER_I2C
-//#define OBD_ADAPTER_UART
+//#define OBD_ADAPTER_I2C
+#define OBD_ADAPTER_UART
 #define OBD_PROTOCOL PROTO_AUTO
 
 /**************************************
