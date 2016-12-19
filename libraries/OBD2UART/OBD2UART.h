@@ -117,15 +117,17 @@ public:
 	virtual void sleep();
 	// set working protocol (default auto)
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
-	// send AT command and receive response
+	// send AT command and receive response (return bytes received)
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
+	// read diagnostic trouble codes (return number of DTCs read)
+	virtual byte readDTC(uint16_t codes[], byte count = 1);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (works without ECU)
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
-	// get device temperature
+	// get device temperature (in celsius degree) 
 	virtual float getTemperature();
 	// get accelerometer data
 	virtual bool readAccel(int& x, int& y, int& z);
