@@ -96,28 +96,55 @@ void readPIDs()
      Serial.println();
 }
 
-void setup() {
-  delay(500);
-  Serial.begin(115200);
-  obd.begin();
-  accelgyro.initialize();
-  readMEMS();
+void readBatteryVoltage()
+{
+  Serial.print('[');
+  Serial.print(millis());
+  Serial.print(']');
+  Serial.print("Battery:");
+  Serial.print(obd.getVoltage(), 1);
+  Serial.println('V');
+}
 
+void setup() {
+  Serial.begin(115200);
+  delay(500);
+  accelgyro.initialize();
+  obd.begin();
+
+  // send some commands for testing and show response for debugging purpose
+  //testOut();
+ 
+  // initialize OBD-II adapter
   do {
-    testOut();
     Serial.println("Init...");
-  } while (!obd.init());  
+  } while (!obd.init());
 
   char buf[64];
   if (obd.getVIN(buf, sizeof(buf))) {
       Serial.print("VIN:");
       Serial.println(buf);
   }
-  delay(1000);
+  
+  unsigned int codes[6];
+  byte dtcCount = obd.readDTC(codes, 6);
+  if (dtcCount == 0) {
+    Serial.println("No DTC"); 
+  } else {
+    Serial.print(dtcCount); 
+    Serial.print(" DTC:");
+    for (byte n = 0; n < dtcCount; n++) {
+      Serial.print(' ');
+      Serial.print(codes[n], HEX);
+    }
+    Serial.println();
+  }
+  delay(3000);
 }
 
 void loop() {
   readPIDs();
+  readBatteryVoltage();
   readMEMS();
 }
  
