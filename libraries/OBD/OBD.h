@@ -122,6 +122,8 @@ public:
 	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// send AT command and receive response
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
+	// read diagnostic trouble codes (return number of DTCs read)
+	virtual byte readDTC(uint16_t codes[], byte count = 1);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (works without ECU)

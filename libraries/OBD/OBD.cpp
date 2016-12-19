@@ -100,6 +100,43 @@ byte COBD::readPID(const byte pid[], byte count, int result[])
 	return results;
 }
 
+byte COBD::readDTC(uint16_t codes[], byte count)
+{
+	/*
+	Response example:
+	0: 43 04 01 08 01 09 
+	1: 01 11 01 15 00 00 00
+	*/ 
+	byte codesRead = 0;
+ 	for (byte n = 0; n < 6; n++) {
+		char buffer[128];
+		sprintf(buffer, "03%02X\r", n);
+		write(buffer);
+		Serial.println(buffer);
+		if (receive(buffer, sizeof(buffer)) > 0) {
+			Serial.println(buffer);
+			if (!strstr(buffer, "NO DATA")) {
+				char *p = strstr(buffer, "43");
+				if (p) {
+					while (codesRead < count && *p) {
+						p += 6;
+						if (*p == '\r') {
+							p = strchr(p, ':');
+							if (!p) break;
+							p += 2; 
+						}
+						uint16_t code = hex2uint16(p);
+						if (code == 0) break;
+						codes[codesRead++] = code;
+					}
+				}
+				break;
+			}
+		}
+	}
+	return codesRead;
+}
+
 void COBD::clearDTC()
 {
 	char buffer[32];
