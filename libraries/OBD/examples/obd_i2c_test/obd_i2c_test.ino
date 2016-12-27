@@ -109,8 +109,8 @@ void readBatteryVoltage()
 void setup() {
   Serial.begin(115200);
   delay(500);
-  accelgyro.initialize();
   obd.begin();
+  accelgyro.initialize();
 
   // send some commands for testing and show response for debugging purpose
   //testOut();
