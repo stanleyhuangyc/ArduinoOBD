@@ -265,21 +265,6 @@ bool COBD::getResult(byte& pid, int& result)
 	return true;
 }
 
-bool COBD::setProtocol(OBD_PROTOCOLS h)
-{
-    char buf[32];
-	if (h == PROTO_AUTO) {
-		write("ATSP00\r");
-	} else {
-		sprintf(buf, "ATSP%d\r", h);
-		write(buf);
-	}
-	if (receive(buf, sizeof(buf), OBD_TIMEOUT_LONG) > 0 && strstr(buf, "OK"))
-        return true;
-    else
-        return false;
-}
-
 void COBD::sleep()
 {
   	char buf[32];
@@ -400,29 +385,24 @@ void COBD::recover()
 
 bool COBD::init(OBD_PROTOCOLS protocol)
 {
-	const char *initcmd[] = {"ATZ\r","ATE0\r","ATL1\r","0100\r"};
+	const char PROGMEM *initcmd[] = {PSTR("ATZ\r"),PSTR("ATE0\r"),PSTR("ATL1\r"),PSTR("ATSP%02u\r")};
 	char buffer[64];
 
-	m_state = OBD_CONNECTING;
-
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
+		sprintf_P(buffer, initcmd[i], protocol);
 #ifdef DEBUG
-		debugOutput(initcmd[i]);
+		debugOutput(buffer);
 #endif
-		write(initcmd[i]);
-		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0) {
+		write(buffer);
+		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0 || (i > 0 && !strstr(buffer, "OK"))) {
 			m_state = OBD_DISCONNECTED;
 			return false;
 		}
-		delay(50);
-	}
-
-	if (protocol != PROTO_AUTO) {
-		setProtocol(protocol);
 	}
 
 	// load pid map
 	memset(pidmap, 0, sizeof(pidmap));
+	bool success = false;
 	for (byte i = 0; i < 4; i++) {
 		byte pid = i * 0x20;
 		sendQuery(pid);
@@ -434,12 +414,14 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 				break;
 			pidmap[i * 4 + n] = hex2uint8(data + n * 3 + 1);
 		}
-		delay(100);
+		success = true;
 	}
 
-	m_state = OBD_CONNECTED;
-	errors = 0;
-	return true;
+	if (success) {
+		m_state = OBD_CONNECTED;
+		errors = 0;
+	}
+	return success;
 }
 
 void COBD::end()

@@ -11,7 +11,7 @@
 #define OBD_MODEL_I2C 1
 
 #define OBD_TIMEOUT_SHORT 1000 /* ms */
-#define OBD_TIMEOUT_LONG 15000 /* ms */
+#define OBD_TIMEOUT_LONG 5000 /* ms */
 #define OBD_TIMEOUT_GPS 200 /* ms */
 #define OBD_SERIAL_BAUDRATE 38400
 
@@ -118,8 +118,6 @@ public:
 	virtual byte readPID(const byte pid[], byte count, int result[]);
 	// set device into
 	virtual void sleep();
-	// set working protocol (default auto)
-	virtual bool setProtocol(OBD_PROTOCOLS h = PROTO_AUTO);
 	// send AT command and receive response
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
 	// read diagnostic trouble codes (return number of DTCs read)
