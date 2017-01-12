@@ -251,11 +251,9 @@ void LCD_R61581::clear(uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 size_t LCD_R61581::write(uint8_t c)
 {
     if (c == '\n') {
-        m_y += (m_font + 1) << 3;
-        return 0;
-    } else if (c == '\r') {
         m_x = 0;
-        return 0;
+        m_y += m_font == 0 ? 8 : 16;
+        return 1;
     }
     if (m_x > disp_y_size) return 0;
     Enable();
