@@ -574,15 +574,11 @@ void reconnect()
     state &= ~(STATE_OBD_READY | STATE_GUI_ON);
     //digitalWrite(SD_CS_PIN, LOW);
     for (;;) {
-        if (!obd.init())
-            continue;
-
-        int value;
-        if (obd.readPID(PID_RPM, value))
+        if (obd.init())
             break;
         
         obd.sleep();
-        Narcoleptic.delay(4000);
+        Narcoleptic.delay(10000);
     }
     // re-initialize
     state |= STATE_OBD_READY;
@@ -731,7 +727,22 @@ void setup()
         lcd.print("VIN:");
         lcd.setColor(RGB16_YELLOW);
         lcd.println(buf);
+        lcd.println();
     }
+
+    uint16_t dtc[6];
+    int num = obd.readDTC(dtc, sizeof(dtc) / sizeof(dtc[0]));
+    lcd.setColor(RGB16_WHITE);
+    lcd.print(num);
+    lcd.println(" DTC found");
+    if (num > 0) {
+      lcd.setColor(RGB16_YELLOW);
+      for (byte i = 0; i < num; i++) {
+        lcd.print(dtc[i], HEX);
+        lcd.print(' ');
+      }
+    }
+    lcd.println();
 
     showECUCap();
     lcd.setCursor(0, 28);
