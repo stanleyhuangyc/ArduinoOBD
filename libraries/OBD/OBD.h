@@ -121,27 +121,23 @@ public:
 	// send AT command and receive response
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
 	// read diagnostic trouble codes (return number of DTCs read)
-	virtual byte readDTC(uint16_t codes[], byte count = 1);
+	virtual byte readDTC(uint16_t codes[], byte maxCodes = 1);
 	// clear diagnostic trouble code
 	virtual void clearDTC();
 	// get battery voltage (works without ECU)
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
-	// get device temperature
-	virtual float getTemperature();
-	// get accelerometer data
-	virtual bool readAccel(int& x, int& y, int& z);
-	// get gyroscope data
-	virtual bool readGyro(int& x, int& y, int& z);
+	// initialize MEMS sensor
+	virtual bool memsInit() { return version > 10; }
+	// read out MEMS data (acc for accelerometer, gyr for gyroscope, temp in 0.1 celcius degree)
+	virtual bool memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0);
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
 	virtual bool getResult(byte& pid, int& result);
 	// determine if the PID is supported
 	virtual bool isValidPID(byte pid);
-	// init GPS module
-	// parse GPS data
 	// set current PID mode
 	byte dataMode;
 	// occurrence of errors
@@ -215,7 +211,16 @@ public:
 	void setQueryPID(byte pid, byte obdPid[]);
 	void applyQueryPIDs(byte obdPid[]);
 	void loadQueryData(PID_INFO obdInfo[]);
+	// initialize MEMS sensor
+	bool memsInit();
+	// read out MEMS sensor data (acc for accelerometer, gyr for gyroscope, temp in 0.1 celcius degree)
+	bool memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0);
 protected:
 	byte receive(char* buffer, byte bufsize, int timeout = OBD_TIMEOUT_SHORT);
 	bool sendCommandBlock(byte cmd, uint8_t data = 0, byte* payload = 0, byte payloadBytes = 0);
+private:
+	bool MPU6050_read(int start, uint8_t* buffer, int size);
+	bool MPU6050_write(int start, const uint8_t* pData, int size);
+	bool MPU6050_write_reg(int reg, uint8_t data);
+	void MPU6050_store(int* pData, uint8_t data_l, uint8_t data_h);
 };

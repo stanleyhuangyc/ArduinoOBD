@@ -1,20 +1,17 @@
 /*************************************************************************
-* Sample sketch for Freematics OBD-II I2C Adapter
+* Testing sketch for Freematics OBD-II I2C Adapter
 * Reads and prints several OBD-II PIDs value and MEMS sensor data
 * Distributed under GPL v2.0
 * Visit http://freematics.com for more information
-* (C)2012-2015 Stanley Huang <stanleyhuangyc@gmail.com>
+* Written by Stanley Huang <support@freematics.com.au>
 *************************************************************************/
 
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <OBD.h>
-#include <I2Cdev.h>
-#include <MPU9150.h>
 
 COBDI2C obd;
-MPU6050 accelgyro;
 
 void testOut()
 {
@@ -48,30 +45,33 @@ void testOut()
 
 void readMEMS()
 {
-    int16_t ax, ay, az;
-    int16_t gx, gy, gz;
+    int acc[3];
+    int gyro[3];
     int temp;
 
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    temp = accelgyro.getTemperature();
+    if (!obd.memsRead(acc, gyro, 0, &temp)) return;
 
     Serial.print('[');
     Serial.print(millis());
     Serial.print(']');
 
-    Serial.print("ACC=");
-    Serial.print(ax);
+    Serial.print("ACC:");
+    Serial.print(acc[0]);
     Serial.print('/');
-    Serial.print(ay);
+    Serial.print(acc[1]);
     Serial.print('/');
-    Serial.print(az);
+    Serial.print(acc[2]);
 
-    Serial.print(" GYRO=");
-    Serial.print(gx);
+    Serial.print(" GYRO:");
+    Serial.print(gyro[0]);
     Serial.print('/');
-    Serial.print(gy);
+    Serial.print(gyro[1]);
     Serial.print('/');
-    Serial.println(gz);
+    Serial.print(gyro[2]);
+
+    Serial.print(" TEMP:");
+    Serial.print((float)temp / 10, 1);
+    Serial.println("C");
 }
 
 void readPIDs()
@@ -110,11 +110,17 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   obd.begin();
-  accelgyro.initialize();
 
+  Serial.print("MEMS:");
+  if (obd.memsInit()) {
+    Serial.println("OK");
+  } else {
+    Serial.println("NO");
+  }
+  
   // send some commands for testing and show response for debugging purpose
   //testOut();
- 
+
   // initialize OBD-II adapter
   do {
     Serial.println("Init...");

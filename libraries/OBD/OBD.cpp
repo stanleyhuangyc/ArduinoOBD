@@ -100,7 +100,7 @@ byte COBD::readPID(const byte pid[], byte count, int result[])
 	return results;
 }
 
-byte COBD::readDTC(uint16_t codes[], byte count)
+byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 {
 	/*
 	Response example:
@@ -110,7 +110,7 @@ byte COBD::readDTC(uint16_t codes[], byte count)
 	byte codesRead = 0;
  	for (byte n = 0; n < 6; n++) {
 		char buffer[128];
-		sprintf(buffer, "03%02X\r", n);
+		sprintf_P(buffer, n == 0 ? PSTR("03\r") : PSTR("03%02X\r"), n);
 		write(buffer);
 		Serial.println(buffer);
 		if (receive(buffer, sizeof(buffer)) > 0) {
@@ -118,7 +118,7 @@ byte COBD::readDTC(uint16_t codes[], byte count)
 			if (!strstr(buffer, "NO DATA")) {
 				char *p = strstr(buffer, "43");
 				if (p) {
-					while (codesRead < count && *p) {
+					while (codesRead < maxCodes && *p) {
 						p += 6;
 						if (*p == '\r') {
 							p = strchr(p, ':');
@@ -335,11 +335,14 @@ void COBD::begin()
 
 	char buffer[32];
 	version = 0;
-	if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
-		char *p = strstr(buffer, "OBDUART");
-		if (p) {
-			p += 9;
-			version = (*p - '0') * 10 + (*(p + 2) - '0');
+	for (byte n = 0; n < 3; n++) {
+		if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
+			char *p = strstr(buffer, "OBDUART");
+			if (p) {
+				p += 9;
+				version = (*p - '0') * 10 + (*(p + 2) - '0');
+				break;
+			}
 		}
 	}
 }
@@ -442,49 +445,50 @@ bool COBD::setBaudRate(unsigned long baudrate)
     return true;
 }
 
-
-float COBD::getTemperature()
+bool COBD::memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0)
 {
-	char buf[32];
-	if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
-		char* p = getResultValue(buf);
-		if (p) return (float)(atoi(p) + 12412) / 340;
+	char buf[64];
+	bool success;
+	if (acc) {
+		success = false;
+		if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
+			char* p = getResultValue(buf);
+			if (!p) break;
+			acc[0] = atoi(p++);
+			if (!(p = strchr(p, ','))) break;
+			acc[1] = atoi(++p);
+			if (!(p = strchr(p, ','))) break;
+			acc[2] = atoi(++p);
+			success = true;
+		} while (0);
+		if (!success) return false;
 	}
-	else {
-		return -1000;
+	if (gyr) {
+		success = false;
+		if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
+			char* p = getResultValue(buf);
+			if (!p) break;
+			gyr[0] = atoi(p++);
+			if (!(p = strchr(p, ','))) break;
+			gyr[1] = atoi(++p);
+			if (!(p = strchr(p, ','))) break;
+			gyr[2] = atoi(++p);
+			success = true;
+		} while (0);
+		if (!success) return false;
 	}
-}
-
-bool COBD::readAccel(int& x, int& y, int& z)
-{
-	char buf[32];
-	if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
-		char* p = getResultValue(buf);
-		if (!p) break;
-		x = atoi(p++);
-		if (!(p = strchr(p, ','))) break;
-		y = atoi(++p);
-		if (!(p = strchr(p, ','))) break;
-		z = atoi(++p);
-		return true;
-	} while (0);
-	return false;
-}
-
-bool COBD::readGyro(int& x, int& y, int& z)
-{
-	char buf[32];
-	if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
-		char* p = getResultValue(buf);
-		if (!p) break;
-		x = atoi(p++);
-		if (!(p = strchr(p, ','))) break;
-		y = atoi(++p);
-		if (!(p = strchr(p, ','))) break;
-		z = atoi(++p);
-		return true;
-	} while (0);
-	return false;
+	if (temp) {
+		success = false;
+		if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
+			char* p = getResultValue(buf);
+			if (p) {
+				*temp = (atoi(p) + 12412) / 34;
+				success = true;
+			}
+		}
+		if (!success) return false;
+	}
+	return true;	
 }
 
 #ifdef DEBUG
@@ -622,4 +626,151 @@ void COBDI2C::loadQueryData(PID_INFO obdInfo[])
 	dataIdleLoop();
 	Wire.requestFrom((byte)I2C_ADDR, (byte)MAX_PAYLOAD_SIZE, (byte)0);
 	Wire.readBytes((char*)obdInfo, sizeof(obdInfo[0]) * MAX_PIDS);
+}
+
+#define MPU6050_I2C_ADDRESS 0x68
+#define MPU6050_ACCEL_XOUT_H       0x3B   // R
+#define MPU6050_ACCEL_XOUT_L       0x3C   // R
+#define MPU6050_ACCEL_YOUT_H       0x3D   // R
+#define MPU6050_ACCEL_YOUT_L       0x3E   // R
+#define MPU6050_ACCEL_ZOUT_H       0x3F   // R
+#define MPU6050_ACCEL_ZOUT_L       0x40   // R
+#define MPU6050_TEMP_OUT_H         0x41   // R
+#define MPU6050_TEMP_OUT_L         0x42   // R
+#define MPU6050_GYRO_XOUT_H        0x43   // R
+#define MPU6050_GYRO_XOUT_L        0x44   // R
+#define MPU6050_GYRO_YOUT_H        0x45   // R
+#define MPU6050_GYRO_YOUT_L        0x46   // R
+#define MPU6050_GYRO_ZOUT_H        0x47   // R
+#define MPU6050_GYRO_ZOUT_L        0x48   // R
+#define MPU6050_PWR_MGMT_1         0x6B   // R/W
+#define MPU6050_PWR_MGMT_2         0x6C   // R/W
+#define MPU6050_WHO_AM_I           0x75   // R
+
+typedef struct
+{
+    uint8_t x_accel_h;
+    uint8_t x_accel_l;
+    uint8_t y_accel_h;
+    uint8_t y_accel_l;
+    uint8_t z_accel_h;
+    uint8_t z_accel_l;
+    uint8_t t_h;
+    uint8_t t_l;
+    uint8_t x_gyro_h;
+    uint8_t x_gyro_l;
+    uint8_t y_gyro_h;
+    uint8_t y_gyro_l;
+    uint8_t z_gyro_h;
+    uint8_t z_gyro_l;
+} MPU6050_READOUT_DATA;
+
+bool COBDI2C::memsInit()
+{
+	// default at power-up:
+	//    Gyro at 250 degrees second
+	//    Acceleration at 2g
+	//    Clock source at internal 8MHz
+	//    The device is in sleep mode.
+	//
+	uint8_t c;
+	bool success;
+	success = MPU6050_read (MPU6050_WHO_AM_I, &c, 1);
+	if (!success) return false;
+
+	// According to the datasheet, the 'sleep' bit
+	// should read a '1'. But I read a '0'.
+	// That bit has to be cleared, since the sensor
+	// is in sleep mode at power-up. Even if the
+	// bit reads '0'.
+	success = MPU6050_read (MPU6050_PWR_MGMT_2, &c, 1);
+	if (!success) return false;
+
+	// Clear the 'sleep' bit to start the sensor.
+	MPU6050_write_reg (MPU6050_PWR_MGMT_1, 0);
+	return true;
+}
+
+bool COBDI2C::memsRead(int* acc, int* gyr, int* mag, int* temp)
+{
+	bool success;
+
+	// Read the raw values.
+	// Read 14 bytes at once,
+	// containing acceleration, temperature and gyro.
+	// With the default settings of the MPU-6050,
+	// there is no filter enabled, and the values
+	// are not very stable.
+	
+	MPU6050_READOUT_DATA accel_t_gyro;
+	success = MPU6050_read (MPU6050_ACCEL_XOUT_H, (uint8_t *)&accel_t_gyro, sizeof(MPU6050_READOUT_DATA));
+	if (!success) return false;
+	
+	if (temp) {
+		// 340 per degrees Celsius, -512 at 35 degrees.
+		*temp = ((int)(((uint16_t)accel_t_gyro.t_h << 8) | accel_t_gyro.t_l) + 512) / 34 + 350; 
+	}
+
+	if (acc) {
+		MPU6050_store(acc, accel_t_gyro.x_accel_l, accel_t_gyro.x_accel_h);
+		MPU6050_store(acc + 1, accel_t_gyro.y_accel_l, accel_t_gyro.y_accel_h);
+		MPU6050_store(acc + 2, accel_t_gyro.z_accel_l, accel_t_gyro.z_accel_h);
+	}
+
+	if (gyr) {
+		MPU6050_store(gyr, accel_t_gyro.x_gyro_l, accel_t_gyro.x_gyro_h);
+		MPU6050_store(gyr + 1, accel_t_gyro.y_gyro_l, accel_t_gyro.y_gyro_h);
+		MPU6050_store(gyr + 2, accel_t_gyro.z_gyro_l, accel_t_gyro.z_gyro_h);
+	}
+	
+	if (mag) {
+		// no magnetometer
+		mag[0] = 0;
+		mag[1] = 0;
+		mag[2] = 0;
+	}
+	
+	return true;
+}
+
+void COBDI2C::MPU6050_store(int* pData, uint8_t data_l, uint8_t data_h)
+{
+	uint8_t* ptr = (uint8_t*)pData;
+	*ptr = data_l;
+	*(ptr + 1) = data_h;
+}
+
+bool COBDI2C::MPU6050_read(int start, uint8_t* buffer, int size)
+{
+	int i, n;
+
+	Wire.beginTransmission(MPU6050_I2C_ADDRESS);
+	Wire.write(start);
+	Wire.endTransmission(false);    // hold the I2C-bus
+
+	// Third parameter is true: relase I2C-bus after data is read.
+	Wire.requestFrom(MPU6050_I2C_ADDRESS, size, true);
+	while(Wire.available() && i<size)
+	{
+		buffer[i++]=Wire.read();
+	}
+	return i == size;
+}
+
+
+bool COBDI2C::MPU6050_write(int start, const uint8_t* pData, int size)
+{
+	int n;
+
+	Wire.beginTransmission(MPU6050_I2C_ADDRESS);
+	Wire.write(start);        // write the start address
+	n = Wire.write(pData, size);  // write data bytes
+	if (n != size) return false;
+	Wire.endTransmission(true); // release the I2C-bus
+	return true;
+}
+
+bool COBDI2C::MPU6050_write_reg(int reg, uint8_t data)
+{
+	return MPU6050_write(reg, &data, 1);
 }
