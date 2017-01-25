@@ -195,13 +195,13 @@ public:
 #endif
         record(buf, len);
     }
-    void logData(uint16_t pid, int value1, int value2, int value3)
+    void logData(uint16_t pid, int values[])
     {
         char buf[24];
         byte n = translatePIDName(pid, buf);
-        byte len = sprintf(buf + n, "%d,%d,%d", value1, value2, value3) + n;
+        byte len = sprintf(buf + n, "%d,%d,%d", values[0], values[1], values[2]) + n;
 #if STREAM_FORMAT == FORMAT_BIN
-        LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
+        LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {values[0], values[1], values[2]}};
         ld.checksum = getChecksum((char*)&ld, 20);
         dispatch((const char*)&ld, 20);
 #else

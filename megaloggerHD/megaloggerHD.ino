@@ -13,10 +13,6 @@
 #include <MultiLCD.h>
 #include <TinyGPS.h>
 #include "config.h"
-#ifdef OBD_ADAPTER_I2C
-#include <I2Cdev.h>
-#include <MPU9150.h>
-#endif
 #if ENABLE_DATA_LOG
 #include <SD.h>
 #endif
@@ -46,14 +42,9 @@ static uint32_t startTime = 0;
 static uint16_t lastSpeed = 0;
 static uint32_t lastSpeedTime = 0;
 static uint32_t gpsDate = 0;
-static uint32_t lastMemsDataTime = 0;
 #if USE_GPS
 static uint32_t lastGPSDataTime = 0;
 static int gpsSpeed = -1;
-#endif
-
-#ifdef OBD_ADAPTER_I2C
-MPU6050 accelgyro;
 #endif
 
 byte state = 0;
@@ -417,59 +408,48 @@ void processGPS()
 
 void processMEMS()
 {
-    int ax = 0, ay = 0, az = 0;
-    int gx = 0, gy = 0, gz = 0;
+    int acc[3];
+    int gyro[3];
 
-    if (logger.dataTime - lastMemsDataTime < ACC_DATA_INTERVAL) {
-        return;
-    }
-
-#ifdef OBD_ADAPTER_I2C
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-#else
-    obd.readAccel(ax, ay, az);
-    obd.readGyro(gx, gy, gz);
-#endif
+    if (!obd.memsRead(acc, gyro)) return;
 
     logger.dataTime = millis();
 
-    ax /= ACC_DATA_RATIO;
-    ay /= ACC_DATA_RATIO;
-    az /= ACC_DATA_RATIO;
-    gx /= GYRO_DATA_RATIO;
-    gy /= GYRO_DATA_RATIO;
-    gz /= GYRO_DATA_RATIO;
+    acc[0] /= ACC_DATA_RATIO;
+    acc[1] /= ACC_DATA_RATIO;
+    acc[2] /= ACC_DATA_RATIO;
+    gyro[0] /= GYRO_DATA_RATIO;
+    gyro[1] /= GYRO_DATA_RATIO;
+    gyro[2] /= GYRO_DATA_RATIO;
 
     // display MEMS data
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setCursor(362, 5);
-    setColorByValue(ax, 50, 100, 200);
-    lcd.print(ax);
-    setColorByValue(ay, 50, 100, 200);
+    setColorByValue(acc[0], 50, 100, 200);
+    lcd.print(acc[0]);
+    setColorByValue(acc[1], 50, 100, 200);
     lcd.write('/');
-    lcd.print(ay);
-    setColorByValue(az, 50, 100, 200);
+    lcd.print(acc[1]);
+    setColorByValue(acc[2], 50, 100, 200);
     lcd.write('/');
-    lcd.print(az);
-    Serial.println(az);
+    lcd.print(acc[2]);
+    Serial.println(acc[2]);
     lcd.printSpace(8);
 
     // display gyro data
     lcd.setCursor(374, 10);
     lcd.setColor(RGB16_WHITE);
-    lcd.print(gx);
+    lcd.print(gyro[0]);
     lcd.write('/');
-    lcd.print(gy);
+    lcd.print(gyro[1]);
     lcd.write('/');
-    lcd.print(gz);
+    lcd.print(gyro[2]);
     lcd.printSpace(8);
 
     // log x/y/z of accelerometer
-    logger.logData(PID_ACC, ax, ay, az);
+    logger.logData(PID_ACC, acc);
     // log x/y/z of gyro meter
-    logger.logData(PID_GYRO, gx, gy, gz);
-
-    lastMemsDataTime = logger.dataTime;
+    logger.logData(PID_GYRO, gyro);
 }
 
 void logOBDData(byte pid, int value)
@@ -693,12 +673,9 @@ void setup()
 
 #ifdef OBD_ADAPTER_I2C
     Wire.begin();
-    accelgyro.initialize();
-    if (accelgyro.testConnection()) state |= STATE_MEMS_READY;
-#else
-    if (obd.version > 10)
-      state |= STATE_MEMS_READY;
 #endif
+    if (obd.memsInit())
+      state |= STATE_MEMS_READY;
 
     showStates();
 

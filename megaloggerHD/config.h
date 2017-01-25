@@ -4,8 +4,8 @@
 /**************************************
 * OBD-II Adapter options
 **************************************/
-//#define OBD_ADAPTER_I2C
-#define OBD_ADAPTER_UART
+#define OBD_ADAPTER_I2C
+//#define OBD_ADAPTER_UART
 #define OBD_PROTOCOL PROTO_AUTO
 
 /**************************************
@@ -46,11 +46,6 @@
 **************************************/
 #define ACC_DATA_RATIO 172
 #define GYRO_DATA_RATIO 256
-
-/**************************************
-* Timeout/interval options
-**************************************/
-#define ACC_DATA_INTERVAL 200 /* ms */
 
 /**************************************
 * LCD module (uncomment only one)
