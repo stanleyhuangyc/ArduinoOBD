@@ -239,6 +239,8 @@ void initScreen()
     lcd.print("Accelerometer");
     lcd.setCursor(356, 8);
     lcd.print("Gyroscope");
+    lcd.setCursor(348, 13);
+    lcd.print("Temperature");
 
     lcd.setCursor(348, 24);
     lcd.print("OBD Interval");
@@ -361,15 +363,11 @@ void processGPS()
     lastGPSDataTime = logger.dataTime;
 
     // display UTC date/time
-    lcd.setFontSize(FONT_SIZE_SMALL);
-    lcd.setCursor(216, 24);
     lcd.setFlags(FLAG_PAD_ZERO);
-    lcd.printLong(date, 6);
-    lcd.setCursor(216, 25);
+    lcd.setCursor(216, 24);
     lcd.printLong(time, 8);
 
     // display latitude
-    lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setCursor(216, 27);
     lcd.print((float)lat / 100000, 5);
     // display longitude
@@ -383,7 +381,6 @@ void processGPS()
     int32_t alt = gps.altitude();
     lcd.setFlags(0);
     if (alt > -1000000 && alt < 1000000) {
-        lcd.setFontSize(FONT_SIZE_MEDIUM);
         lcd.setCursor(216, 33);
         lcd.print(alt / 100);
         lcd.print("m ");
@@ -410,8 +407,9 @@ void processMEMS()
 {
     int acc[3];
     int gyro[3];
+    int temp;
 
-    if (!obd.memsRead(acc, gyro)) return;
+    if (!obd.memsRead(acc, gyro, 0, &temp)) return;
 
     logger.dataTime = millis();
 
@@ -445,6 +443,12 @@ void processMEMS()
     lcd.write('/');
     lcd.print(gyro[2]);
     lcd.printSpace(8);
+
+    // display adapter temperature
+    lcd.setCursor(382, 15);
+    lcd.setColor(RGB16_WHITE);
+    lcd.print((float)temp / 10, 1);
+    lcd.print("C ");
 
     // log x/y/z of accelerometer
     logger.logData(PID_ACC, acc);
@@ -599,39 +603,38 @@ void showStates()
 
 void testOut()
 {
-    static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
+    const char cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "0902\r"};
     char buf[128];
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(0, 13);
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
-        char cmd[6];
-        memcpy_P(cmd, cmds[i], sizeof(cmd));
-        lcd.setColor(RGB16_WHITE);
-        lcd.print("Sending ");
-        lcd.println(cmd);
-        Serial.println(cmd);
-        lcd.setColor(RGB16_CYAN);
-        if (obd.sendCommand(cmd, buf, sizeof(buf))) {
-            char *p = strstr(buf, cmd);
-            if (p)
-                p += strlen(cmd);
-            else
-                p = buf;
-            Serial.println(p);
-            while (*p == '\r') p++;
-            while (*p) {
-                lcd.write(*p);
-                if (*p == '\r' && *(p + 1) != '\r') {
-                    lcd.write('\n');
-                }
-                p++;
+      const char* cmd = cmds[i];
+      lcd.setColor(RGB16_WHITE);
+      lcd.print("Sending ");
+      lcd.println(cmd);
+      Serial.println(cmd);
+      lcd.setColor(RGB16_CYAN);
+      if (obd.sendCommand(cmd, buf, sizeof(buf))) {
+        char *p = strstr(buf, cmd);
+        if (p)
+            p += strlen(cmd);
+        else
+            p = buf;
+        Serial.println(p);
+        while (*p == '\r') p++;
+        while (*p) {
+            lcd.write(*p);
+            if (*p == '\r' && *(p + 1) != '\r') {
+                lcd.write('\n');
             }
-        } else {
-            lcd.println("Timeout");
-            Serial.println("Timeout");
+            p++;
         }
-        delay(500);
+      } else {
+        lcd.println("Timeout");
+        Serial.println("Timeout");
+      }
+      delay(500);
     }
     lcd.println();
 }
