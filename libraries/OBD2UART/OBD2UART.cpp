@@ -333,11 +333,14 @@ void COBD::begin()
 
 	char buffer[32];
 	version = 0;
+	for (byte n = 0; n < 3; n++) {
 	if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
 		char *p = strstr(buffer, "OBDUART");
 		if (p) {
 			p += 9;
 			version = (*p - '0') * 10 + (*(p + 2) - '0');
+				break;
+			}
 		}
 	}
 }
@@ -383,16 +386,19 @@ void COBD::recover()
 
 bool COBD::init(OBD_PROTOCOLS protocol)
 {
-	const char PROGMEM *initcmd[] = {PSTR("ATZ\r"),PSTR("ATE0\r"),PSTR("ATL1\r"),PSTR("ATSP%02u\r")};
+	const char *initcmd[] = {"ATZ\r", "ATE0\r", "ATL1\r"};
 	char buffer[64];
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
-		sprintf_P(buffer, initcmd[i], protocol);
-#ifdef DEBUG
-		debugOutput(buffer);
-#endif
-		write(buffer);
-		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0 || (i > 0 && !strstr(buffer, "OK"))) {
+		write(initcmd[i]);
+		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0) {
+			m_state = OBD_DISCONNECTED;
+			return false;
+		}
+	}
+	if (protocol != PROTO_AUTO) {
+		sprintf_P(buffer, PSTR("ATSP%u\r"), protocol);
+		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0 && !strstr(buffer, "OK")) {
 			m_state = OBD_DISCONNECTED;
 			return false;
 		}
@@ -440,48 +446,50 @@ bool COBD::setBaudRate(unsigned long baudrate)
     return true;
 }
 
-float COBD::getTemperature()
+bool COBD::memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0)
 {
-	char buf[32];
-	if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
-		char* p = getResultValue(buf);
-		if (p) return (float)(atoi(p) + 12412) / 340;
+	char buf[64];
+	bool success;
+	if (acc) {
+		success = false;
+		if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
+			char* p = getResultValue(buf);
+			if (!p) break;
+			acc[0] = atoi(p++);
+			if (!(p = strchr(p, ','))) break;
+			acc[1] = atoi(++p);
+			if (!(p = strchr(p, ','))) break;
+			acc[2] = atoi(++p);
+			success = true;
+		} while (0);
+		if (!success) return false;
 	}
-	else {
-		return -1000;
+	if (gyr) {
+		success = false;
+		if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
+			char* p = getResultValue(buf);
+			if (!p) break;
+			gyr[0] = atoi(p++);
+			if (!(p = strchr(p, ','))) break;
+			gyr[1] = atoi(++p);
+			if (!(p = strchr(p, ','))) break;
+			gyr[2] = atoi(++p);
+			success = true;
+		} while (0);
+		if (!success) return false;
 	}
-}
-
-bool COBD::readAccel(int& x, int& y, int& z)
-{
-	char buf[32];
-	if (sendCommand("ATACL\r", buf, sizeof(buf)) > 0) do {
-		char* p = getResultValue(buf);
-		if (!p) break;
-		x = atoi(p++);
-		if (!(p = strchr(p, ','))) break;
-		y = atoi(++p);
-		if (!(p = strchr(p, ','))) break;
-		z = atoi(++p);
-		return true;
-	} while (0);
-	return false;
-}
-
-bool COBD::readGyro(int& x, int& y, int& z)
-{
-	char buf[32];
-	if (sendCommand("ATGYRO\r", buf, sizeof(buf)) > 0) do {
-		char* p = getResultValue(buf);
-		if (!p) break;
-		x = atoi(p++);
-		if (!(p = strchr(p, ','))) break;
-		y = atoi(++p);
-		if (!(p = strchr(p, ','))) break;
-		z = atoi(++p);
-		return true;
-	} while (0);
-	return false;
+	if (temp) {
+		success = false;
+		if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
+			char* p = getResultValue(buf);
+			if (p) {
+				*temp = (atoi(p) + 12412) / 34;
+				success = true;
+			}
+		}
+		if (!success) return false;
+	}
+	return true;	
 }
 
 #ifdef DEBUG

@@ -388,16 +388,19 @@ void COBD::recover()
 
 bool COBD::init(OBD_PROTOCOLS protocol)
 {
-	const char PROGMEM *initcmd[] = {PSTR("ATZ\r"),PSTR("ATE0\r"),PSTR("ATL1\r"),PSTR("ATSP%02u\r")};
+	const char *initcmd[] = {"ATZ\r", "ATE0\r", "ATL1\r"};
 	char buffer[64];
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
-		sprintf_P(buffer, initcmd[i], protocol);
-#ifdef DEBUG
-		debugOutput(buffer);
-#endif
-		write(buffer);
-		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0 || (i > 0 && !strstr(buffer, "OK"))) {
+		write(initcmd[i]);
+		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0) {
+			m_state = OBD_DISCONNECTED;
+			return false;
+		}
+	}
+	if (protocol != PROTO_AUTO) {
+		sprintf_P(buffer, PSTR("ATSP%u\r"), protocol);
+		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0 && !strstr(buffer, "OK")) {
 			m_state = OBD_DISCONNECTED;
 			return false;
 		}

@@ -125,20 +125,16 @@ public:
 	virtual float getVoltage();
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
-	// get device temperature (in celsius degree) 
-	virtual float getTemperature();
-	// get accelerometer data
-	virtual bool readAccel(int& x, int& y, int& z);
-	// get gyroscope data
-	virtual bool readGyro(int& x, int& y, int& z);
+	// initialize MEMS sensor
+	virtual bool memsInit() { return version > 10; }
+	// read out MEMS data (acc for accelerometer, gyr for gyroscope, temp in 0.1 celcius degree)
+	virtual bool memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0);
 	// send query for specified PID
 	virtual void sendQuery(byte pid);
 	// retrive and parse the response of specifie PID
 	virtual bool getResult(byte& pid, int& result);
 	// determine if the PID is supported
 	virtual bool isValidPID(byte pid);
-	// init GPS module
-	// parse GPS data
 	// set current PID mode
 	byte dataMode;
 	// occurrence of errors

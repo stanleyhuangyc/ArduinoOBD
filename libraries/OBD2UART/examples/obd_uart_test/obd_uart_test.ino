@@ -1,9 +1,9 @@
 /*************************************************************************
 * Testing sketch for Freematics OBD-II UART Adapter
-* Reads and prints several OBD-II PIDs value
+* Reads and prints several OBD-II PIDs value and MEMS sensor data
 * Distributed under GPL v2.0
 * Visit http://freematics.com for more information
-* Written by Stanley Huang <stanleyhuangyc@gmail.com>
+* Written by Stanley Huang <support@freematics.com.au>
 *************************************************************************/
 
 #include <SoftwareSerial.h>
@@ -63,7 +63,7 @@ void readPIDSingle()
 
 void readPIDMultiple()
 {
-    static const byte pids[] = {PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_COOLANT_TEMP, PID_INTAKE_TEMP};
+    const byte pids[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
     int values[sizeof(pids)];
     if (obd.readPID(pids, sizeof(pids), values) == sizeof(pids)) {
       mySerial.print('[');
@@ -91,29 +91,33 @@ void readBatteryVoltage()
 
 void readMEMS()
 {
-  int x, y, z;
+  int acc[3];
+  int gyro[3];
+  int temp;
+
+  if (!obd.memsRead(acc, gyro, 0, &temp)) return;
+
   mySerial.print('[');
   mySerial.print(millis());
   mySerial.print(']');
-  if (obd.readAccel(x, y, z)) {
-    mySerial.print("ACC:");
-    mySerial.print(x);
-    mySerial.print('/');
-    mySerial.print(y);
-    mySerial.print('/');
-    mySerial.print(z);
-    mySerial.print(' ');
-  }
-  if (obd.readGyro(x, y, z)) {
-    mySerial.print("GYRO:");
-    mySerial.print(x);
-    mySerial.print('/');
-    mySerial.print(y);
-    mySerial.print('/');
-    mySerial.print(z);
-    mySerial.print(' ');
-  }
-  mySerial.println();
+
+  mySerial.print("ACC:");
+  mySerial.print(acc[0]);
+  mySerial.print('/');
+  mySerial.print(acc[1]);
+  mySerial.print('/');
+  mySerial.print(acc[2]);
+
+  mySerial.print(" GYRO:");
+  mySerial.print(gyro[0]);
+  mySerial.print('/');
+  mySerial.print(gyro[1]);
+  mySerial.print('/');
+  mySerial.print(gyro[2]);
+
+  mySerial.print(" TEMP:");
+  mySerial.print((float)temp / 10, 1);
+  mySerial.println("C");
 }
 
 void setup()
@@ -131,6 +135,12 @@ void setup()
   // send some commands for testing and show response for debugging purpose
   //testOut();
  
+  Serial.print("MEMS:");
+  if (obd.memsInit()) {
+    Serial.println("OK");
+  } else {
+    Serial.println("NO");
+  }
   // initialize OBD-II adapter
   do {
     mySerial.println("Init...");
