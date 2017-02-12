@@ -294,7 +294,7 @@ bool checkSD()
         lcd.print(type);
         lcd.write(' ');
         if (!volume.init(card)) {
-            lcd.print("No FAT!");
+            lcd.println("No FAT!");
             return false;
         }
 
@@ -630,6 +630,7 @@ void testOut()
             }
             p++;
         }
+        lcd.println();
       } else {
         lcd.println("Timeout");
         Serial.println("Timeout");
@@ -668,11 +669,11 @@ void setup()
     }
 #endif
 
-    obd.begin();
+    byte version = obd.begin();
     lcd.print("Adapter Ver. ");
-    lcd.print(obd.version / 10);
+    lcd.print(version / 10);
     lcd.print('.');
-    lcd.println(obd.version % 10);
+    lcd.println(version % 10);
 
 #ifdef OBD_ADAPTER_I2C
     Wire.begin();
@@ -707,7 +708,6 @@ void setup()
         lcd.print("VIN:");
         lcd.setColor(RGB16_YELLOW);
         lcd.println(buf);
-        lcd.println();
     }
 
     uint16_t dtc[6];
