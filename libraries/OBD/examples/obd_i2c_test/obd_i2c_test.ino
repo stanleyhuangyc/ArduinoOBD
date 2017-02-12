@@ -12,10 +12,11 @@
 #include <OBD.h>
 
 COBDI2C obd;
+bool hasMEMS;
 
 void testOut()
 {
-    static const char cmds[][6] = {"ATZ\r", "ATL1\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
+    static const char cmds[][6] = {"ATZ\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[128];
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
@@ -111,15 +112,12 @@ void setup() {
   delay(500);
   obd.begin();
 
+  hasMEMS = obd.memsInit();
   Serial.print("MEMS:");
-  if (obd.memsInit()) {
-    Serial.println("OK");
-  } else {
-    Serial.println("NO");
-  }
-  
+  Serial.println(hasMEMS ? "Yes" : "No");
+
   // send some commands for testing and show response for debugging purpose
-  //testOut();
+  testOut();
 
   // initialize OBD-II adapter
   do {
@@ -151,6 +149,7 @@ void setup() {
 void loop() {
   readPIDs();
   readBatteryVoltage();
-  readMEMS();
+   if (hasMEMS) {
+    readMEMS();
+  }
 }
- 

@@ -18,10 +18,11 @@ SoftwareSerial mySerial(A2, A3);
 //#define mySerial Serial
 
 COBD obd;
+bool hasMEMS;
 
 void testOut()
 {
-    static const char cmds[][6] = {"ATZ\r", "ATL1\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
+    static const char cmds[][6] = {"ATZ\r", "ATI\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[128];
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
@@ -41,6 +42,7 @@ void testOut()
                     mySerial.write('\n');
                 p++;
             }
+            mySerial.println();
         } else {
             mySerial.println("Timeout");
         }
@@ -64,7 +66,7 @@ void readPIDSingle()
 
 void readPIDMultiple()
 {
-    static const byte pids[] = {PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_COOLANT_TEMP, PID_INTAKE_TEMP};
+    static const byte pids[] = {PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_COOLANT_TEMP};
     int values[sizeof(pids)];
     if (obd.readPID(pids, sizeof(pids), values) == sizeof(pids)) {
       mySerial.print('[');
@@ -92,29 +94,33 @@ void readBatteryVoltage()
 
 void readMEMS()
 {
-  int x, y, z;
-  mySerial.print('[');
-  mySerial.print(millis());
-  mySerial.print(']');
-  if (obd.readAccel(x, y, z)) {
-    mySerial.print("ACC:");
-    mySerial.print(x);
-    mySerial.print('/');
-    mySerial.print(y);
-    mySerial.print('/');
-    mySerial.print(z);
-    mySerial.print(' ');
-  }
-  if (obd.readGyro(x, y, z)) {
-    mySerial.print("GYRO:");
-    mySerial.print(x);
-    mySerial.print('/');
-    mySerial.print(y);
-    mySerial.print('/');
-    mySerial.print(z);
-    mySerial.print(' ');
-  }
-  mySerial.println();
+    int acc[3];
+    int gyro[3];
+    int temp;
+
+    if (!obd.memsRead(acc, gyro, 0, &temp)) return;
+
+    Serial.print('[');
+    Serial.print(millis());
+    Serial.print(']');
+
+    Serial.print("ACC:");
+    Serial.print(acc[0]);
+    Serial.print('/');
+    Serial.print(acc[1]);
+    Serial.print('/');
+    Serial.print(acc[2]);
+
+    Serial.print(" GYRO:");
+    Serial.print(gyro[0]);
+    Serial.print('/');
+    Serial.print(gyro[1]);
+    Serial.print('/');
+    Serial.print(gyro[2]);
+
+    Serial.print(" TEMP:");
+    Serial.print((float)temp / 10, 1);
+    Serial.println("C");
 }
 
 void setup()
@@ -123,15 +129,27 @@ void setup()
   while (!mySerial);
   
   // this will begin serial
-  obd.begin();
+  byte version = obd.begin();
 
-  mySerial.print("Adapter version: ");
-  mySerial.println(obd.version);
+  mySerial.print("Freematics OBD-II Adapter ");
+  if (version > 0) {
+    mySerial.print("Ver. ");
+    mySerial.print(version / 10);
+    mySerial.print('.');
+    mySerial.println(version % 10);
+  } else {
+    mySerial.println("not detected");
+    for (;;);
+  }
   delay(1000);
 
   // send some commands for testing and show response for debugging purpose
-  //testOut();
- 
+  testOut();
+
+  hasMEMS = obd.memsInit();
+  mySerial.print("MEMS:");
+  mySerial.println(hasMEMS ? "Yes" : "No");
+  
   // initialize OBD-II adapter
   do {
     mySerial.println("Init...");
@@ -156,7 +174,7 @@ void setup()
     }
     mySerial.println();
   }
-  delay(3000);
+  delay(5000);
 }
 
 
@@ -165,7 +183,7 @@ void loop()
   readPIDSingle();
   readPIDMultiple();
   readBatteryVoltage();
-  if (obd.version > 10) {
+  if (hasMEMS) {
     readMEMS();
   }
 }
