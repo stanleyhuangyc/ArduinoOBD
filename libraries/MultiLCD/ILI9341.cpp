@@ -383,10 +383,10 @@ size_t LCD_ILI9341::write(uint8_t c)
 {
     if (c == '\n') {
         m_y += (m_font + 1) << 3;
-        return 0;
+        return 1;
     } else if (c == '\r') {
         m_x = 0;
-        return 0;
+        return 1;
     }
 
 #ifndef MEMORY_SAVING
@@ -435,6 +435,7 @@ size_t LCD_ILI9341::write(uint8_t c)
         }
     }
 #endif
+    return 1;
 }
 
 void LCD_ILI9341::writeDigit(byte n)
