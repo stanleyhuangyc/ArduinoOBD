@@ -1,16 +1,14 @@
 /*************************************************************************
 * Tester sketch for Freematics OBD-II Adapter for Arduino
-* Distributed under GPL v2.0
-* Written by Stanley Huang <stanleyhuangyc@gmail.com>
-* Visit freematics.com for product information
+* Visit http://freematics.com for more information
+* Distributed under BSD license
+* Written by Stanley Huang <support@freematics.com.au>
 *************************************************************************/
 
 #include <Arduino.h>
 #include <OBD.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <I2Cdev.h>
-#include <MPU9150.h>
 #include "MultiLCD.h"
 #include "config.h"
 #if ENABLE_DATA_LOG
@@ -46,10 +44,6 @@ static uint16_t elapsed = 0;
 static uint8_t lastPid = 0;
 static int lastValue = 0;
 
-#if USE_MPU6050 || USE_MPU9150
-MPU6050 accelgyro;
-#endif
-
 void chartUpdate(CHART_DATA* chart, int value)
 {
   if (value > chart->height) value = chart->height;
@@ -80,20 +74,20 @@ public:
         checkSD();
 #endif
 
-#if USE_MPU6050 || USE_MPU9150
+#ifdef OBD_ADAPTER_I2C
         Wire.begin();
-        accelgyro.initialize();
-        if (accelgyro.testConnection()) state |= STATE_MEMS_READY;
 #endif
+        if (memsInit())
+          state |= STATE_MEMS_READY;
 
         testOut();
 
-        while (!init(OBD_PROTOCOL));
+        while (!init());
         
         showVIN();
         
-        //showECUCap();
-        //delay(3000);
+        showECUCap();
+        delay(3000);
 
         initScreen();
 
@@ -148,7 +142,7 @@ bool checkSD()
 #endif
     void testOut()
     {
-        static const char PROGMEM cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "010C\r", "010D\r", "0902\r"};
+        static const char PROGMEM cmds[][6] = {"ATZ\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "010D\r", "0902\r"};
         char buf[128];
         
         lcd.setColor(RGB16_WHITE);
@@ -224,58 +218,51 @@ bool checkSD()
         if (errors >= 5) {
             reconnect();
         }
+        if (state & STATE_MEMS_READY) {
+            processMEMS();
+        }
     }
-#if USE_MPU6050 || USE_MPU9150
-    void logMEMSData()
+    void processMEMS()
     {
-      int16_t ax, ay, az;
-      int16_t gx, gy, gz;
-#if USE_MPU9150
-      int16_t mx, my, mz;
-      accelgyro.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
-#else
-      accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-#endif
-      dataTime = millis();
+      int acc[3];
+      int gyro[3];
+      int temp;
   
+      if (!memsRead(acc, gyro, 0, &temp)) return;
+
+      dataTime = millis();
+
+      acc[0] /= ACC_DATA_RATIO;
+      acc[1] /= ACC_DATA_RATIO;
+      acc[2] /= ACC_DATA_RATIO;
+      gyro[0] /= GYRO_DATA_RATIO;
+      gyro[1] /= GYRO_DATA_RATIO;
+      gyro[2] /= GYRO_DATA_RATIO;
+      
       lcd.setFontSize(FONT_SIZE_SMALL);
       lcd.setCursor(24, 14);
-      lcd.print(ax >> 4);
+      lcd.print(acc[0]);
       lcd.print('/');
-      lcd.print(ay >> 4);
+      lcd.print(acc[1]);
       lcd.print('/');
-      lcd.print(az >> 4);
+      lcd.print(acc[2]);
       lcd.print(' ');
   
       lcd.setCursor(152, 14);
-      lcd.print(gx >> 4);
+      lcd.print(gyro[0]);
       lcd.print('/');
-      lcd.print(gy >> 4);
+      lcd.print(gyro[1]);
       lcd.print('/');
-      lcd.print(gz >> 4);
+      lcd.print(gyro[2]);
       lcd.print(' ');
   
-#if USE_MPU9150
-      lcd.setCursor(252, 14);
-      lcd.print(mx >> 4);
-      lcd.print('/');
-      lcd.print(my >> 4);
-      lcd.print('/');
-      lcd.print(mz >> 4);
-      lcd.print(' ');
-#endif
       lcd.setFontSize(FONT_SIZE_MEDIUM);
 
       // log x/y/z of accelerometer
-      logData(PID_ACC, ax, ay, az);
+      logData(PID_ACC, acc[0], acc[1], acc[2]);
       // log x/y/z of gyro meter
-      logData(PID_GYRO, gx, gy, gz);
-#if USE_MPU9150
-      // log x/y/z of compass
-      logData(PID_COMPASS, mx, my, mz);
-#endif
+      logData(PID_GYRO, gyro[0], gyro[1], gyro[2]);
     }
-#endif
     void reconnect()
     {
         lcd.clear();
@@ -386,8 +373,6 @@ bool checkSD()
         lcd.print("ACC");
         lcd.setCursor(122, 14);
         lcd.print("GYRO");
-        lcd.setCursor(230, 14);
-        lcd.print("MAG");
 
         lcd.setColor(RGB16_YELLOW);
         lcd.setCursor(24, 5);
@@ -417,15 +402,6 @@ bool checkSD()
 
         lcd.setColor(RGB16_WHITE);
     }
-#if USE_MPU6050 || USE_MPU9150
-    void dataIdleLoop()
-    {
-      // while waiting for response from OBD-II adapter, let's do something here
-      if (state == (STATE_MEMS_READY | STATE_INIT_DONE)) {
-        logMEMSData();
-      }
-    }
-#endif
     byte state;
 };
 
