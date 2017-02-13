@@ -85,8 +85,7 @@ public:
         while (!init());
         
         showVIN();
-        
-        showECUCap();
+        showDTC();
         delay(3000);
 
         initScreen();
@@ -142,7 +141,7 @@ bool checkSD()
 #endif
     void testOut()
     {
-        static const char PROGMEM cmds[][6] = {"ATZ\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "010D\r", "0902\r"};
+        static const char PROGMEM cmds[][6] = {"ATZ\r", "ATH1\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
         char buf[128];
         
         lcd.setColor(RGB16_WHITE);
@@ -167,15 +166,17 @@ bool checkSD()
                 while (*p == '\r') p++;
                 while (*p) {
                     lcd.write(*p);
-                    if (*p == '\r' && *(p + 1) != '\r')
+                    if (*p == '\r')
                         lcd.write('\n');
                     p++;
                 }
+                lcd.println();
             } else {
                 lcd.println("Timeout");
             }
-            delay(1000);
+            delay(500);
         }
+        lcd.println();
     }
     void showVIN()
     {
@@ -183,10 +184,25 @@ bool checkSD()
       lcd.setFontSize(FONT_SIZE_MEDIUM);
       if (getVIN(buf, sizeof(buf))) {
           lcd.setColor(RGB16_WHITE);
-          lcd.print("\nVIN:");
+          lcd.print("VIN:");
           lcd.setColor(RGB16_YELLOW);
           lcd.println(buf);
       }
+    }
+    void showDTC()
+    {
+        uint16_t dtc[6];
+        int num = readDTC(dtc, sizeof(dtc) / sizeof(dtc[0]));
+        lcd.setColor(RGB16_WHITE);
+        lcd.print(num);
+        lcd.println(" DTC found");
+        if (num > 0) {
+          lcd.setColor(RGB16_YELLOW);
+          for (byte i = 0; i < num; i++) {
+            lcd.print(dtc[i], HEX);
+            lcd.print(' ');
+          }
+        }
     }
     void loop()
     {
@@ -212,6 +228,7 @@ bool checkSD()
           if (isValidPID(pid) && readPID(pid, value)) {
             dataTime = millis();
             logData((uint16_t)pid | 0x100, value);
+            showData(pid, value);
             lastSec = sec;
           }
         }
