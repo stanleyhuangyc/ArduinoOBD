@@ -1,6 +1,5 @@
 /*************************************************************************
-* Reference code for Freematics OBD-II UART Adapter
-* Works with Freematics OBD-II Telematics Advanced Kit
+* Reference code for Freematics OBD-II Advanced Telematics Kit
 * Visit http://freematics.com for more information
 * Distributed under BSD license
 * Written by Stanley Huang <support@freematics.com.au>
@@ -603,7 +602,7 @@ void showStates()
 
 void testOut()
 {
-    const char cmds[][6] = {"ATZ\r", "ATL1\r", "ATRV\r", "0100\r", "0902\r"};
+    const char cmds[][6] = {"ATZ\r", "ATH0\r", "ATRV\r", "0100\r", "0902\r"};
     char buf[128];
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(0, 13);
@@ -670,21 +669,33 @@ void setup()
 #endif
 
     byte version = obd.begin();
-    lcd.print("Adapter Ver. ");
-    lcd.print(version / 10);
-    lcd.print('.');
-    lcd.println(version % 10);
+    if (version) {
+      lcd.print("Adapter Ver. ");
+      lcd.print(version / 10);
+      lcd.print('.');
+      lcd.println(version % 10);
+    } else {
+#ifdef OBD_ADAPTER_I2C
+      lcd.print("OBD-II I2C Adapter ");
+#else
+      lcd.print("OBD-II UART Adapter ");
+#endif
+      lcd.setColor(RGB16_RED);
+      lcd.draw(cross, 16, 16);
+      lcd.setColor(RGB16_WHITE);
+    }
 
 #ifdef OBD_ADAPTER_I2C
     Wire.begin();
 #endif
-    if (obd.memsInit())
+    if (version && obd.memsInit())
       state |= STATE_MEMS_READY;
 
     showStates();
 
 #if USE_GPS
     unsigned long t = millis();
+    while (GPSUART.available()) GPSUART.read();
     do {
         if (GPSUART.available() && GPSUART.read() == '\r') {
             state |= STATE_GPS_CONNECTED;

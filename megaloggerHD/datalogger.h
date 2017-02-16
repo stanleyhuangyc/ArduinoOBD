@@ -33,7 +33,8 @@ typedef struct {
 
 #define PID_DATA_SIZE 0x80
 
-#define FILE_NAME_FORMAT "/DAT%05d.CSV"
+#define FILE_NAME_FORMAT "DAT%05d.CSV"
+#define FILE_PATH "/DATA/"
 
 #if ENABLE_DATA_OUT
 
@@ -213,12 +214,12 @@ public:
     uint16_t openFile(uint16_t logFlags = 0, uint32_t dateTime = 0)
     {
         uint16_t fileIndex;
-        char filename[24] = "/FRMATICS";
+        char filename[24] = FILE_PATH;
 
         dataSize = 0;
         if (SD.exists(filename)) {
             for (fileIndex = 1; fileIndex; fileIndex++) {
-                sprintf(filename + 9, FILE_NAME_FORMAT, fileIndex);
+                sprintf(filename + sizeof(FILE_PATH) - 1, FILE_NAME_FORMAT, fileIndex);
                 if (!SD.exists(filename)) {
                     break;
                 }
@@ -228,7 +229,7 @@ public:
         } else {
             SD.mkdir(filename);
             fileIndex = 1;
-            sprintf(filename + 9, FILE_NAME_FORMAT, 1);
+            sprintf(filename + sizeof(FILE_PATH) - 1, FILE_NAME_FORMAT, 1);
         }
 
         sdfile = SD.open(filename, FILE_WRITE);
