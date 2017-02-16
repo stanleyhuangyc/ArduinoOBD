@@ -201,7 +201,6 @@ class COBDI2C : public COBD {
 public:
 	byte begin();
 	void end();
-	bool readPID(byte pid, int& result);
 	void write(const char* s);
 	// API not applicable
 	bool setBaudRate(unsigned long baudrate) { return false; }

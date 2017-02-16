@@ -539,13 +539,6 @@ void COBDI2C::end()
 	m_state = OBD_DISCONNECTED;
 }
 
-bool COBDI2C::readPID(byte pid, int& result)
-{
-	sendQuery(pid);
-	dataIdleLoop();
-	return getResult(pid, result);
-}
-
 void COBDI2C::write(const char* s)
 {
 	COMMAND_BLOCK cmdblock = {millis(), CMD_SEND_AT_COMMAND};
