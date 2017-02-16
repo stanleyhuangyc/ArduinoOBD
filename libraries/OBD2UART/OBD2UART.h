@@ -10,7 +10,6 @@
 #define OBD_TIMEOUT_SHORT 1000 /* ms */
 #define OBD_TIMEOUT_LONG 5000 /* ms */
 #define OBD_TIMEOUT_GPS 200 /* ms */
-#define OBD_SERIAL_BAUDRATE 38400
 
 #ifndef OBDUART
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
@@ -100,7 +99,7 @@ class COBD
 public:
 	COBD():dataMode(1),errors(0),m_state(OBD_DISCONNECTED) {}
 	// begin serial UART
-	virtual void begin();
+	virtual byte begin();
 	// initialize OBD-II connection
 	virtual bool init(OBD_PROTOCOLS protocol = PROTO_AUTO);
 	// un-initialize OBD-II connection
@@ -126,7 +125,7 @@ public:
 	// get VIN as a string, buffer length should be >= OBD_RECV_BUF_SIZE
 	virtual bool getVIN(char* buffer, byte bufsize);
 	// initialize MEMS sensor
-	virtual bool memsInit() { return version > 10; }
+	virtual bool memsInit();
 	// read out MEMS data (acc for accelerometer, gyr for gyroscope, temp in 0.1 celcius degree)
 	virtual bool memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0);
 	// send query for specified PID
@@ -135,14 +134,14 @@ public:
 	virtual bool getResult(byte& pid, int& result);
 	// determine if the PID is supported
 	virtual bool isValidPID(byte pid);
+	// get adapter firmware version
+	virtual byte getVersion();
 	// set current PID mode
 	byte dataMode;
 	// occurrence of errors
 	byte errors;
 	// bit map of supported PIDs
 	byte pidmap[4 * 4];
-	// adapter version
-	byte version;
 protected:
 	virtual char* getResponse(byte& pid, char* buffer, byte bufsize);
 	virtual byte receive(char* buffer, byte bufsize, int timeout = OBD_TIMEOUT_SHORT);

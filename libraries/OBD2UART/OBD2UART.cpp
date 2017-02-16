@@ -81,19 +81,11 @@ bool COBD::readPID(byte pid, int& result)
 
 byte COBD::readPID(const byte pid[], byte count, int result[])
 {
-	// send a multiple query command
-	char buffer[128];
-	char *p = buffer;
-	byte results = 0;
+	byte results = 0; 
 	for (byte n = 0; n < count; n++) {
-		p += sprintf(p, "%02X%02X\r", dataMode, pid[n]);		
-	}
-	write(buffer);
-	// receive and parse the response
-	for (byte n = 0; n < count; n++) {
-		byte curpid = pid[n];
-		if (getResult(curpid, result[n]))
+		if (readPID(pid[n], result[n])) {
 			results++;
+		}
 	}
 	return results;
 }
@@ -110,9 +102,7 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 		char buffer[128];
 		sprintf_P(buffer, n == 0 ? PSTR("03\r") : PSTR("03%02X\r"), n);
 		write(buffer);
-		Serial.println(buffer);
 		if (receive(buffer, sizeof(buffer)) > 0) {
-			Serial.println(buffer);
 			if (!strstr(buffer, "NO DATA")) {
 				char *p = strstr(buffer, "43");
 				if (p) {
@@ -144,6 +134,10 @@ void COBD::clearDTC()
 
 void COBD::write(const char* s)
 {
+#ifdef DEBUG
+	DEBUG.print("<<<");
+	DEBUG.println(s);
+#endif
 	OBDUART.write(s);
 }
 
@@ -323,39 +317,43 @@ bool COBD::isValidPID(byte pid)
 	return pidmap[i] & b;
 }
 
-void COBD::begin()
+byte COBD::begin()
 {
-	OBDUART.begin(OBD_SERIAL_BAUDRATE);
-#ifdef DEBUG
-	DEBUG.begin(115200);
-#endif
-	recover();
+	long baudrates[] = {38400, 115200};
+	byte version = 0;
+	for (byte n = 0; n < sizeof(baudrates) / sizeof(baudrates[0]) && version == 0; n++) {
+		OBDUART.begin(baudrates[n]);
+		version = getVersion(); 
+	}
+	return version;	
+}
 
-	char buffer[32];
-	version = 0;
+byte COBD::getVersion()
+{
+	byte version = 0;
 	for (byte n = 0; n < 3; n++) {
-	if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
-		char *p = strstr(buffer, "OBDUART");
-		if (p) {
-			p += 9;
-			version = (*p - '0') * 10 + (*(p + 2) - '0');
+		char buffer[32];
+		if (sendCommand("ATI\r", buffer, sizeof(buffer), 200)) {
+			char *p = strchr(buffer, ' ');
+			if (p) {
+				p += 2;
+				version = (*p - '0') * 10 + (*(p + 2) - '0');
 				break;
 			}
 		}
 	}
+	return version;
 }
 
 byte COBD::receive(char* buffer, byte bufsize, int timeout)
 {
 	unsigned char n = 0;
 	unsigned long startTime = millis();
+	char c = 0;
 	for (;;) {
 		if (OBDUART.available()) {
-			char c = OBDUART.read();
-			if (n > 2 && c == '>') {
-				// prompt char received
-				break;
-			} else if (!buffer) {
+			c = OBDUART.read();
+			if (!buffer) {
 			       n++;
 			} else if (n < bufsize - 1) {
 				if (c == '.' && n > 2 && buffer[n - 1] == '.' && buffer[n - 2] == '.') {
@@ -363,10 +361,17 @@ byte COBD::receive(char* buffer, byte bufsize, int timeout)
 					n = 0;
 					timeout = OBD_TIMEOUT_LONG;
 				} else {
+					if (c == '\r' || c == '\n' || c == ' ') {
+						if (n == 0 || buffer[n - 1] == '\r' || buffer[n - 1] == '\n') continue;
+					}
 					buffer[n++] = c;
 				}
 			}
 		} else {
+			if (c == '>') {
+				// prompt char received
+				break;
+			}
 			if (millis() - startTime > timeout) {
 			    // timeout
 			    break;
@@ -374,19 +379,24 @@ byte COBD::receive(char* buffer, byte bufsize, int timeout)
 			dataIdleLoop();
 		}
 	}
-	if (buffer) buffer[n] = 0;
+	if (buffer) {
+		buffer[n] = 0;
+	}
+#ifdef DEBUG
+	DEBUG.print(">>>");
+	DEBUG.println(buffer);
+#endif
 	return n;
 }
 
 void COBD::recover()
 {
-	char buf[16];
-	sendCommand("AT\r", buf, sizeof(buf));
+	sendCommand("\r", 0, 0);
 }
 
 bool COBD::init(OBD_PROTOCOLS protocol)
 {
-	const char *initcmd[] = {"ATZ\r", "ATE0\r", "ATL1\r"};
+	const char *initcmd[] = {"ATZ\r", "ATE0\r", "ATH0\r"};
 	char buffer[64];
 
 	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
@@ -444,6 +454,12 @@ bool COBD::setBaudRate(unsigned long baudrate)
     OBDUART.begin(baudrate);
     recover();
     return true;
+}
+
+bool COBD::memsInit()
+{
+	char buf[16];
+	return sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0 && !strchr(buf, '?');
 }
 
 bool COBD::memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0)
