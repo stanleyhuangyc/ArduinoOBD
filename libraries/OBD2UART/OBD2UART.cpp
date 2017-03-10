@@ -462,7 +462,7 @@ bool COBD::memsInit()
 	return sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0 && !strchr(buf, '?');
 }
 
-bool COBD::memsRead(int* acc, int* gyr = 0, int* mag = 0, int* temp = 0)
+bool COBD::memsRead(int* acc, int* gyr, int* mag, int* temp)
 {
 	char buf[64];
 	bool success;
