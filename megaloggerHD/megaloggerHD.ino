@@ -305,7 +305,11 @@ bool checkSD()
         lcd.print((int)volumesize);
         lcd.print("MB");
     } else {
-        lcd.println("No SD Card");
+        lcd.print("SD Card ");
+        lcd.setColor(RGB16_RED);
+        lcd.draw(cross, 16, 16);
+        lcd.setColor(RGB16_WHITE);
+        lcd.println();
         return false;
     }
 
@@ -500,6 +504,17 @@ void logOBDData(byte pid, int value)
 #endif
 }
 
+void processTouch()
+{
+    int x, y;
+    if (lcd.getTouchData(x, y)) {
+      Serial.print("X:");
+      Serial.print(x);
+      Serial.print(" Y:");
+      Serial.println(y);
+    }
+}
+
 void showECUCap()
 {
     static const byte PROGMEM pidlist[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_FUEL_PRESSURE, PID_INTAKE_MAP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_MAF_FLOW, PID_THROTTLE, PID_AUX_INPUT,
@@ -508,25 +523,25 @@ void showECUCap()
 
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setColor(RGB16_WHITE);
-    for (byte i = 0, n = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+    for (byte i = 0, n = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, n += 2) {
       byte pid = pgm_read_byte(pidlist + i);
-      if (obd.isValidPID(pid)) {
-        lcd.setCursor(348, n);
-        n += 2;
-        lcd.write('0');
-        lcd.print((int)pid | 0x100, HEX);
-      }
+      bool valid = obd.isValidPID(pid);
+      lcd.setCursor(320, n);
+      lcd.setColor(valid ? RGB16_GREEN : RGB16_RED);
+      lcd.draw(valid ? tick : cross, 16, 16);
+      lcd.setColor(RGB16_WHITE);
+      lcd.print(" 0");
+      lcd.print((int)pid | 0x100, HEX);
     }
     int values[sizeof(pidlist)];
     bool scanned = false;
     bool touched = false;
     for (uint32_t t = millis(); millis() - t < 5000; ) {
-      for (byte i = 0, n = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++) {
+      for (byte i = 0, n = 0; i < sizeof(pidlist) / sizeof(pidlist[0]); i++, n += 2) {
           byte pid = pgm_read_byte(pidlist + i);
           if (obd.isValidPID(pid)) {
               int value;
-              lcd.setCursor(400 , n);
-              n += 2;
+              lcd.setCursor(392, n);
               if (obd.readPID(pid, value)) {
                 if (!scanned || value == values[i])
                   lcd.setColor(RGB16_CYAN);
