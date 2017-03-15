@@ -117,7 +117,7 @@ void LCD_R61581::begin()
 	LCD_Write_DATA(0x60);//0x23
 
 	LCD_Write_COM(0x36);
-	LCD_Write_DATA(0x0A);
+	LCD_Write_DATA(0x8A);
 
 	LCD_Write_COM(0x0C);
 	LCD_Write_DATA(0x55);
@@ -179,7 +179,7 @@ void LCD_R61581::begin()
 	pinMode(PIN_CS,   OUTPUT);
 	pinMode(PIN_DIN,  OUTPUT);
 	pinMode(PIN_DOUT, INPUT);
-	pinMode(PIN_IRQ,  INPUT_PULLUP);
+	pinMode(PIN_IRQ,  INPUT);
 
 	digitalWrite(PIN_CS,  HIGH);
 	digitalWrite(PIN_CLK, HIGH);
@@ -191,9 +191,9 @@ void LCD_R61581::setXY(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
 	swap(word, x1, y1);
 	swap(word, x2, y2)
-	//y1=disp_y_size-y1;
-	//y2=disp_y_size-y2;
-	//swap(word, y1, y2)
+	y1=disp_y_size-y1;
+	y2=disp_y_size-y2;
+	swap(word, y1, y2)
 	// begin hardware specific code
 	LCD_Write_COM(0x2a); 
 	LCD_Write_DATA(x1>>8);
@@ -260,7 +260,8 @@ size_t LCD_R61581::write(uint8_t c)
     if (m_font == FONT_SIZE_SMALL) {
         setXY(m_x, m_y, m_x + 4, m_y + 7);
         if (c > 0x20 && c < 0x7f) {
-            for (byte i = 0; i < 5; i++) {
+            byte i = 4;
+            do {
                 unsigned char d = pgm_read_byte(&font5x8[c - 0x21][i]);
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
@@ -268,7 +269,7 @@ size_t LCD_R61581::write(uint8_t c)
                     else
                         setPixel(bch, bcl);
                 }
-            }
+            } while(i--);
         } else {
             clearPixels(5 * 8);
         }
@@ -279,14 +280,14 @@ size_t LCD_R61581::write(uint8_t c)
             byte pgm_buffer[16];
             memcpy_P(pgm_buffer, &font8x16_terminal[c - 0x21], 16);
             for (byte i = 0; i < 16; i += 2) {
-                unsigned char d = pgm_buffer[i];
+                unsigned char d = pgm_buffer[14 - i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[i + 1];
+                d = pgm_buffer[15 - i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
@@ -312,14 +313,14 @@ void LCD_R61581::writeDigit(byte n)
             byte pgm_buffer[32];
             memcpy_P(pgm_buffer, &digits16x16[n], sizeof(pgm_buffer));
             for (byte i = 0; i < 16; i++) {
-                unsigned char d = pgm_buffer[i];
+                unsigned char d = pgm_buffer[15 - i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[i + 16];
+                d = pgm_buffer[31 - i];
                 for (byte j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
@@ -337,21 +338,21 @@ void LCD_R61581::writeDigit(byte n)
             byte pgm_buffer[48];
             memcpy_P(pgm_buffer, &digits16x24[n], sizeof(pgm_buffer));
             for (int i = 0; i < 48; i += 3) {
-                unsigned char d = pgm_buffer[i];
+                unsigned char d = pgm_buffer[45 - i];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[i + 1];
+                d = pgm_buffer[46 - i];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
                     else
                         setPixel(bch, bcl);
                 }
-                d = pgm_buffer[i + 2];
+                d = pgm_buffer[47 - i];
                 for (int j = 0; j < 8; j++, d >>= 1) {
                     if (d & 1)
                         setPixel(fch, fcl);
@@ -374,7 +375,7 @@ void LCD_R61581::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t heigh
     byte rows = height >> 3;
     Enable();
     setXY(m_x, m_y, m_x + width - 1, m_y + height - 1);
-    for (int16_t i = 0; i < width; i++) {
+    for (int16_t i = width - 1; i >= 0; i--) {
         for (uint8_t h = 0; h < rows; h++) {
 #ifndef __arm__
            byte d = pgm_read_byte(buffer + i + width * h);
@@ -400,7 +401,7 @@ void LCD_R61581::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t heigh
     if (scaleY == 0) scaleY = scaleX;
     Enable();
     setXY(m_x, m_y, m_x + width * scaleX - 1, m_y + height * scaleY - 1);
-    for (int16_t i = 0; i < width; i++) {
+    for (int16_t i = width - 1; i >= 0; i--) {
         for (byte n = 0; n < scaleX; n++) {
             for (uint8_t h = 0; h < rows; h++) {
 #ifndef __arm__
@@ -431,7 +432,8 @@ void LCD_R61581::draw2x(const PROGMEM byte* buffer, uint16_t width, uint16_t hei
     char buf[240];
     Enable();
     setXY(m_x, m_y, m_x + width * 2 - 1, m_y + height * 2 - 1);
-    for (uint16_t i = 0; i < width; i++) {
+    uint16_t i = width - 1;
+    do {
         memcpy_P(buf, buffer + i * height * 2, height * 2);
         for (byte j = 0; j < height * 2; j += 2) {
             setPixel(buf[j + 1], buf[j]);
@@ -441,7 +443,7 @@ void LCD_R61581::draw2x(const PROGMEM byte* buffer, uint16_t width, uint16_t hei
             setPixel(buf[j + 1], buf[j]);
             setPixel(buf[j + 1], buf[j]);
         }
-    }
+    } while (i--);
     Disable();
     m_x += width * 2;
 }
@@ -496,8 +498,8 @@ byte LCD_R61581::getTouchData(int& x, int& y)
 		digitalWrite(PIN_CLK,HIGH);
 		digitalWrite(PIN_CLK,LOW); 
 		int d = shiftInTouchData();
-		if (d >= 4000) {
-			digitalWrite(PIN_CS,HIGH);
+		if (d >= 3600) {
+		     digitalWrite(PIN_CS,HIGH);
                      return 0;
 		}
 		ty += d;
