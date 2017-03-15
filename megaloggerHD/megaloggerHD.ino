@@ -684,8 +684,13 @@ void setup()
 #endif
 
     byte version = obd.begin();
+#ifdef OBD_ADAPTER_I2C
+    lcd.print("OBD-II I2C Adapter ");
+#else
+    lcd.print("OBD-II UART Adapter ");
+#endif
     if (version) {
-      lcd.print("Adapter Ver. ");
+      lcd.print("Ver. ");
       lcd.print(version / 10);
       lcd.print('.');
       lcd.println(version % 10);
