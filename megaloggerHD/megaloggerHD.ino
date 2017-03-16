@@ -695,11 +695,6 @@ void setup()
       lcd.print('.');
       lcd.println(version % 10);
     } else {
-#ifdef OBD_ADAPTER_I2C
-      lcd.print("OBD-II I2C Adapter ");
-#else
-      lcd.print("OBD-II UART Adapter ");
-#endif
       lcd.setColor(RGB16_RED);
       lcd.draw(cross, 16, 16);
       lcd.setColor(RGB16_WHITE);
