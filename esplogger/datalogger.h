@@ -1,13 +1,12 @@
-#define FORMAT_BIN 0
-#define FORMAT_CSV 1
+/*************************************************************************
+* Freematics Data Logger Class
+* Distributed under GPL v2.0
+* Written by Stanley Huang <stanleyhuangyc@gmail.com>
+* Visit http://freematics.com for more information
+*************************************************************************/
 
-typedef struct {
-    uint32_t time;
-    uint16_t pid;
-    uint8_t flags;
-    uint8_t checksum;
-    float value;
-} LOG_DATA;
+#define FORMAT_BIN 0
+#define FORMAT_TEXT 1
 
 typedef struct {
     uint32_t time;
@@ -17,337 +16,210 @@ typedef struct {
     float value[3];
 } LOG_DATA_COMM;
 
-typedef struct {
-    uint32_t time; /* e.g. 1307281259 */
-    uint16_t pid;
-    uint8_t message;
-    uint8_t checksum;
-    uint16_t fileIndex;
-    uint16_t fileSize; /* KB */
-    uint16_t logFlags;
-    uint8_t logType;
-    uint8_t data[5];
-} LOG_DATA_FILE_INFO;
+#define PID_GPS_LATITUDE 0xA
+#define PID_GPS_LONGITUDE 0xB
+#define PID_GPS_ALTITUDE 0xC
+#define PID_GPS_SPEED 0xD
+#define PID_GPS_HEADING 0xE
+#define PID_GPS_SAT_COUNT 0xF
+#define PID_GPS_TIME 0x10
+#define PID_GPS_DATE 0x11
 
-typedef struct {
-    uint32_t time;
-    uint16_t pid;
-    uint8_t message;
-    uint8_t checksum;
-    uint8_t data[12];
-} LOG_DATA_COMMAND;
+#define PID_ACC 0x20
+#define PID_GYRO 0x21
+#define PID_COMPASS 0x22
+#define PID_MEMS_TEMP 0x23
+#define PID_BATTERY_VOLTAGE 0x24
 
-typedef struct {
-    uint32_t id;
-    uint32_t dataOffset;
-    uint8_t ver;
-    uint8_t logType;
-    uint16_t flags;
-    uint32_t dateTime; //4, YYMMDDHHMM, e.g. 1305291359
-    /*
-    uint8_t devid[8];
-    uint8_t vin[24];
-    uint8_t unused[84];
-    */
-} HEADER;
+#define PID_DATA_SIZE 0x80
 
-#define HEADER_LEN 128 /* bytes */
-
-#define PID_GPS_COORDINATES 0xF00A
-#define PID_GPS_ALTITUDE 0xF00C
-#define PID_GPS_SPEED 0xF00D
-#define PID_GPS_HEADING 0xF00E
-#define PID_GPS_SAT_COUNT 0xF00F
-#define PID_GPS_TIME 0xF010
-
-#define PID_ACC 0xF020
-#define PID_GYRO 0xF021
-
-#define PID_MESSAGE 0xFE00
-#define PID_HEART_BEAT 0xFFEE
-
-#define MSG_FILE_LIST_BEGIN 0x1
-#define MSG_FILE_LIST_END 0x2
-#define MSG_FILE_INFO 0x3
-#define MSG_FILE_REQUEST 0x4
-
-#if LOG_FORMAT == FORMAT_BIN
-#define FILE_NAME_FORMAT "/DAT%05d.LOG"
-#else
-#define FILE_NAME_FORMAT "/DAT%05d.CSV"
-#endif
+#define FILE_NAME_FORMAT "DAT%05d.CSV"
+#define FILE_PATH "/DATA/"
 
 #if ENABLE_DATA_OUT
 
 #if USE_SOFTSERIAL
-
-#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-    SoftwareSerial SerialBLE(A8, A9); /* for BLE Shield on MEGA*/
-#elif defined(__AVR_ATmega644P__)
-    SoftwareSerial SerialBLE(9, 10); /* for Microduino */
+SoftwareSerial SerialRF(A2, A3);
+#elif defined(RF_SERIAL)
+#define SerialRF RF_SERIAL
 #else
-    SoftwareSerial SerialBLE(A2, A3); /* for BLE Shield on UNO/leonardo*/
-#endif
-
-#define OUTPUT_BAUDRATE 9600
-
-#else
-
-#define SerialBLE Serial
-#define OUTPUT_BAUDRATE 115200
-
+#define SerialRF Serial
 #endif
 
 #endif
 
-void btInit(int baudrate);
-void btSend(byte* data, byte length);
+#if ENABLE_DATA_LOG
+static File sdfile;
+#endif
+
+typedef struct {
+    uint8_t pid;
+    char name[3];
+} PID_NAME;
+
+const PID_NAME pidNames[] PROGMEM = {
+{PID_ACC, {'A','C','C'}},
+{PID_GYRO, {'G','Y','R'}},
+{PID_COMPASS, {'M','A','G'}},
+{PID_GPS_LATITUDE, {'L','A','T'}},
+{PID_GPS_LONGITUDE, {'L','N','G'}},
+{PID_GPS_ALTITUDE, {'A','L','T'}},
+{PID_GPS_SPEED, {'S','P','D'}},
+{PID_GPS_HEADING, {'C','R','S'}},
+{PID_GPS_SAT_COUNT, {'S','A','T'}},
+{PID_GPS_TIME, {'U','T','C'}},
+{PID_GPS_DATE, {'D','T','E'}},
+{PID_BATTERY_VOLTAGE, {'B','A','T'}},
+{PID_DATA_SIZE, {'D','A','T'}},
+};
 
 class CDataLogger {
 public:
+    CDataLogger()
+    {
+        m_lastDataTime = 0;
+#if ENABLE_DATA_CACHE
+        cacheBytes = 0;
+#endif
+    }
     void initSender()
     {
 #if ENABLE_DATA_OUT
-        SerialBLE.begin(OUTPUT_BAUDRATE);
-#endif
-#if ENABLE_DATA_LOG && LOG_FORMAT == FORMAT_CSV
-        m_lastDataTime = 0;
+        SerialRF.begin(STREAM_BAUDRATE);
 #endif
     }
-#if ENABLE_DATA_OUT
-    void sendFileInfo(File& file)
+    byte genTimestamp(char* buf, bool absolute)
     {
-        if (file.size() < HEADER_LEN) return;
-
-        LOG_DATA_FILE_INFO info = {0};
-        info.fileIndex = atol(file.name() + 3);
-        if (info.fileIndex == 0) return;
-
-        HEADER hdr;
-        if (file.readBytes((char*)&hdr, sizeof(hdr)) != sizeof(hdr)) return;
-
-        info.pid = PID_MESSAGE;
-        info.message = MSG_FILE_INFO;
-        info.fileSize = file.size();
-        info.time = hdr.dateTime;
-        info.logType = hdr.logType;
-        info.logFlags = hdr.flags;
-        info.checksum = getChecksum((char*)&info, sizeof(info));
-        SerialBLE.write((uint8_t*)&info, sizeof(info));
+      byte n;
+      if (absolute || dataTime >= m_lastDataTime + 60000) {
+        // absolute timestamp
+        n = sprintf(buf, "#%lu,", dataTime);
+      } else {
+        // incremental timestamp
+        n = sprintf(buf, "%u,", (unsigned int)(dataTime - m_lastDataTime));
+      }
+      return n;
     }
-    void sendCommand(byte message, void* data = 0, byte bytes = 0)
+    void record(const char* buf, byte len)
     {
-        LOG_DATA_COMMAND msg = {0, PID_MESSAGE, message};
-        if (data) memcpy(msg.data, data, bytes);
-        msg.checksum = getChecksum((char*)&msg, sizeof(msg));
-        SerialBLE.write((uint8_t*)&msg, sizeof(msg));
+#if ENABLE_DATA_LOG
+#if STREAM_FORMAT == FORMAT_BIN
+        dataSize += sdfile.write(buf, len);
+#else
+        char tmp[12];
+        byte n = genTimestamp(tmp, dataSize == 0);
+        dataSize += sdfile.write(tmp, n);
+        dataSize += sdfile.write(buf, len);
+        sdfile.println();
+        dataSize += 3;
+#endif
+#endif
+        m_lastDataTime = dataTime;
     }
-    bool receiveCommand(LOG_DATA_COMMAND& msg)
+    void dispatch(const char* buf, byte len)
     {
-        if (!SerialBLE.available())
-            return false;
-
-        if (SerialBLE.readBytes((char*)&msg, sizeof(msg)) != sizeof(msg))
-            return false;
-
-        uint8_t checksum = msg.checksum;
-        msg.checksum = 0;
-        if (getChecksum((char*)&msg, sizeof(msg)) != msg.checksum) {
-            return false;
+#if ENABLE_DATA_CACHE
+        if (cacheBytes + len < MAX_CACHE_SIZE - 10) {
+          cacheBytes += genTimestamp(cache + cacheBytes, cacheBytes == 0);
+          memcpy(cache + cacheBytes, buf, len);
+          cacheBytes += len;
+          cache[cacheBytes++] = '\n';
+          cache[cacheBytes] = 0;
         }
-        return true;
-    }
 #endif
-    void logData(uint16_t pid, int value)
+#if ENABLE_DATA_OUT
+        SerialRF.write(buf, len);
+        SerialRF.println();
+#endif
+    }
+    void logData(const char* buf, byte len)
     {
-#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
+#if ENABLE_DATA_OUT
+#if STREAM_FORMAT != FORMAT_BIN
+        dispatch(buf, len);
+#endif
+#endif
+        record(buf, len);
+    }
+    void logData(uint16_t pid)
+    {
+        char buf[8];
+        byte len = translatePIDName(pid, buf);
+#if ENABLE_DATA_OUT
+#if STREAM_FORMAT != FORMAT_BIN
+        dispatch(buf, len);
+#endif
+#endif
+        record(buf, len);
+    }
+    void logData(uint16_t pid, int16_t value)
+    {
+        char buf[16];
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%d", value) + n;
+#if STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
+        dispatch((const char*)&ld, 12);
+#else
+        dispatch(buf, len);
 #endif
+        record(buf, len);
+    }
+    void logData(uint16_t pid, int32_t value)
+    {
+        char buf[20];
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%ld", value) + n;
 #if ENABLE_DATA_OUT
 #if STREAM_FORMAT == FORMAT_BIN
-        SerialBLE.write((uint8_t*)&ld, 12);
-#else
-        SerialBLE.print(pid, HEX);
-        SerialBLE.write(',');
-        SerialBLE.print(value);
-        SerialBLE.write('\n');
-#endif
-#endif
-#if ENABLE_DATA_LOG
-        if (!sdfile) return;
-#if LOG_FORMAT == FORMAT_BIN
-        sdfile.write((uint8_t*)&ld, 12);
-        dataSize += 12;
-#else
-        dataSize += sdfile.print(dataTime - m_lastDataTime);
-        sdfile.write(',');
-        dataSize += sdfile.print(pid, HEX);
-        sdfile.write(',');
-        dataSize += sdfile.print(value);
-        sdfile.write('\n');
-        dataSize += 3;
-        m_lastDataTime = dataTime;
-#endif
-#endif
-    }
-    void logData(uint16_t pid, float value)
-    {
-#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
         LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
         ld.checksum = getChecksum((char*)&ld, 12);
-#endif
-#if ENABLE_DATA_OUT
-#if STREAM_FORMAT == FORMAT_BIN
-        SerialBLE.write((uint8_t*)&ld, 12);
+        dispatch((const char*)&ld, 12);
 #else
-        SerialBLE.print(pid, HEX);
-        SerialBLE.write(',');
-        SerialBLE.print(value);
-        SerialBLE.write('\n');
+        dispatch(buf, len);
 #endif
 #endif
-#if ENABLE_DATA_LOG
-        if (!sdfile) return;
-#if LOG_FORMAT == FORMAT_BIN
-        sdfile.write((uint8_t*)&ld, 12);
-        dataSize += 12;
-#else
-        dataSize += sdfile.print(dataTime - m_lastDataTime);
-        sdfile.write(',');
-        dataSize += sdfile.print(pid, HEX);
-        sdfile.write(',');
-        dataSize += sdfile.print(value);
-        sdfile.write('\n');
-        dataSize += 3;
-        m_lastDataTime = dataTime;
-#endif
-#endif
+        record(buf, len);
     }
-    void logData(uint16_t pid, float value1, float value2)
+    void logData(uint16_t pid, uint32_t value)
     {
-#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
-        LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
-        ld.checksum = getChecksum((char*)&ld, 16);
-#endif
-#if ENABLE_DATA_OUT
+        char buf[20];
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%lu", value) + n;
 #if STREAM_FORMAT == FORMAT_BIN
-        SerialBLE.write((uint8_t*)&ld, 16);
+        LOG_DATA_COMM ld = {dataTime, pid, 1, 0, value};
+        ld.checksum = getChecksum((char*)&ld, 12);
+        dispatch((const char*)&ld, 12);
 #else
-        SerialBLE.print(pid, HEX);
-        SerialBLE.write(',');
-        SerialBLE.print(value1, 6);
-        SerialBLE.write(',');
-        SerialBLE.print(value2, 6);
-        SerialBLE.write('\n');
+        dispatch(buf, len);
 #endif
-#endif
-#if ENABLE_DATA_LOG
-        if (!sdfile) return;
-#if LOG_FORMAT == FORMAT_BIN
-        sdfile.write((uint8_t*)&ld, 16);
-        dataSize += 16;
-#else
-        dataSize += sdfile.print(dataTime - m_lastDataTime);
-        sdfile.write(',');
-        dataSize += sdfile.print(pid, HEX);
-        sdfile.write(',');
-        dataSize += sdfile.print(value1, 6);
-        sdfile.write(',');
-        dataSize += sdfile.print(value2, 6);
-        sdfile.write('\n');
-        dataSize += 4;
-        m_lastDataTime = dataTime;
-#endif
-#endif
+        record(buf, len);
     }
-    void logData(uint16_t pid, uint32_t value1, uint32_t value2)
+    void logData(uint16_t pid, int values[])
     {
-#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
-        LOG_DATA_COMM ld = {dataTime, pid, 2, 0, {value1, value2}};
-        ld.checksum = getChecksum((char*)&ld, 16);
-#endif
-#if ENABLE_DATA_OUT
+        char buf[24];
+        byte n = translatePIDName(pid, buf);
+        byte len = sprintf(buf + n, "%d,%d,%d", values[0], values[1], values[2]) + n;
 #if STREAM_FORMAT == FORMAT_BIN
-        SerialBLE.write((uint8_t*)&ld, 16);
-#else
-        SerialBLE.print(pid, HEX);
-        SerialBLE.write(',');
-        SerialBLE.print(value1);
-        SerialBLE.write(',');
-        SerialBLE.print(value2);
-        SerialBLE.write('\n');
-#endif
-#endif
-#if ENABLE_DATA_LOG
-        if (!sdfile) return;
-#if LOG_FORMAT == FORMAT_BIN
-        sdfile.write((uint8_t*)&ld, 16);
-        dataSize += 16;
-#else
-        dataSize += sdfile.print(dataTime - m_lastDataTime);
-        sdfile.write(',');
-        dataSize += sdfile.print(pid, HEX);
-        sdfile.write(',');
-        dataSize += sdfile.print(value1);
-        sdfile.write(',');
-        dataSize += sdfile.print(value2);
-        sdfile.write('\n');
-        dataSize += 4;
-        m_lastDataTime = dataTime;
-#endif
-#endif
-    }
-    void logData(uint16_t pid, int value1, int value2, int value3)
-    {
-#if LOG_FORMAT == FORMAT_BIN || STREAM_FORMAT == FORMAT_BIN
-        LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {value1, value2, value3}};
+        LOG_DATA_COMM ld = {dataTime, pid, 3, 0, {values[0], values[1], values[2]}};
         ld.checksum = getChecksum((char*)&ld, 20);
-#endif
-#if ENABLE_DATA_OUT
-#if STREAM_FORMAT == FORMAT_BIN
-        SerialBLE.write((uint8_t*)&ld, 20);
+        dispatch((const char*)&ld, 20);
 #else
-        SerialBLE.print(pid, HEX);
-        SerialBLE.write(',');
-        SerialBLE.print(value1);
-        SerialBLE.write(',');
-        SerialBLE.print(value2);
-        SerialBLE.write(',');
-        SerialBLE.print(value3);
-        SerialBLE.write('\n');
+        dispatch(buf, len);
 #endif
-#endif
-#if ENABLE_DATA_LOG
-        if (!sdfile) return;
-#if LOG_FORMAT == FORMAT_BIN
-        sdfile.write((uint8_t*)&ld, 20);
-        dataSize += 20;
-#else
-        dataSize += sdfile.print(dataTime - m_lastDataTime);
-        sdfile.write(',');
-        dataSize += sdfile.print(pid, HEX);
-        sdfile.write(',');
-        dataSize += sdfile.print(value1);
-        sdfile.write(',');
-        dataSize += sdfile.print(value2);
-        sdfile.write(',');
-        dataSize += sdfile.print(value3);
-        sdfile.write('\n');
-        dataSize += 5;
-        m_lastDataTime = dataTime;
-#endif
-#endif
+        record(buf, len);
     }
 #if ENABLE_DATA_LOG
     uint16_t openFile(uint16_t logFlags = 0, uint32_t dateTime = 0)
     {
         uint16_t fileIndex;
-        char filename[24] = "/FRMATICS";
+        char filename[24] = FILE_PATH;
 
+        dataSize = 0;
         if (SD.exists(filename)) {
             for (fileIndex = 1; fileIndex; fileIndex++) {
-                sprintf(filename + 9, FILE_NAME_FORMAT, fileIndex);
+                sprintf(filename + sizeof(FILE_PATH) - 1, FILE_NAME_FORMAT, fileIndex);
                 if (!SD.exists(filename)) {
                     break;
                 }
@@ -357,21 +229,14 @@ public:
         } else {
             SD.mkdir(filename);
             fileIndex = 1;
-            sprintf(filename + 9, FILE_NAME_FORMAT, 1);
+            sprintf(filename + sizeof(FILE_PATH) - 1, FILE_NAME_FORMAT, 1);
         }
 
         sdfile = SD.open(filename, FILE_WRITE);
         if (!sdfile) {
             return 0;
         }
-
-#if LOG_FORMAT == FORMAT_BIN
-        HEADER hdr = {'UDUS', HEADER_LEN, 1, 0, logFlags, dateTime};
-        sdfile.write((uint8_t*)&hdr, sizeof(hdr));
-        for (byte i = 0; i < HEADER_LEN - sizeof(hdr); i++)
-            sdfile.write((uint8_t)0);
-        dataSize = HEADER_LEN;
-#endif
+        m_lastDataTime = dateTime;
         return fileIndex;
     }
     void closeFile()
@@ -380,13 +245,17 @@ public:
     }
     void flushFile()
     {
-        if (sdfile) sdfile.flush();
+        sdfile.flush();
     }
 #endif
     uint32_t dataTime;
     uint32_t dataSize;
+#if ENABLE_DATA_CACHE
+    char cache[MAX_CACHE_SIZE];
+    int cacheBytes;
+#endif
 private:
-    static byte getChecksum(char* buffer, byte len)
+    byte getChecksum(char* buffer, byte len)
     {
         uint8_t checksum = 0;
         for (byte i = 0; i < len; i++) {
@@ -394,10 +263,19 @@ private:
         }
         return checksum;
     }
-#if ENABLE_DATA_LOG
-    File sdfile;
-#if LOG_FORMAT == FORMAT_CSV
+    byte translatePIDName(uint16_t pid, char* text)
+    {
+#if STREAM_FORMAT == FORMAT_TEXT && USE_FRIENDLY_PID_NAME
+        for (uint16_t n = 0; n < sizeof(pidNames) / sizeof(pidNames[0]); n++) {
+            uint16_t id = pgm_read_byte(&pidNames[n].pid);
+            if (pid == id) {
+                memcpy_P(text, pidNames[n].name, 3);
+                text[3] = ',';
+                return 4;
+            }
+        }
+#endif
+        return sprintf(text, "%X,", pid);
+    }
     uint32_t m_lastDataTime;
-#endif
-#endif
 };

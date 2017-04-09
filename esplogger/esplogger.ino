@@ -1,13 +1,12 @@
 /*************************************************************************
-* OBD-II Data Logger based on ESP8266
+* OBD-II Data Logger based on ESP8266 or ESP32
 * Distributed under GPL v2.0
-* Developed by Stanley Huang <stanleyhuangyc@gmail.com>
+* Developed by Stanley Huang <support@freematics.com.au>
 *************************************************************************/
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <OBD.h>
-#include <MPU6050.h>
+#include <OBD2UART.h>
 #include "SH1106.h"
 #include "images.h"
 #include "config.h"
@@ -225,7 +224,7 @@ private:
     {
         int value = 0;
         // send a query to OBD adapter for specified OBD-II pid
-        if (read(pid, value)) {
+        if (readPID(pid, value)) {
             dataTime = millis();
             // log data to SD card
             logData(0x100 | pid, value);
@@ -253,7 +252,7 @@ private:
             }
             if (init()) {
                 int value;
-                if (read(PID_RPM, value) && value > 0)
+                if (readPID(PID_RPM, value) && value > 0)
                     break;
             }
         }
@@ -359,9 +358,12 @@ static COBDLogger logger;
 
 void setup()
 {
+    Serial.begin(115200);
+    Serial.println("Freematics");
     lcd.begin();
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.println("ESPLogger");
+    delay(1000);
 
     logger.begin();
     logger.initSender();
