@@ -1,6 +1,6 @@
 /*************************************************************************
 * Testing sketch for Freematics OBD-II UART Adapter
-* Reads and prints several OBD-II PIDs value and MEMS sensor data
+* Reads and prints several OBD-II PIDs value
 * Distributed under GPL v2.0
 * Visit http://freematics.com for more information
 * Written by Stanley Huang <support@freematics.com.au>
@@ -17,10 +17,11 @@ SoftwareSerial mySerial(A2, A3);
 //#define mySerial Serial
 
 COBD obd;
+bool hasMEMS;
 
 void testOut()
 {
-    static const char cmds[][6] = {"ATZ\r", "ATL1\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
+    static const char cmds[][6] = {"ATZ\r", "ATI\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[128];
 
     for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
@@ -40,6 +41,7 @@ void testOut()
                     mySerial.write('\n');
                 p++;
             }
+            mySerial.println();
         } else {
             mySerial.println("Timeout");
         }
@@ -63,7 +65,7 @@ void readPIDSingle()
 
 void readPIDMultiple()
 {
-    const byte pids[] = {PID_ENGINE_LOAD, PID_COOLANT_TEMP, PID_RPM, PID_SPEED, PID_TIMING_ADVANCE, PID_INTAKE_TEMP, PID_THROTTLE, PID_FUEL_LEVEL};
+    static const byte pids[] = {PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE, PID_COOLANT_TEMP};
     int values[sizeof(pids)];
     if (obd.readPID(pids, sizeof(pids), values) == sizeof(pids)) {
       mySerial.print('[');
@@ -126,21 +128,27 @@ void setup()
   while (!mySerial);
   
   // this will begin serial
-  obd.begin();
+  byte version = obd.begin();
 
-  mySerial.print("Adapter version: ");
-  mySerial.println(obd.version);
+  mySerial.print("Freematics OBD-II Adapter ");
+  if (version > 0) {
+    mySerial.print("Ver. ");
+    mySerial.print(version / 10);
+    mySerial.print('.');
+    mySerial.println(version % 10);
+  } else {
+    mySerial.println("not detected");
+    for (;;);
+  }
   delay(1000);
 
   // send some commands for testing and show response for debugging purpose
-  //testOut();
- 
-  Serial.print("MEMS:");
-  if (obd.memsInit()) {
-    Serial.println("OK");
-  } else {
-    Serial.println("NO");
-  }
+  testOut();
+
+  hasMEMS = obd.memsInit();
+  mySerial.print("MEMS:");
+  mySerial.println(hasMEMS ? "Yes" : "No");
+  
   // initialize OBD-II adapter
   do {
     mySerial.println("Init...");
@@ -165,7 +173,7 @@ void setup()
     }
     mySerial.println();
   }
-  delay(3000);
+  delay(5000);
 }
 
 
@@ -174,7 +182,7 @@ void loop()
   readPIDSingle();
   readPIDMultiple();
   readBatteryVoltage();
-  if (obd.version > 10) {
+  if (hasMEMS) {
     readMEMS();
   }
 }
