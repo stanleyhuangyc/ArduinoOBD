@@ -141,7 +141,7 @@ bool checkSD()
 #endif
     void testOut()
     {
-        static const char PROGMEM cmds[][6] = {"ATZ\r", "ATH1\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
+        static const char PROGMEM cmds[][8] = {"ATZ\r", "ATH1\r", "ATSP 0\r", "ATRV\r", "0100\r", "0902\r"};
         char buf[128];
         
         lcd.setColor(RGB16_WHITE);
@@ -151,13 +151,13 @@ bool checkSD()
         // recover from possible previous incomplete communication
         recover();
         for (byte i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++) {
-            char cmd[6];
+            char cmd[8];
             memcpy_P(cmd, cmds[i], sizeof(cmd));
             lcd.setColor(RGB16_WHITE);
             lcd.print("Sending ");
             lcd.println(cmd);
             lcd.setColor(RGB16_CYAN);
-            if (sendCommand(cmd, buf, sizeof(buf))) {
+            if (sendCommand(cmd, buf, sizeof(buf), OBD_TIMEOUT_LONG)) {
                 char *p = strstr(buf, cmd);
                 if (p)
                     p += strlen(cmd);
