@@ -257,10 +257,17 @@ bool COBD::getResult(byte& pid, int& result)
 	return true;
 }
 
-void COBD::sleep()
+void COBD::enterLowPowerMode()
 {
   	char buf[32];
 	sendCommand("ATLP\r", buf, sizeof(buf));
+}
+
+void COBD::leaveLowPowerMode()
+{
+	// simply send any command to wake the device up
+	char buf[32];
+	sendCommand("ATI\r", buf, sizeof(buf), 1000);
 }
 
 char* COBD::getResultValue(char* buf)

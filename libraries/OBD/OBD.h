@@ -75,6 +75,24 @@
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
 
+// non-OBD/custom PIDs (no mode number)
+#define PID_GPS_LATITUDE 0xA
+#define PID_GPS_LONGITUDE 0xB
+#define PID_GPS_ALTITUDE 0xC
+#define PID_GPS_SPEED 0xD
+#define PID_GPS_HEADING 0xE
+#define PID_GPS_SAT_COUNT 0xF
+#define PID_GPS_TIME 0x10
+#define PID_GPS_DATE 0x11
+#define PID_ACC 0x20
+#define PID_GYRO 0x21
+#define PID_COMPASS 0x22
+#define PID_MEMS_TEMP 0x23
+#define PID_BATTERY_VOLTAGE 0x24
+
+// custom PIDs for calculated data
+#define PID_TRIP_DISTANCE 0x30
+
 typedef enum {
     PROTO_AUTO = 0,
     PROTO_ISO_9141_2 = 3,
@@ -115,8 +133,10 @@ public:
 	virtual bool readPID(byte pid, int& result);
 	// read multiple (up to 8) OBD-II PID values, return number of values obtained
 	virtual byte readPID(const byte pid[], byte count, int result[]);
-	// set device into
-	virtual void sleep();
+	// set device into low power mode
+	virtual void enterLowPowerMode();
+	// wake up device from low power mode
+	virtual void leaveLowPowerMode();
 	// send AT command and receive response
 	virtual byte sendCommand(const char* cmd, char* buf, byte bufsize, int timeout = OBD_TIMEOUT_LONG);
 	// read diagnostic trouble codes (return number of DTCs read)
