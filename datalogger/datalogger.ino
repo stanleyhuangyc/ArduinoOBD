@@ -359,8 +359,9 @@ void loop()
 {
 #if ENABLE_DATA_LOG
   if (!(one.state & STATE_FILE_READY) && (one.state & STATE_SD_READY)) {
+    // create log file
     if (one.state & STATE_GPS_FOUND) {
-      // GPS connected
+      // GPS connected, GPS time as file name
       Serial.print("File ");
       if (one.state & STATE_GPS_READY) {
         uint32_t dateTime = (uint32_t)MMDD * 10000 + UTC / 10000;
@@ -373,7 +374,7 @@ void loop()
         }
       }
     } else {
-      // no GPS connected
+      // no GPS connected, index number as file name
       int index = one.openFile(0);
       if (index != 0) {
         one.state |= STATE_FILE_READY;
@@ -384,6 +385,8 @@ void loop()
     }
   }
 #endif
+
+  // log some OBD-II PIDs
   if (one.state & STATE_OBD_READY) {
     byte pids[] = {0, PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD};
     byte pids2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_DISTANCE};
@@ -413,12 +416,19 @@ void loop()
   one.dataTime = millis();
   one.logData(PID_BATTERY_VOLTAGE, v);
 
+	// log MEMS data
 #if USE_MPU6050
-  if ((one.state & STATE_MEMS_READY) && accCount) {
-    // log the loaded MEMS data
-    one.logData(PID_ACC, accSum[0] / accCount / ACC_DATA_RATIO, accSum[1] / accCount / ACC_DATA_RATIO, accSum[2] / accCount / ACC_DATA_RATIO);
-  }
+	if (one.state & STATE_MEMS_READY) {
+		one.readMEMS();
+		if (accCount > 0) {
+			// log the loaded MEMS data
+			one.logData(PID_ACC, accSum[0] / accCount / ACC_DATA_RATIO, accSum[1] / accCount / ACC_DATA_RATIO, accSum[2] / accCount / ACC_DATA_RATIO);
+			accCount = 0;
+		}
+	}
 #endif
+
+  // log GPS data
 #if USE_GPS
   if (one.state & STATE_GPS_FOUND) {
     one.logGPSData();
