@@ -289,7 +289,7 @@ float COBD::getVoltage()
     char buf[32];
 	if (sendCommand("ATRV\r", buf, sizeof(buf)) > 0) {
 		char* p = getResultValue(buf);
-		if (p) return atof(p);
+		if (p) return (float)atof(p);
     }
     return 0;
 }
@@ -321,12 +321,12 @@ bool COBD::isValidPID(byte pid)
 	pid--;
 	byte i = pid >> 3;
 	byte b = 0x80 >> (pid & 0x7);
-	return pidmap[i] & b;
+	return (pidmap[i] & b) != 0;
 }
 
 byte COBD::begin()
 {
-	long baudrates[] = {38400, 115200};
+	long baudrates[] = {115200, 38400};
 	byte version = 0;
 	for (byte n = 0; n < sizeof(baudrates) / sizeof(baudrates[0]) && version == 0; n++) {
 		OBDUART.begin(baudrates[n]);
@@ -379,7 +379,7 @@ byte COBD::receive(char* buffer, byte bufsize, int timeout)
 				// prompt char received
 				break;
 			}
-			if (millis() - startTime > timeout) {
+			if ((int)(millis() - startTime) > timeout) {
 			    // timeout
 			    break;
 			}
@@ -473,7 +473,7 @@ bool COBD::memsInit()
 	return sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0 && !strchr(buf, '?');
 }
 
-bool COBD::memsRead(int* acc, int* gyr, int* mag, int* temp)
+bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
 {
 	char buf[64];
 	bool success;
