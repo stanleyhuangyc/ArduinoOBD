@@ -575,7 +575,6 @@ void reconnect()
         if (obd.init())
             break;
         
-        obd.sleep();
         Narcoleptic.delay(10000);
     }
     // re-initialize
