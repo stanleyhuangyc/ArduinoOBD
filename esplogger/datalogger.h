@@ -82,12 +82,6 @@ public:
         cacheBytes = 0;
 #endif
     }
-    void initSender()
-    {
-#if ENABLE_DATA_OUT
-        SerialRF.begin(STREAM_BAUDRATE);
-#endif
-    }
     byte genTimestamp(char* buf, bool absolute)
     {
       byte n;
@@ -104,12 +98,12 @@ public:
     {
 #if ENABLE_DATA_LOG
 #if STREAM_FORMAT == FORMAT_BIN
-        dataSize += sdfile.write(buf, len);
+        dataSize += sdfile.write((uint8_t*)buf, len);
 #else
         char tmp[12];
         byte n = genTimestamp(tmp, dataSize == 0);
-        dataSize += sdfile.write(tmp, n);
-        dataSize += sdfile.write(buf, len);
+        dataSize += sdfile.write((uint8_t*)tmp, n);
+        dataSize += sdfile.write((uint8_t*)buf, len);
         sdfile.println();
         dataSize += 3;
 #endif
@@ -128,7 +122,7 @@ public:
         }
 #endif
 #if ENABLE_DATA_OUT
-        SerialRF.write(buf, len);
+        SerialRF.write((uint8_t*)buf, len);
         SerialRF.println();
 #endif
     }
