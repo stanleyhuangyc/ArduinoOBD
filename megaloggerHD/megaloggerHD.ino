@@ -575,8 +575,9 @@ void reconnect()
         if (obd.init())
             break;
         
-        obd.sleep();
+        obd.enterLowPowerMode();
         Narcoleptic.delay(10000);
+        obd.leaveLowPowerMode();
     }
     // re-initialize
     state |= STATE_OBD_READY;
@@ -617,7 +618,7 @@ void showStates()
 
 void testOut()
 {
-    const char cmds[][6] = {"ATZ\r", "ATH0\r", "ATRV\r", "0100\r", "0902\r"};
+    const char cmds[][6] = {"ATZ\r", "ATH1\r", "ATRV\r", "0100\r", "0902\r"};
     char buf[128];
     lcd.setFontSize(FONT_SIZE_SMALL);
     lcd.setCursor(0, 13);
