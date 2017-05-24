@@ -6,6 +6,9 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
+#include <FS.h>
+#include <SD.h>
 #include <OBD2UART.h>
 #include "SH1106.h"
 #include "images.h"
@@ -39,12 +42,19 @@ static byte pidTier3[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_AMBIENT_TEMP, P
 
 byte pidValue[TIER_NUM1];
 
+#ifdef ESP32
+HardwareSerial Serial1(1);
+#endif
+
 class COBDLogger : public COBD, public CDataLogger
 {
 public:
     COBDLogger():state(0) {}
     void setup()
     {
+        pinMode(8, OUTPUT);
+        digitalWrite(8, LOW);
+        
         showStates();
 
 #if USE_MPU6050
@@ -64,22 +74,6 @@ public:
         showStates();
 
 #if ENABLE_DATA_LOG
-        uint16_t index = openFile();
-        lcd.setFontSize(FONT_SIZE_SMALL);
-        lcd.setCursor(86, 0);
-        if (index) {
-            lcd.write('[');
-            lcd.setFlags(FLAG_PAD_ZERO);
-            lcd.printInt(index, 5);
-            lcd.setFlags(0);
-            lcd.write(']');
-        } else {
-            lcd.print("NO LOG");
-        }
-        delay(100);
-#endif
-
-#if ENABLE_DATA_LOG
         // open file for logging
         if (!(state & STATE_SD_READY)) {
             if (checkSD()) {
@@ -87,9 +81,25 @@ public:
                 showStates();
             }
         }
+
+        if (state & STATE_SD_READY) {
+          uint16_t index = openFile();
+          lcd.setFontSize(FONT_SIZE_SMALL);
+          lcd.setCursor(86, 0);
+          if (index) {
+              lcd.write('[');
+              lcd.setFlags(FLAG_PAD_ZERO);
+              lcd.printInt(index, 5);
+              lcd.setFlags(0);
+              lcd.write(']');
+          } else {
+              lcd.print("NO LOG");
+          }
+          delay(100);
+        }
 #endif
 
-        initScreen();
+        initLoggerScreen();
     }
     void loop()
     {
@@ -144,61 +154,37 @@ public:
 #if ENABLE_DATA_LOG
     bool checkSD()
     {
-        Sd2Card card;
-        SdVolume volume;
         state &= ~STATE_SD_READY;
-        pinMode(SS, OUTPUT);
-        if (card.init(SPI_FULL_SPEED, SD_CS_PIN)) {
-            const char* type;
+        if (!SD.begin()) {
+          lcd.print("SD ");
+          lcd.draw(cross, 16, 16);
+          lcd.println();
+          return false;
+        }
 
-            lcd.print("SD");
-            switch(card.type()) {
-            case SD_CARD_TYPE_SD1:
-                type = "1";
-                break;
-            case SD_CARD_TYPE_SD2:
-                type = "2";
-                break;
-            case SD_CARD_TYPE_SDHC:
-                type = "HC";
-                break;
-            default:
-                type = "x";
-            }
+        uint8_t cardType = SD.cardType();
+        if(cardType == CARD_NONE){
+          lcd.println("No SD card");
+          return false;
+        }
 
-            lcd.print(type);
-            lcd.write(' ');
-            if (!volume.init(card)) {
-                lcd.print("No FAT");
-                return false;
-            }
-
-            uint32_t volumesize = volume.blocksPerCluster();
-            volumesize >>= 1; // 512 bytes per block
-            volumesize *= volume.clusterCount();
-            volumesize >>= 10;
-
-            lcd.print((int)((volumesize + 511) / 1000));
-            lcd.print("GB");
+        if(cardType == CARD_MMC){
+            Serial.print("MMC ");
+        } else if(cardType == CARD_SD){
+            Serial.print("SDSC ");
+        } else if(cardType == CARD_SDHC){
+            Serial.print("SDHC ");
         } else {
-            lcd.print("SD  ");
-            lcd.draw(cross, 16, 16);
-            return false;
+            Serial.print("SD ");
         }
-
-        if (!SD.begin(SD_CS_PIN)) {
-            lcd.print("Bad");
-            return false;
-        }
+        unsigned int cardSize = (unsigned int)SD.cardSize() >> 30;
+        lcd.print(cardSize);
+        lcd.println("G");
 
         state |= STATE_SD_READY;
         return true;
     }
 #endif
-    void initScreen()
-    {
-        initLoggerScreen();
-    }
 private:
     void dataIdleLoop()
     {
@@ -298,13 +284,13 @@ private:
         case PID_THROTTLE:
             lcd.setCursor(24, 5);
             lcd.setFontSize(FONT_SIZE_SMALL);
-            lcd.printInt(value % 100, 3);
+            lcd.print(value % 100);
             break;
         case PID_INTAKE_TEMP:
             if (value < 1000) {
                 lcd.setCursor(102, 5);
                 lcd.setFontSize(FONT_SIZE_SMALL);
-                lcd.printInt(value, 3);
+                lcd.print(value);
             }
             break;
         }
@@ -348,9 +334,9 @@ private:
         lcd.setCursor(110, 3);
         lcd.print("rpm");
         lcd.setCursor(0, 5);
-        lcd.print("THR:   %");
+        lcd.print("THR:");
         lcd.setCursor(80, 5);
-        lcd.print("AIR:   C");
+        lcd.print("AIR:");
     }
 };
 
@@ -366,14 +352,16 @@ void setup()
     delay(1000);
 
     logger.begin();
-    logger.initSender();
 
 #if ENABLE_DATA_LOG
     lcd.setFontSize(FONT_SIZE_MEDIUM);
     lcd.setCursor(0, 2);
     logger.checkSD();
 #endif
+    
     logger.setup();
+
+
 }
 
 void loop()

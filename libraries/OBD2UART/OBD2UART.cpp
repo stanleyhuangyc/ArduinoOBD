@@ -9,6 +9,10 @@
 
 //#define DEBUG Serial
 
+#ifdef ESP32
+extern HardwareSerial Serial1;
+#endif
+
 uint16_t hex2uint16(const char *p)
 {
 	char c = *p;
@@ -328,9 +332,15 @@ byte COBD::begin()
 {
 	long baudrates[] = {115200, 38400};
 	byte version = 0;
-	for (byte n = 0; n < sizeof(baudrates) / sizeof(baudrates[0]) && version == 0; n++) {
+	for (byte n = 0; n < sizeof(baudrates) / sizeof(baudrates[0]); n++) {
+#ifndef ESP32
 		OBDUART.begin(baudrates[n]);
-		version = getVersion(); 
+#else
+		OBDUART.begin(baudrates[n], SERIAL_8N1, 16, 17);
+#endif
+		version = getVersion();
+		if (version != 0) break;
+		OBDUART.end();		 
 	}
 	return version;	
 }
