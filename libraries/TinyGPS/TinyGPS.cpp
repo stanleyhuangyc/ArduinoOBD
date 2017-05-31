@@ -66,7 +66,7 @@ bool TinyGPS::encode(char c)
   switch(c)
   {
   case ',': // term terminators
-    _parity ^= c;
+    _parity ^= ',';
   case '\r':
   case '\n':
   case '*':
@@ -93,7 +93,7 @@ bool TinyGPS::encode(char c)
   if (_term_offset < sizeof(_term) - 1)
     _term[_term_offset++] = c;
   if (!_is_checksum_term)
-    _parity ^= c;
+    _parity ^= (byte)c;
 
   return valid_sentence;
 }
@@ -110,7 +110,7 @@ void TinyGPS::stats(unsigned long *chars, unsigned short *sentences, unsigned sh
 //
 // internal utilities
 //
-int TinyGPS::from_hex(char a) 
+byte TinyGPS::from_hex(char a) 
 {
   if (a >= 'A' && a <= 'F')
     return a - 'A' + 10;
@@ -118,6 +118,29 @@ int TinyGPS::from_hex(char a)
     return a - 'a' + 10;
   else
     return a - '0';
+}
+
+byte TinyGPS::hex2uint8(const char *p)
+{
+	byte c1 = *p;
+	byte c2 = *(p + 1);
+	if (c1 >= 'A' && c1 <= 'F')
+		c1 -= 7;
+	else if (c1 >= 'a' && c1 <= 'f')
+		c1 -= 39;
+	else if (c1 < '0' || c1 > '9')
+		return 0;
+	
+	if (c2 == 0)
+		return (c1 & 0xf);
+	else if (c2 >= 'A' && c2 <= 'F')
+		c2 -= 7;
+	else if (c2 >= 'a' && c2 <= 'f')
+		c2 -= 39;
+	else if (c2 < '0' || c2 > '9')
+		return 0;
+
+	return c1 << 4 | (c2 & 0xf);
 }
 
 unsigned long TinyGPS::parse_decimal()
@@ -165,7 +188,7 @@ bool TinyGPS::term_complete()
 {
   if (_is_checksum_term)
   {
-    byte checksum = 16 * from_hex(_term[0]) + from_hex(_term[1]);
+    byte checksum = hex2uint8(_term);
     if (checksum == _parity)
     {
       if (_gps_data_good)
