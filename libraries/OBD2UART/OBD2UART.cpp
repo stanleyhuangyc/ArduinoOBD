@@ -634,7 +634,6 @@ bool COBD::memsOrientation(float& yaw, float& pitch, float& roll)
 	char buf[64];
 	bool success = false;
 	if (sendCommand("ATORI\r", buf, sizeof(buf)) > 0) do {
-		Serial.println(buf);
 		char* p = getResultValue(buf);
 		if (!p) break;
 		yaw = (float)atof(p++);
