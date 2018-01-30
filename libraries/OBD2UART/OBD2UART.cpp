@@ -17,12 +17,12 @@ uint16_t hex2uint16(const char *p)
 {
 	char c = *p;
 	uint16_t i = 0;
-	for (char n = 0; c && n < 4; c = *(++p)) {
+	for (uint8_t n = 0; c && n < 4; c = *(++p)) {
 		if (c >= 'A' && c <= 'F') {
 			c -= 7;
 		} else if (c>='a' && c<='f') {
 			c -= 39;
-        } else if (c == ' ') {
+        } else if (c == ' ' && n == 2) {
             continue;
         } else if (c < '0' || c > '9') {
 			break;
@@ -44,7 +44,9 @@ byte hex2uint8(const char *p)
 	else if (c1 < '0' || c1 > '9')
 		return 0;
 
-	if (c2 >= 'A' && c2 <= 'F')
+	if (c2 == 0)
+		return (c1 & 0xf);
+	else if (c2 >= 'A' && c2 <= 'F')
 		c2 -= 7;
 	else if (c2 >= 'a' && c2 <= 'f')
 	    c2 -= 39;
@@ -61,24 +63,15 @@ byte hex2uint8(const char *p)
 byte COBD::sendCommand(const char* cmd, char* buf, byte bufsize, int timeout)
 {
 	write(cmd);
-	dataIdleLoop();
+	idleTasks();
 	return receive(buf, bufsize, timeout);
-}
-
-void COBD::sendQuery(byte pid)
-{
-	char cmd[8];
-	sprintf(cmd, "%02X%02X\r", dataMode, pid);
-#ifdef DEBUG
-	debugOutput(cmd);
-#endif
-	write(cmd);
 }
 
 bool COBD::readPID(byte pid, int& result)
 {
-	// send a query command
-	sendQuery(pid);
+	char cmd[8];
+	sprintf(cmd, "%02X%02X\r", dataMode, pid);
+	write(cmd);
 	// receive and parse the response
 	return getResult(pid, result);
 }
@@ -107,7 +100,7 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 		sprintf_P(buffer, n == 0 ? PSTR("03\r") : PSTR("03%02X\r"), n);
 		write(buffer);
 		if (receive(buffer, sizeof(buffer)) > 0) {
-			if (!strstr(buffer, "NO DATA")) {
+			if (!strstr_P(buffer, PSTR("NO DATA"))) {
 				char *p = strstr(buffer, "43");
 				if (p) {
 					while (codesRead < maxCodes && *p) {
@@ -300,20 +293,30 @@ float COBD::getVoltage()
 
 bool COBD::getVIN(char* buffer, byte bufsize)
 {
-	if (sendCommand("0902\r", buffer, bufsize)) {
-        char *p = strstr(buffer, "0: 49 02");
-        if (p) {
-            char *q = buffer;
-            p += 10;
-            do {
-                for (++p; *p == ' '; p += 3) {
-                    if (*q = hex2uint8(p + 1)) q++;
-                }
-                p = strchr(p, ':');
-            } while(p);
-            *q = 0;
-            return true;
-        }
+	for (byte n = 0; n < 5; n++) {
+		if (sendCommand("0902\r", buffer, bufsize)) {
+			int len = hex2uint16(buffer);
+			char *p = strstr_P(buffer + 4, PSTR("0: 49 02 01"));
+			if (p) {
+				char *q = buffer;
+				p += 11; // skip the header
+				do {
+					while (*(++p) == ' ');
+					for (;;) {
+						*(q++) = hex2uint8(p);
+						while (*p && *p != ' ') p++;
+						while (*p == ' ') p++;
+						if (!*p || *p == '\r') break;
+					}
+					p = strchr(p, ':');
+				} while(p);
+				*q = 0;
+				if (q - buffer == len - 3) {
+					return true;
+				}
+			}
+		}
+		delay(100);
     }
     return false;
 }
@@ -362,7 +365,7 @@ byte COBD::getVersion()
 	return version;
 }
 
-byte COBD::receive(char* buffer, byte bufsize, int timeout)
+int COBD::receive(char* buffer, int bufsize, unsigned int timeout)
 {
 	unsigned char n = 0;
 	unsigned long startTime = millis();
@@ -393,7 +396,7 @@ byte COBD::receive(char* buffer, byte bufsize, int timeout)
 			    // timeout
 			    break;
 			}
-			dataIdleLoop();
+			idleTasks();
 		}
 	}
 	if (buffer) {
@@ -415,48 +418,77 @@ bool COBD::init(OBD_PROTOCOLS protocol)
 {
 	const char *initcmd[] = {"ATZ\r", "ATE0\r", "ATH0\r"};
 	char buffer[64];
+	byte stage;
 
 	m_state = OBD_DISCONNECTED;
-	for (unsigned char i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
-		write(initcmd[i]);
-		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0) {
-			return false;
-		}
-	}
-	if (protocol != PROTO_AUTO) {
-		sprintf_P(buffer, PSTR("ATSP %u\r"), protocol);
-		write(buffer);
-		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) == 0 && !strstr(buffer, "OK")) {
-			return false;
-		}
-	}
 
-	// load pid map
-	memset(pidmap, 0, sizeof(pidmap));
-	bool success = false;
-	for (byte i = 0; i < 4; i++) {
-		byte pid = i * 0x20;
-		sendQuery(pid);
-		if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) > 0) {
-			char *p = buffer;
-			while ((p = strstr(p, "41 "))) {
-				p += 3;
-				if (hex2uint8(p) == pid) {
-					p += 2;
-					for (byte n = 0; n < 4 && *(p + n * 3) == ' '; n++) {
-						pidmap[i * 4 + n] = hex2uint8(p + n * 3 + 1);
-					}
-					success = true;
-				}
+	for (byte n = 0; n < 2; n++) {
+		stage = 0;
+		if (n != 0) reset();
+		for (byte i = 0; i < sizeof(initcmd) / sizeof(initcmd[0]); i++) {
+			delay(10);
+			if (!sendCommand(initcmd[i], buffer, sizeof(buffer), OBD_TIMEOUT_SHORT)) {
+				continue;
 			}
 		}
+		stage = 1;
+		if (protocol != PROTO_AUTO) {
+			sprintf(buffer, "ATSP%u\r", protocol);
+			delay(10);
+			if (!sendCommand(buffer, buffer, sizeof(buffer), OBD_TIMEOUT_SHORT) || !strstr(buffer, "OK")) {
+				continue;
+			}
+		}
+		stage = 2;
+		delay(10);
+		if (!sendCommand("010D\r", buffer, sizeof(buffer), OBD_TIMEOUT_LONG) || checkErrorMessage(buffer)) {
+			continue;
+		}
+		stage = 3;
+		// load pid map
+		memset(pidmap, 0, sizeof(pidmap));
+		bool success = false;
+		for (byte i = 0; i < 4; i++) {
+			byte pid = i * 0x20;
+			sprintf(buffer, "%02X%02X\r", dataMode, pid);
+			delay(10);
+			write(buffer);
+			if (receive(buffer, sizeof(buffer), OBD_TIMEOUT_LONG) > 0) {
+				if (checkErrorMessage(buffer)) {
+					break;
+				}
+				char *p = buffer;
+				while ((p = strstr(p, "41 "))) {
+					p += 3;
+					if (hex2uint8(p) == pid) {
+						p += 2;
+						for (byte n = 0; n < 4 && *(p + n * 3) == ' '; n++) {
+							pidmap[i * 4 + n] = hex2uint8(p + n * 3 + 1);
+						}
+						success = true;
+					}
+				}
+			} else {
+				break;
+			}
+		}
+		if (success) {
+			stage = 0xff;
+			break;
+		}
 	}
-
-	if (success) {
+	if (stage == 0xff) {
 		m_state = OBD_CONNECTED;
 		errors = 0;
+		return true;
+	} else {
+#ifdef DEBUG
+		Serial.print("Stage:");
+		Serial.println(stage);
+#endif
+		reset();
+		return false;
 	}
-	return success;
 }
 
 void COBD::end()
@@ -477,10 +509,64 @@ bool COBD::setBaudRate(unsigned long baudrate)
     return true;
 }
 
-bool COBD::memsInit()
+void COBD::reset()
+{
+	char buf[32];
+	sendCommand("ATR\r", buf, sizeof(buf));
+	delay(3000);
+	sendCommand("ATZ\r", buf, sizeof(buf));
+}
+
+void COBD::uninit()
+{
+	char buf[32];
+	sendCommand("ATPC\r", buf, sizeof(buf));
+}
+
+byte COBD::checkErrorMessage(const char* buffer)
+{
+	const char *errmsg[] = {"UNABLE", "ERROR", "TIMEOUT", "NO DATA"};
+	for (byte i = 0; i < sizeof(errmsg) / sizeof(errmsg[0]); i++) {
+		if (strstr(buffer, errmsg[i])) return i + 1;
+	}
+	return 0;
+}
+
+uint8_t COBD::getPercentageValue(char* data)
+{
+  return (uint16_t)hex2uint8(data) * 100 / 255;
+}
+
+uint16_t COBD::getLargeValue(char* data)
+{
+  return hex2uint16(data);
+}
+
+uint8_t COBD::getSmallValue(char* data)
+{
+  return hex2uint8(data);
+}
+
+int16_t COBD::getTemperatureValue(char* data)
+{
+  return (int)hex2uint8(data) - 40;
+}
+
+bool COBD::memsInit(bool fusion)
 {
 	char buf[16];
-	return sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0 && !strchr(buf, '?');
+	if (!sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0 || strchr(buf, '?'))
+		return false;
+	if (fusion) {
+		m_fusion = true;
+		return sendCommand("ATQU1\r", buf, sizeof(buf));
+	} else {
+		if (m_fusion) {
+			m_fusion = false;
+			sendCommand("ATQU0\r", buf, sizeof(buf));
+		}
+		return true;
+	}
 }
 
 bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
@@ -515,6 +601,20 @@ bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
 		} while (0);
 		if (!success) return false;
 	}
+	if (mag) {
+		success = false;
+		if (sendCommand("ATMAG\r", buf, sizeof(buf)) > 0) do {
+			char* p = getResultValue(buf);
+			if (!p) break;
+			mag[0] = atoi(p++);
+			if (!(p = strchr(p, ','))) break;
+			mag[1] = atoi(++p);
+			if (!(p = strchr(p, ','))) break;
+			mag[2] = atoi(++p);
+			success = true;
+		} while (0);
+		if (!success) return false;
+	}
 	if (temp) {
 		success = false;
 		if (sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0) {
@@ -527,6 +627,24 @@ bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
 		if (!success) return false;
 	}
 	return true;	
+}
+
+bool COBD::memsOrientation(float& yaw, float& pitch, float& roll)
+{
+	char buf[64];
+	bool success = false;
+	if (sendCommand("ATORI\r", buf, sizeof(buf)) > 0) do {
+		Serial.println(buf);
+		char* p = getResultValue(buf);
+		if (!p) break;
+		yaw = (float)atof(p++);
+		if (!(p = strchr(p, ','))) break;
+		pitch = (float)atoi(++p);
+		if (!(p = strchr(p, ','))) break;
+		roll = (float) atof(++p);
+		success = true;
+	} while (0);
+	return success;
 }
 
 #ifdef DEBUG

@@ -1,8 +1,9 @@
 /*************************************************************************
-* Sample sketch based on OBD-II library for Arduino
-* Distributed under GPL v2.0
-* Visit http://freematics.com for more information
-* (C)2012-2014 Stanley Huang <stanleyhuangyc@gmail.com>
+* Testing sketch for Freematics OBD-II UART Adapter
+* Reads engine RPM data from OBD and triggers Arduino onboard LED
+* Distributed under BSD
+* Visit https://freematics.com/products for more product information
+* Written by Stanley Huang <stanley@freematics.com.au>
 *************************************************************************/
 
 #include <OBD2UART.h>

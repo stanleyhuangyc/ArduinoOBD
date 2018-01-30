@@ -1,0 +1,29 @@
+################################################################################
+# Datatypes (KEYWORD1)
+################################################################################
+COBD	KEYWORD1
+
+################################################################################
+# Methods and Functions (KEYWORD2)
+################################################################################
+begin	KEYWORD2
+end	KEYWORD2
+init	KEYWORD2
+uninit	KEYWORD2
+reset	KEYWORD2
+
+readPID	KEYWORD2
+readDTC	KEYWORD2
+clearDTC	KEYWORD2
+getVoltage	KEYWORD2
+getVIN	KEYWORD2
+
+memsInit KEYWORD2
+memsRead KEYWORD2
+memsOrientation KEYWORD2
+
+################################################################################
+# Constants (LITERAL1)
+################################################################################
+OBD_PROTOCOLS	LITERAL1
+OBD_STATES	LITERAL1
