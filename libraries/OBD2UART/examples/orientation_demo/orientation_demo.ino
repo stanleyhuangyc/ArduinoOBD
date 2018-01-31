@@ -22,7 +22,6 @@ HardwareSerial Serial1(1);
 #endif
 
 COBD obd;
-bool hasMEMS;
 
 void setup()
 {
@@ -44,11 +43,11 @@ void setup()
   }
   
   // initialize MEMS with sensor fusion enabled
-  hasMEMS = obd.memsInit(true);
-  mySerial.print("MEMS:");
-  mySerial.println(hasMEMS ? "OK" : "NO");
+  bool hasMEMS = obd.memsInit(true);
+  mySerial.print("Motion sensor is ");
+  mySerial.println(hasMEMS ? "present" : "not present");
   if (!hasMEMS) {
-    for (;;);
+    for (;;) delay(1000);
   }
 }
 
