@@ -9,10 +9,6 @@
 
 //#define DEBUG Serial
 
-#ifdef ESP32
-extern HardwareSerial Serial1;
-#endif
-
 uint16_t hex2uint16(const char *p)
 {
 	char c = *p;
@@ -555,7 +551,7 @@ int16_t COBD::getTemperatureValue(char* data)
 bool COBD::memsInit(bool fusion)
 {
 	char buf[16];
-	if (!sendCommand("ATTEMP\r", buf, sizeof(buf)) > 0 || strchr(buf, '?'))
+	if (sendCommand("ATTEMP\r", buf, sizeof(buf)) <= 0 || strchr(buf, '?'))
 		return false;
 	if (fusion) {
 		m_fusion = true;
