@@ -7,8 +7,9 @@ OBD-II Adapter for Arduino is a product that works as a vehicle OBD-II data brid
 
 Related Products
 
-* [Freematics OBD-II UART Adapter](http://freematics.com/pages/products/arduino-obd-adapter/)
-* [OBD-II Telematics Mega Kit](http://freematics.com/pages/products/arduino-telematics-kit-3/)
+* [Freematics OBD-II UART Adapter](https://freematics.com/pages/products/freematics-obd-ii-uart-adapter-mk2/)
+* [Freematics OBD-II I2C Adapter](https://freematics.com/pages/products/arduino-obd-adapter/)
+* [OBD-II Telematics Mega Kit](https://freematics.com/pages/products/arduino-telematics-kit-3/)
 
 ![Image](http://www.arduinodev.com/wp-content/uploads/2012/03/obdkit1-150x150.jpg)
 
