@@ -1,25 +1,32 @@
 /*************************************************************************
-* Testing sketch for Freematics OBD-II UART Adapter
+* Testing sketch for Freematics OBD-II UART Adapter V1/V2/V2.1
+* Performs AT command-set test
 * Reads and prints several OBD-II PIDs value
-* Distributed under GPL v2.0
-* Visit http://freematics.com for more information
-* Written by Stanley Huang <support@freematics.com.au>
+* Reads and prints motion sensor data if available
+* Distributed under BSD
+* Visit https://freematics.com/products for more product information
+* Written by Stanley Huang <stanley@freematics.com.au>
 *************************************************************************/
 
-#include <SoftwareSerial.h>
 #include <OBD2UART.h>
 
-// On Arduino Leonardo, Micro, MEGA or DUE, hardware serial can be used for output
-// as OBD-II UART adapter uses to Serial1
-// On Arduino UNO and those have no Serial1, we use software serial for output
-// as OBD-II UART adapter uses to Serial
+// On Arduino Leonardo, Micro, MEGA or DUE, hardware serial can be used for output as the adapter occupies Serial1
+// On Arduino UNO and those have no Serial1, we use software serial for output as the adapter uses Serial
+#ifdef ARDUINO_AVR_UNO
+#include <SoftwareSerial.h>
 SoftwareSerial mySerial(A2, A3);
-//#define mySerial Serial
+#else
+#define mySerial Serial
+#endif
+
+#if defined(ESP32) && !defined(Serial1)
+HardwareSerial Serial1(1);
+#endif
 
 COBD obd;
 bool hasMEMS;
 
-void testOut()
+void testATcommands()
 {
     static const char cmds[][6] = {"ATZ\r", "ATI\r", "ATH0\r", "ATRV\r", "0100\r", "010C\r", "0902\r"};
     char buf[128];
@@ -93,11 +100,12 @@ void readBatteryVoltage()
 
 void readMEMS()
 {
-  int acc[3];
-  int gyro[3];
-  int temp;
+  int16_t acc[3] = {0};
+  int16_t gyro[3] = {0};
+  int16_t mag[3] = {0};
+  int16_t temp = 0;
 
-  if (!obd.memsRead(acc, gyro, 0, &temp)) return;
+  if (!obd.memsRead(acc, gyro, mag, &temp)) return;
 
   mySerial.print('[');
   mySerial.print(millis());
@@ -117,6 +125,13 @@ void readMEMS()
   mySerial.print('/');
   mySerial.print(gyro[2]);
 
+  mySerial.print(" MAG:");
+  mySerial.print(mag[0]);
+  mySerial.print('/');
+  mySerial.print(mag[1]);
+  mySerial.print('/');
+  mySerial.print(mag[2]);
+
   mySerial.print(" TEMP:");
   mySerial.print((float)temp / 10, 1);
   mySerial.println("C");
@@ -127,23 +142,24 @@ void setup()
   mySerial.begin(115200);
   while (!mySerial);
   
-  // this will begin serial
-  byte version = obd.begin();
-
-  mySerial.print("Freematics OBD-II Adapter ");
-  if (version > 0) {
-    mySerial.print("Ver. ");
-    mySerial.print(version / 10);
-    mySerial.print('.');
-    mySerial.println(version % 10);
-  } else {
-    mySerial.println("not detected");
-    for (;;);
+  for (;;) {
+    delay(1000);
+    byte version = obd.begin();
+    mySerial.print("Freematics OBD-II Adapter ");
+    if (version > 0) {
+      mySerial.println("detected");
+      mySerial.print("OBD firmware version ");
+      mySerial.print(version / 10);
+      mySerial.print('.');
+      mySerial.println(version % 10);
+      break;
+    } else {
+      mySerial.println("not detected");
+    }
   }
-  delay(1000);
 
   // send some commands for testing and show response for debugging purpose
-  testOut();
+  testATcommands();
 
   hasMEMS = obd.memsInit();
   mySerial.print("MEMS:");
@@ -151,8 +167,9 @@ void setup()
   
   // initialize OBD-II adapter
   do {
-    mySerial.println("Init...");
+    mySerial.println("Connecting...");
   } while (!obd.init());
+  mySerial.println("OBD connected!");
 
   char buf[64];
   if (obd.getVIN(buf, sizeof(buf))) {
@@ -160,7 +177,7 @@ void setup()
       mySerial.println(buf);
   }
   
-  unsigned int codes[6];
+  uint16_t codes[6];
   byte dtcCount = obd.readDTC(codes, 6);
   if (dtcCount == 0) {
     mySerial.println("No DTC"); 
@@ -176,7 +193,6 @@ void setup()
   delay(5000);
 }
 
-
 void loop()
 {
   readPIDSingle();
@@ -186,3 +202,4 @@ void loop()
     readMEMS();
   }
 }
+
