@@ -166,7 +166,7 @@ unsigned long TinyGPS::parse_degrees()
 {
   char *p;
   unsigned long left = gpsatol(_term);
-  unsigned long tenk_minutes = (left % 100UL) * 100000UL;
+  unsigned long tenk_minutes = (left % 100UL) * 10000UL;
   for (p=_term; gpsisdigit(*p); ++p);
   if (*p == '.')
   {
@@ -177,7 +177,7 @@ unsigned long TinyGPS::parse_degrees()
       mult /= 10;
     }
   }
-  return (left / 100) * 1000000 + tenk_minutes / 6;
+  return (left / 100) * 100000 + tenk_minutes / 6;
 }
 
 #define COMBINE(sentence_type, term_number) (((unsigned)(sentence_type) << 5) | term_number)

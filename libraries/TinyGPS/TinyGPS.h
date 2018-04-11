@@ -23,11 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef TinyGPS_h
 #define TinyGPS_h
 
-#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
 
 #define _GPS_VERSION 12 // software version of this library
 #define _GPS_MPH_PER_KNOT 1.15077945
@@ -35,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define _GPS_KMPH_PER_KNOT 1.852
 #define _GPS_MILES_PER_METER 0.00062137112
 #define _GPS_KM_PER_METER 0.001
-//#define _GPS_NO_STATS
+#define _GPS_NO_STATS
 
 class TinyGPS
 {
