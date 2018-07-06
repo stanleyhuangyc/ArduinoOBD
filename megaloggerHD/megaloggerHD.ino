@@ -657,7 +657,8 @@ void testOut()
 
 void setup()
 {
-  Serial.begin(115200);
+    delay(500);
+    Serial.begin(115200);
 #if USE_GPS
     GPSUART.begin(GPS_BAUDRATE);
     lastGPSDataTime = 0;
@@ -691,10 +692,8 @@ void setup()
     lcd.print("OBD-II UART Adapter ");
 #endif
     if (version) {
-      lcd.print("Ver. ");
-      lcd.print(version / 10);
-      lcd.print('.');
-      lcd.println(version % 10);
+      lcd.print("Firmware V");
+      lcd.print(version);
     } else {
       lcd.setColor(RGB16_RED);
       lcd.draw(cross, 16, 16);
