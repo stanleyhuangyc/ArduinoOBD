@@ -4,6 +4,8 @@
 * Visit http://freematics.com for more information
 * (C)2012-2016 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
+#ifndef _OBD2UART_H_
+#define _OBD2UART_H_
 
 #include <Arduino.h>
 
@@ -175,3 +177,4 @@ private:
 	bool m_fusion = false;
 };
 
+#endif // _OBD2UART_H_
