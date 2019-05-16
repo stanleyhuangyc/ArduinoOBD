@@ -687,12 +687,12 @@ void setup()
 
     byte version = obd.begin();
 #ifdef OBD_ADAPTER_I2C
-    lcd.print("OBD-II I2C Adapter ");
+    lcd.print("OBD I2C Adapter ");
 #else
-    lcd.print("OBD-II UART Adapter ");
+    lcd.print("OBD Firmware ");
 #endif
     if (version) {
-      lcd.print("Firmware V");
+      lcd.print("Ver. ");
       lcd.print(version);
     } else {
       lcd.setColor(RGB16_RED);
