@@ -74,6 +74,9 @@ extern HardwareSerial Serial1;
 #define PID_ENGINE_TORQUE_DEMANDED 0x61
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
+#define PID_TURBOCHARGER_INLET_PRESSURE 0x6F
+#define PID_TURBOCHARGER_RPM 0x74
+#define PID_TURBOCHARGER_TEMP 0x75
 
 // non-OBD/custom PIDs (no mode number)
 #define PID_ACC 0x20
