@@ -74,6 +74,10 @@ extern HardwareSerial Serial1;
 #define PID_ENGINE_TORQUE_DEMANDED 0x61
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
+
+// this isn't the actual boost pressure. that's found by doing:
+//  intake manifold pressure - barometric pressure = boost pressure
+// this is the pressure at the exhaust inlet to the turbo.
 #define PID_TURBOCHARGER_INLET_PRESSURE 0x6F
 #define PID_TURBOCHARGER_RPM 0x74
 #define PID_TURBOCHARGER_TEMP 0x75
