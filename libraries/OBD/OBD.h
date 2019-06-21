@@ -75,13 +75,6 @@
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
 
-// this isn't the actual boost pressure. that's found by doing:
-//  intake manifold pressure - barometric pressure = boost pressure
-// this is the pressure at the exhaust inlet to the turbo.
-#define PID_TURBOCHARGER_INLET_PRESSURE 0x6F
-#define PID_TURBOCHARGER_RPM 0x74
-#define PID_TURBOCHARGER_TEMP 0x75
-
 // non-OBD/custom PIDs (no mode number)
 #define PID_GPS_LATITUDE 0xA
 #define PID_GPS_LONGITUDE 0xB
@@ -184,7 +177,7 @@ protected:
 private:
 	virtual uint8_t getPercentageValue(char* data)
 	{
-		return (uint16_t)hex2uint8(data) * 100 / 255;
+		return (uint16_t)((float)hex2uint8(data) * 100.0f / 255.0f);
 	}
 	virtual uint16_t getLargeValue(char* data)
 	{
