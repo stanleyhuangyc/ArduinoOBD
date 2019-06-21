@@ -172,7 +172,7 @@ protected:
 private:
 	virtual uint8_t getPercentageValue(char* data)
 	{
-		return (uint16_t)((float)hex2uint8(data) * 100.0f / 255.0f);
+		return (uint8_t)((float)hex2uint8(data) * 100.0f / 255.0f);
 	}
 	virtual uint16_t getLargeValue(char* data)
 	{
