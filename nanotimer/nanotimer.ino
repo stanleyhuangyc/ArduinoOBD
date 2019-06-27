@@ -10,7 +10,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <MicroLCD.h>
-#include <OBD.h>
+#include <OBD2UART.h>
 #include "config.h"
 #if USE_SOFTSERIAL
 #include <SoftwareSerial.h>

@@ -9,7 +9,7 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
-#include <OBD.h>
+#include <OBD2UART.h>
 #include <MicroLCD.h>
 #include "images.h"
 #include "config.h"
@@ -239,7 +239,6 @@ private:
         }
         state &= ~STATE_SLEEPING;
         fileIndex++;
-        recover();
         setup();
     }
     byte state;
