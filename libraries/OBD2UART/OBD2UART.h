@@ -170,25 +170,7 @@ protected:
 	virtual char* getResultValue(char* buf);
 	OBD_STATES m_state = OBD_DISCONNECTED;
 private:
-	virtual uint8_t getPercentageValue(char* data)
-	{
-		return (uint8_t)((float)hex2uint8(data) * 100.0f / 255.0f);
-	}
-	virtual uint16_t getLargeValue(char* data)
-	{
-		return hex2uint16(data);
-	}
-	virtual uint8_t getSmallValue(char* data)
-	{
-		return hex2uint8(data);
-	}
-	virtual int16_t getTemperatureValue(char* data)
-	{
-		return (int)hex2uint8(data) - 40;
-	}
-	char* getResultValue(char* buf);
 	void recover();
 	virtual void idleTasks() {}
 	bool m_fusion = false;
 };
-
