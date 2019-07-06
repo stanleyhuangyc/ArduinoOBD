@@ -74,7 +74,7 @@ bool COBD::readPID(byte pid, int& result)
 
 byte COBD::readPID(const byte pid[], byte count, int result[])
 {
-	byte results = 0; 
+	byte results = 0;
 	for (byte n = 0; n < count; n++) {
 		if (readPID(pid[n], result[n])) {
 			results++;
@@ -87,9 +87,9 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 {
 	/*
 	Response example:
-	0: 43 04 01 08 01 09 
+	0: 43 04 01 08 01 09
 	1: 01 11 01 15 00 00 00
-	*/ 
+	*/
 	byte codesRead = 0;
  	for (byte n = 0; n < 6; n++) {
 		char buffer[128];
@@ -104,7 +104,7 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 						if (*p == '\r') {
 							p = strchr(p, ':');
 							if (!p) break;
-							p += 2; 
+							p += 2;
 						}
 						uint16_t code = hex2uint16(p);
 						if (code == 0) break;
@@ -339,9 +339,9 @@ byte COBD::begin()
 #endif
 		version = getVersion();
 		if (version != 0) break;
-		OBDUART.end();		 
+		OBDUART.end();
 	}
-	return version;	
+	return version;
 }
 
 byte COBD::getVersion()
@@ -530,7 +530,7 @@ byte COBD::checkErrorMessage(const char* buffer)
 
 uint8_t COBD::getPercentageValue(char* data)
 {
-  return (uint16_t)hex2uint8(data) * 100 / 255;
+  return (uint8_t)((float)hex2uint8(data) * 100.f / 255.f);
 }
 
 uint16_t COBD::getLargeValue(char* data)
@@ -622,7 +622,7 @@ bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
 		}
 		if (!success) return false;
 	}
-	return true;	
+	return true;
 }
 
 bool COBD::memsOrientation(float& yaw, float& pitch, float& roll)
@@ -651,4 +651,3 @@ void COBD::debugOutput(const char *s)
 	DEBUG.print(s);
 }
 #endif
-
