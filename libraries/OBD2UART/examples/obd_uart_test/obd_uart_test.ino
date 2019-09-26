@@ -19,10 +19,6 @@ SoftwareSerial mySerial(A2, A3);
 #define mySerial Serial
 #endif
 
-#if defined(ESP32) && !defined(Serial1)
-HardwareSerial Serial1(1);
-#endif
-
 COBD obd;
 bool hasMEMS;
 
