@@ -5,6 +5,9 @@
 * (C)2012-2019 Stanley Huang <stanley@freematics.com.au>
 *************************************************************************/
 
+#ifndef OBD2UART_H
+#define OBD2UART_H
+
 #include <Arduino.h>
 
 #define OBD_TIMEOUT_SHORT 1000 /* ms */
@@ -74,6 +77,9 @@ extern HardwareSerial Serial1;
 #define PID_ENGINE_TORQUE_DEMANDED 0x61
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
+#define PID_TURBO_RPM 0x74
+#define PID_TURBO_A_TEMP 0x75
+#define PID_TURBO_B_TEMP 0x76
 
 // non-OBD/custom PIDs (no mode number)
 #define PID_ACC 0x20
@@ -103,6 +109,7 @@ typedef enum {
 
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
+uint32_t hex2uint32(const char* p);
 
 class COBD
 {
@@ -175,3 +182,4 @@ private:
 	bool m_fusion = false;
 };
 
+#endif // OBD2UART_H

@@ -5,6 +5,9 @@
 * (C)2012-2016 Stanley Huang <stanleyhuangyc@gmail.com>
 *************************************************************************/
 
+#ifndef OBD_H
+#define OBD_H
+
 #include <Arduino.h>
 
 #define OBD_MODEL_UART 0
@@ -74,6 +77,9 @@
 #define PID_ENGINE_TORQUE_DEMANDED 0x61
 #define PID_ENGINE_TORQUE_PERCENTAGE 0x62
 #define PID_ENGINE_REF_TORQUE 0x63
+#define PID_TURBO_RPM 0x74
+#define PID_TURBO_A_TEMP 0x75
+#define PID_TURBO_B_TEMP 0x76
 
 // non-OBD/custom PIDs (no mode number)
 #define PID_GPS_LATITUDE 0xA
@@ -114,6 +120,7 @@ typedef enum {
 
 uint16_t hex2uint16(const char *p);
 uint8_t hex2uint8(const char *p);
+uint32_t hex2uint32(const char* p);
 
 class COBD
 {
@@ -241,3 +248,5 @@ private:
 	bool MPU6050_write_reg(int reg, uint8_t data);
 	void MPU6050_store(int* pData, uint8_t data_l, uint8_t data_h);
 };
+
+#endif // OBD_H
