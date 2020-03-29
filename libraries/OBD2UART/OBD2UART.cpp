@@ -484,7 +484,7 @@ void COBD::end()
 bool COBD::setBaudRate(unsigned long baudrate)
 {
     OBDUART.print("ATBR1 ");
-    OBDUART.print(baudrate);
+    OBDUART.print(baudrate, HEX);
     OBDUART.print('\r');
     delay(50);
     OBDUART.end();
