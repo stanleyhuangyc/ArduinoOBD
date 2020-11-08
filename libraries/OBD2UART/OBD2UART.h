@@ -156,7 +156,7 @@ public:
 	// occurrence of errors
 	byte errors = 0;
 	// bit map of supported PIDs
-	byte pidmap[4 * 4] = {0};
+	byte pidmap[4 * 8] = {0};
 protected:
 	virtual char* getResponse(byte& pid, char* buffer, byte bufsize);
 	virtual int receive(char* buffer, int bufsize, unsigned int timeout = OBD_TIMEOUT_SHORT);
