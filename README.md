@@ -22,7 +22,6 @@ Engine
     PID_RPM – Engine RPM (rpm)
     PID_ENGINE_LOAD – Calculated engine load (%)
     PID_COOLANT_TEMP – Engine coolant temperature (°C)
-    PID_ENGINE_LOAD – Calculated Engine load (%)
     PID_ABSOLUTE_ENGINE_LOAD – Absolute Engine load (%)
     PID_TIMING_ADVANCE – Ignition timing advance (°)
     PID_ENGINE_OIL_TEMP – Engine oil temperature (°C)
