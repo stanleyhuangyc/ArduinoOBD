@@ -619,14 +619,3 @@ bool COBD::memsOrientation(float& yaw, float& pitch, float& roll)
 	} while (0);
 	return success;
 }
-
-#ifdef DEBUG
-void COBD::debugOutput(const char *s)
-{
-	DEBUG.print('[');
-	DEBUG.print(millis());
-	DEBUG.print(']');
-	DEBUG.print(s);
-}
-#endif
-
