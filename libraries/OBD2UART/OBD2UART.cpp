@@ -29,6 +29,12 @@ uint16_t hex2uint16(const char *p)
 	return i;
 }
 
+uint32_t hex2uint32(const char* p) {
+	uint32_t i = 0;
+	i = ((uint32_t)hex2uint16(p) << 16) | hex2uint16(p+4);
+	return i;
+}
+
 byte hex2uint8(const char *p)
 {
 	byte c1 = *p;
@@ -74,7 +80,7 @@ bool COBD::readPID(byte pid, int& result)
 
 byte COBD::readPID(const byte pid[], byte count, int result[])
 {
-	byte results = 0; 
+	byte results = 0;
 	for (byte n = 0; n < count; n++) {
 		if (readPID(pid[n], result[n])) {
 			results++;
@@ -87,9 +93,9 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 {
 	/*
 	Response example:
-	0: 43 04 01 08 01 09 
+	0: 43 04 01 08 01 09
 	1: 01 11 01 15 00 00 00
-	*/ 
+	*/
 	byte codesRead = 0;
  	for (byte n = 0; n < 6; n++) {
 		char buffer[128];
@@ -104,7 +110,7 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 						if (*p == '\r') {
 							p = strchr(p, ':');
 							if (!p) break;
-							p += 2; 
+							p += 2;
 						}
 						uint16_t code = hex2uint16(p);
 						if (code == 0) break;
@@ -211,6 +217,15 @@ int COBD::normalizeData(byte pid, char* data)
 		break;
 	case PID_AIR_FUEL_EQUIV_RATIO: // 0~200
 		result = (long)getLargeValue(data) * 200 / 65536;
+		break;
+	case PID_TURBO_A_TEMP:
+	case PID_TURBO_B_TEMP:
+		// these are both 7 byte values, skip the 3 most significant
+		result = hex2uint32(data+3);
+		break;
+	case PID_TURBO_RPM:
+		// this is a 5 byte value, skip the MSB
+		result = hex2uint32(data+1);
 		break;
 	default:
 		result = getSmallValue(data);
@@ -337,9 +352,9 @@ byte COBD::begin()
 #endif
 		version = getVersion();
 		if (version != 0) break;
-		OBDUART.end();		 
+		OBDUART.end();
 	}
-	return version;	
+	return version;
 }
 
 byte COBD::getVersion()
@@ -600,7 +615,7 @@ bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
 		}
 		if (!success) return false;
 	}
-	return true;	
+	return true;
 }
 
 bool COBD::memsOrientation(float& yaw, float& pitch, float& roll)
@@ -629,4 +644,3 @@ void COBD::debugOutput(const char *s)
 	DEBUG.print(s);
 }
 #endif
-

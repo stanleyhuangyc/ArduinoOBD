@@ -31,6 +31,12 @@ uint16_t hex2uint16(const char *p)
 	return i;
 }
 
+uint32_t hex2uint32(const char* p) {
+	uint32_t i = 0;
+	i = ((uint32_t)hex2uint16(p) << 16) | hex2uint16(p+4);
+	return i;
+}
+
 byte hex2uint8(const char *p)
 {
 	byte c1 = *p;
@@ -83,7 +89,7 @@ bool COBD::readPID(byte pid, int& result)
 
 byte COBD::readPID(const byte pid[], byte count, int result[])
 {
-	byte results = 0; 
+	byte results = 0;
 	for (byte n = 0; n < count; n++) {
 		if (readPID(pid[n], result[n])) {
 			results++;
@@ -96,9 +102,9 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 {
 	/*
 	Response example:
-	0: 43 04 01 08 01 09 
+	0: 43 04 01 08 01 09
 	1: 01 11 01 15 00 00 00
-	*/ 
+	*/
 	byte codesRead = 0;
  	for (byte n = 0; n < 6; n++) {
 		char buffer[128];
@@ -113,7 +119,7 @@ byte COBD::readDTC(uint16_t codes[], byte maxCodes)
 						if (*p == '\r') {
 							p = strchr(p, ':');
 							if (!p) break;
-							p += 2; 
+							p += 2;
 						}
 						uint16_t code = hex2uint16(p);
 						if (code == 0) break;
@@ -220,6 +226,15 @@ int COBD::normalizeData(byte pid, char* data)
 		break;
 	case PID_AIR_FUEL_EQUIV_RATIO: // 0~200
 		result = (long)getLargeValue(data) * 200 / 65536;
+		break;
+	case PID_TURBO_A_TEMP:
+	case PID_TURBO_B_TEMP:
+		// these are both 7 byte values, skip the 3 most significant
+		result = hex2uint32(data+3);
+		break;
+	case PID_TURBO_RPM:
+		// this is a 5 byte value, skip the MSB
+		result = hex2uint32(data+1);
 		break;
 	default:
 		result = getSmallValue(data);
@@ -342,9 +357,9 @@ byte COBD::begin()
 	byte version = 0;
 	for (byte n = 0; n < sizeof(baudrates) / sizeof(baudrates[0]) && version == 0; n++) {
 		OBDUART.begin(baudrates[n]);
-		version = getVersion(); 
+		version = getVersion();
 	}
-	return version;	
+	return version;
 }
 
 byte COBD::getVersion()
@@ -528,7 +543,7 @@ bool COBD::memsRead(int16_t* acc, int16_t* gyr, int16_t* mag, int16_t* temp)
 		}
 		if (!success) return false;
 	}
-	return true;	
+	return true;
 }
 
 #ifdef DEBUG
@@ -589,7 +604,7 @@ byte COBDI2C::receive(char* buffer, byte bufsize, int timeout)
 		if (offset == 0 && c < 0xa) {
 			 // data not ready
 			dataIdleLoop();
-			continue; 
+			continue;
 		}
 		if (buffer) buffer[offset++] = c;
 		for (byte i = 1; i < MAX_PAYLOAD_SIZE && Wire.available(); i++) {
@@ -714,14 +729,14 @@ bool COBDI2C::memsRead(int* acc, int* gyr, int* mag, int* temp)
 	// With the default settings of the MPU-6050,
 	// there is no filter enabled, and the values
 	// are not very stable.
-	
+
 	MPU6050_READOUT_DATA accel_t_gyro;
 	success = MPU6050_read (MPU6050_ACCEL_XOUT_H, (uint8_t *)&accel_t_gyro, sizeof(MPU6050_READOUT_DATA));
 	if (!success) return false;
-	
+
 	if (temp) {
 		// 340 per degrees Celsius, -512 at 35 degrees.
-		*temp = ((int)(((uint16_t)accel_t_gyro.t_h << 8) | accel_t_gyro.t_l) + 512) / 34 + 350; 
+		*temp = ((int)(((uint16_t)accel_t_gyro.t_h << 8) | accel_t_gyro.t_l) + 512) / 34 + 350;
 	}
 
 	if (acc) {
@@ -735,14 +750,14 @@ bool COBDI2C::memsRead(int* acc, int* gyr, int* mag, int* temp)
 		MPU6050_store(gyr + 1, accel_t_gyro.y_gyro_l, accel_t_gyro.y_gyro_h);
 		MPU6050_store(gyr + 2, accel_t_gyro.z_gyro_l, accel_t_gyro.z_gyro_h);
 	}
-	
+
 	if (mag) {
 		// no magnetometer
 		mag[0] = 0;
 		mag[1] = 0;
 		mag[2] = 0;
 	}
-	
+
 	return true;
 }
 
