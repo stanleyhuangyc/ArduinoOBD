@@ -8,7 +8,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <OBD.h>
+#include <OBD2UART.h>
 #include <MultiLCD.h>
 #include <TinyGPS.h>
 #include "config.h"

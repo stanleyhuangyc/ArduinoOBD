@@ -2,7 +2,7 @@
 * Arduino Library for Freematics OBD-II UART Adapter
 * Distributed under BSD License
 * Visit https://freematics.com for more information
-* (C)2012-2019 Stanley Huang <stanley@freematics.com.au>
+* (C)2012-2021 Stanley Huang <stanley@freematics.com.au>
 *************************************************************************/
 
 #include <Arduino.h>
