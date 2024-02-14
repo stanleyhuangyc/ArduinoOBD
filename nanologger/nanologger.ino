@@ -32,8 +32,6 @@ static int speed = 0;
 static uint32_t distance = 0;
 static uint16_t fileIndex = 0;
 static uint32_t startTime = 0;
-static uint8_t lastPid = 0;
-static int lastValue = 0;
 
 static byte pidTier1[]= {PID_RPM, PID_SPEED, PID_ENGINE_LOAD, PID_THROTTLE};
 static byte pidTier2[] = {PID_INTAKE_MAP, PID_MAF_FLOW, PID_TIMING_ADVANCE};
@@ -194,23 +192,15 @@ public:
         initLoggerScreen();
     }
 private:
-    void dataIdleLoop()
-    {
-        if (lastPid) {
-            showLoggerData(lastPid, lastValue);
-            lastPid = 0;
-        }
-    }
     int logOBDData(byte pid)
     {
         int value = 0;
         // send a query to OBD adapter for specified OBD-II pid
         if (readPID(pid, value)) {
             dataTime = millis();
+            showLoggerData(pid, value);
             // log data to SD card
             logData(0x100 | pid, value);
-            lastValue = value;
-            lastPid = pid;
         }
         return value;
     }
