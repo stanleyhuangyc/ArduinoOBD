@@ -330,8 +330,10 @@ byte COBD::begin()
 	long baudrates[] = {115200, 38400};
 	byte version = 0;
 	for (byte n = 0; n < sizeof(baudrates) / sizeof(baudrates[0]); n++) {
-#ifndef ESP32
+#if !defined(ESP32)
 		OBDUART.begin(baudrates[n]);
+#elif defined(ARDUINO_ESP32C3_DEV)
+		OBDUART.begin(baudrates[n], SERIAL_8N1, 18, 19);
 #else
 		OBDUART.begin(baudrates[n], SERIAL_8N1, 16, 17);
 #endif
