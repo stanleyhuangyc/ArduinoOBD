@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
+#include <math.h>
 #include <SD.h>
 #include <TinyGPS.h>
 #include <MultiLCD.h>
@@ -16,6 +17,12 @@
 #include <SoftwareSerial.h>
 #endif
 #include "datalogger.h"
+
+
+#define EARTH_RADIUS_KM 6371.0
+#define DEG_TO_RAD (M_PI / 180.0)
+#define MIN_DISTANCE_KM 0.01
+
 
 #define DISPLAY_MODES 1
 
@@ -34,6 +41,16 @@ int16_t startAlt = 32767;
 long lastLat = 0;
 long lastLon = 0;
 uint32_t time;
+
+// Constants for GPS calculations
+const int KM_PER_HOUR_CONVERSION = 1852;
+const int MIN_SPEED = 1000;
+const int MAX_SATELLITES = 100;
+const int LAT_LON_SCALE_FACTOR = 100000;
+const int MIN_ALTITUDE = -10000;
+const int MAX_ALTITUDE = 10000;
+const uint32_t LOG_INTERVAL = 3000;
+const int MIN_DISTANCE_SQUARED = 100;
 
 
 #if USE_MPU6050
@@ -60,11 +77,9 @@ void initScreen();
 #if USE_MPU6050
 bool initACC()
 {
-    if (MPU6050_init() != 0)
-        return false;
-    return true;
-
+    return MPU6050_init() == 0;
 }
+
 void processACC()
 {
     accel_t_gyro_union data;
@@ -77,87 +92,107 @@ void processACC()
 }
 #endif
 
-void processGPS()
-{
+// Convert GPS speed to km/h
+int convertSpeedToKmPerHour() {
+    return (int)(gps.speed() * KM_PER_HOUR_CONVERSION / 100);
+}
+
+// Update speed and log
+void updateAndLogSpeed() {
+    speed = convertSpeedToKmPerHour();
+    if (speed < MIN_SPEED) speed = 0;
+    logger.logData(PID_GPS_SPEED, speed);
+}
+
+// Update satellite count and ensure it's within valid range
+void updateSatelliteCount() {
+    sat = gps.satellites();
+    if (sat > MAX_SATELLITES) sat = 0;
+}
+
+// Update and log position
+void updateAndLogPosition() {
+    long lat, lon;
+    gps.get_position(&lat, &lon, 0);
+    curLat = (float)lat / LAT_LON_SCALE_FACTOR;
+    curLon = (float)lon / LAT_LON_SCALE_FACTOR;
+    logger.logData(PID_GPS_LATITUDE, lat);
+    logger.logData(PID_GPS_LONGITUDE, lon);
+}
+
+// Update and log altitude
+void updateAndLogAltitude() {
+    alt = gps.altitude() / 100;
+    if (alt > MIN_ALTITUDE && alt < MAX_ALTITUDE) {
+        logger.logData(PID_GPS_ALTITUDE, alt);
+        if (sat > 5 && startAlt == 32767) {
+            startAlt = alt;
+        }
+    } else {
+        alt = 0;
+    }
+}
+
+void processGPS() {
     static uint32_t lastTime = 0;
 
-    // parsed GPS data is ready
     logger.dataTime = millis();
 
     uint32_t date;
     gps.get_datetime(&date, &time, 0);
     logger.logData(PID_GPS_TIME, (int32_t)time);
 
-    speed = (int)(gps.speed() * 1852 / 100);
-    if (speed < 1000) speed = 0;
-    logger.logData(PID_GPS_SPEED, speed);
+    updateAndLogSpeed();
+    updateSatelliteCount();
+    updateAndLogPosition();
 
-    /*
-    if (sat >= 3 && gps.satellites() < 3) {
-        initScreen();
-    }
-    */
+    if (logger.dataTime - lastTime >= LOG_INTERVAL && speed > 0) {
+        processDistanceAndHeading();
 
-    sat = gps.satellites();
-    if (sat > 100) sat = 0;
-
-    long lat, lon;
-    gps.get_position(&lat, &lon, 0);
-    curLat = (float)lat / 100000;
-    curLon = (float)lon / 100000;
-    logger.logData(PID_GPS_LATITUDE, lat);
-    logger.logData(PID_GPS_LONGITUDE, lon);
-
-    if (logger.dataTime - lastTime >= 3000 && speed > 0) {
-        if (lastLat == 0) lastLat = lat;
-        if (lastLon == 0) lastLon = lon;
-
-        int16_t latDiff = lat - lastLat;
-        int16_t lonDiff = lon - lastLon;
-
-        uint16_t d = latDiff * latDiff + lonDiff * lonDiff;
-        if (d >= 100) {
-            distance += sqrt(d);
-            lastLat = lat;
-            lastLon = lon;
-
-            if (latDiff > 0) {
-                heading[0] = 'N';
-            } else if (latDiff < 0) {
-                heading[0] = 'S';
-            } else {
-                heading[0] = ' ';
-            }
-            if (lonDiff > 0) {
-                heading[1] = 'E';
-            } else if (lonDiff < 0) {
-                heading[1] = 'W';
-            } else {
-                heading[1] = ' ';
-            }
-        }
         lastTime = logger.dataTime;
 
 #if ENABLE_DATA_LOG
-        // flush file every several seconds
         logger.flushFile();
 #endif
     }
 
-    alt = gps.altitude() / 100;
-    if (alt > -10000 && alt < 10000) {
-        logger.logData(PID_GPS_ALTITUDE, alt);
-        if (sat > 5 && startAlt == 32767) {
-            // save start altitude
-            startAlt = alt;
-        }
-    } else {
-        alt = 0;
-    }
+    updateAndLogAltitude();
 
     records++;
 }
 
+void processDistanceAndHeading() {
+    // This function uses the Haversine formula to accurately calculate the distance traveled on a spherical surface, such as the Earth.
+    // If computational expense is an issue, revert this to the simpler calculation of differences
+
+    if (lastLat == 0) lastLat = curLat;
+    if (lastLon == 0) lastLon = curLon;
+
+    double latDiffRad = (curLat - lastLat) * DEG_TO_RAD;
+    double lonDiffRad = (curLon - lastLon) * DEG_TO_RAD;
+
+    double a = sin(latDiffRad / 2) * sin(latDiffRad / 2) +
+                cos(lastLat * DEG_TO_RAD) * cos(curLat * DEG_TO_RAD) *
+                sin(lonDiffRad / 2) * sin(lonDiffRad / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    double d = EARTH_RADIUS_KM * c;
+
+    auto getHeading = [](double diffRad) {
+        return diffRad > 0 ? 'N' : diffRad < 0 ? 'S' : ' ';
+    };
+
+    if (d >= MIN_DISTANCE_KM) {
+        distance += d;
+        lastLat = curLat;
+        lastLon = curLon;
+
+        heading[0] = getHeading(latDiffRad);
+        heading[1] = getHeading(lonDiffRad);
+    }
+}
+
+    	
 bool CheckSD()
 {
     Sd2Card card;
@@ -302,7 +337,11 @@ void setup()
     lcd.println("\r\nInitializing...");
 
 #if ENABLE_DATA_LOG
-    CheckSD();
+    if (!checkSD()) {
+        lcd.println("SD Error");
+        while (true)
+            ;
+    }
 
     int index = logger.openFile();
     lcd.print("File: ");
@@ -469,14 +508,9 @@ void displayExtraInfo()
 
 void loop()
 {
-    if (GPSUART.available()) {
-        char c = GPSUART.read();
-        if (gps.encode(c)) {
-            processGPS();
-        } else {
-            return;
-        }
-    }
+    char c = GPSUART.available() ? GPSUART.read() : '\0';
+    gps.encode(c) ? processGPS() : return;
+
 
 #if USE_MPU6050
     processACC();
@@ -484,4 +518,8 @@ void loop()
 
     displayTimeSpeedDistance();
     displayExtraInfo();
+	
+#if ENABLE_DATA_LOG
+    logger.flushFile();
+#endif
 }
